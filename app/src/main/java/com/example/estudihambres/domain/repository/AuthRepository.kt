@@ -20,4 +20,14 @@ interface AuthRepository {
      * @param status Nuevo [VerificationStatus] a asignar.
      */
     suspend fun updateVerificationStatus(status: VerificationStatus): Result<Unit>
+
+    /**
+     * Guarda la sesión del estudiante para persistencia local.
+     */
+    suspend fun saveSession(user: StudentUser): Result<Unit> = Result.success(Unit)
+
+    /**
+     * Cierra la sesión activa y limpia los datos persistidos.
+     */
+    suspend fun clearSession(): Result<Unit> = Result.success(Unit)
 }

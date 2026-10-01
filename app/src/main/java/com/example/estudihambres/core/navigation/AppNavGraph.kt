@@ -61,6 +61,14 @@ fun AppNavGraph(
         Screen.Verification.route
     )
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sessionManager = androidx.compose.runtime.remember {
+        com.example.estudihambres.core.util.SessionManager.getInstance(context)
+    }
+    val startDestination = androidx.compose.runtime.remember {
+        if (sessionManager.isUserLoggedIn()) Screen.Home.route else Screen.Login.route
+    }
+
     val authViewModel: com.example.estudihambres.presentation.auth.AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 
     Scaffold(
@@ -97,7 +105,7 @@ fun AppNavGraph(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Login.route,
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Login.route) {

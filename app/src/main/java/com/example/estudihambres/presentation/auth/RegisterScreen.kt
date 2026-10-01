@@ -21,7 +21,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -29,6 +34,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -37,14 +45,40 @@ import androidx.compose.ui.unit.dp
 import com.example.estudihambres.core.theme.CampusShapes
 
 /**
+ * Listado oficial de sugerencias universitarias peruanas para autocompletado en el registro.
+ */
+private val peruvianUniversities = listOf(
+    "Universidad Continental",
+    "Pontificia Universidad Católica del Perú (PUCP)",
+    "Universidad Nacional Mayor de San Marcos (UNMSM)",
+    "Universidad Nacional de Ingeniería (UNI)",
+    "Universidad Peruana de Ciencias Aplicadas (UPC)",
+    "Universidad de Ingeniería y Tecnología (UTEC)",
+    "Universidad de San Martín de Porres (USMP)",
+    "Universidad Católica de Santa María (UCSM)",
+    "Universidad Nacional de San Agustín (UNSA)",
+    "Universidad de Lima",
+    "Universidad del Pacífico",
+    "Universidad San Ignacio de Loyola (USIL)",
+    "Universidad Tecnológica del Perú (UTP)",
+    "Universidad Ricardo Palma (URP)",
+    "Universidad Científica del Sur",
+    "Universidad Privada del Norte (UPN)",
+    "Universidad Nacional de Trujillo (UNT)",
+    "Universidad Nacional San Antonio Abad del Cusco (UNSAAC)"
+)
+
+/**
  * Pantalla de registro estudiantil con Material 3 (presentation/auth).
- * Conecta con [AuthViewModel] para validaciones de 8 dígitos de DNI, correo institucional y campos requeridos.
+ * Conecta con [AuthViewModel] e implementa ExposedDropdownMenuBox para sugerir y filtrar
+ * universidades peruanas en tiempo real, permitiendo espacios de forma natural.
  *
  * @param viewModel ViewModel de autenticación.
  * @param onRegisterSuccess Navegación tras registrar correctamente (lleva a la verificación de carnet).
  * @param onNavigateToLogin Navegación de retorno al login.
  * @param modifier Modificador Compose.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     viewModel: AuthViewModel,
@@ -53,6 +87,7 @@ fun RegisterScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.registerState.collectAsState()
+    var universityDropdownExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -86,6 +121,8 @@ fun RegisterScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+
+                // Campo DNI
                 OutlinedTextField(
                     value = state.dni,
                     onValueChange = { viewModel.onRegisterDniChange(it) },
@@ -100,6 +137,8 @@ fun RegisterScreen(
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Campo Código de Alumno
                 OutlinedTextField(
                     value = state.studentCode,
                     onValueChange = { viewModel.onRegisterStudentCodeChange(it) },
@@ -113,25 +152,71 @@ fun RegisterScreen(
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = state.university,
-                    onValueChange = { viewModel.onRegisterUniversityChange(it) },
-                    label = { Text("Universidad") },
-                    placeholder = { Text("Ej. UNMSM, UNI, PUCP, UPC") },
-                    leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
-                    isError = state.universityError != null,
-                    supportingText = {
-                        state.universityError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    },
-                    singleLine = true,
-                    shape = CampusShapes.small,
+
+                // Campo Universidad con Autocomplete y Filtrado Interactivo
+                val filteredUniversities = remember(state.university) {
+                    if (state.university.isBlank()) {
+                        peruvianUniversities
+                    } else {
+                        peruvianUniversities.filter {
+                            it.contains(state.university, ignoreCase = true)
+                        }
+                    }
+                }
+
+                ExposedDropdownMenuBox(
+                    expanded = universityDropdownExpanded,
+                    onExpandedChange = { universityDropdownExpanded = it },
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    OutlinedTextField(
+                        value = state.university,
+                        onValueChange = {
+                            viewModel.onRegisterUniversityChange(it)
+                            universityDropdownExpanded = true
+                        },
+                        label = { Text("Universidad") },
+                        placeholder = { Text("Ej. Universidad Continental, PUCP, UNMSM") },
+                        leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = universityDropdownExpanded)
+                        },
+                        isError = state.universityError != null,
+                        supportingText = {
+                            state.universityError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        },
+                        singleLine = true,
+                        shape = CampusShapes.small,
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, enabled = true)
+                            .fillMaxWidth()
+                    )
+
+                    if (filteredUniversities.isNotEmpty()) {
+                        ExposedDropdownMenu(
+                            expanded = universityDropdownExpanded,
+                            onDismissRequest = { universityDropdownExpanded = false }
+                        ) {
+                            filteredUniversities.take(6).forEach { uni ->
+                                DropdownMenuItem(
+                                    text = { Text(uni) },
+                                    onClick = {
+                                        viewModel.onRegisterUniversityChange(uni)
+                                        universityDropdownExpanded = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Campo Correo Institucional
                 OutlinedTextField(
                     value = state.email,
                     onValueChange = { viewModel.onRegisterEmailChange(it) },
                     label = { Text("Correo institucional") },
-                    placeholder = { Text("alumno@universidad.edu.pe") },
+                    placeholder = { Text("alumno@continental.edu.pe") },
                     leadingIcon = { Icon(Icons.Default.Mail, contentDescription = null) },
                     isError = state.emailError != null,
                     supportingText = {
@@ -142,6 +227,8 @@ fun RegisterScreen(
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Campo Contraseña
                 OutlinedTextField(
                     value = state.password,
                     onValueChange = { viewModel.onRegisterPasswordChange(it) },
@@ -157,6 +244,7 @@ fun RegisterScreen(
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 Spacer(modifier = Modifier.height(6.dp))
                 Button(
                     onClick = { viewModel.register(onRegisterSuccess) },
@@ -170,6 +258,7 @@ fun RegisterScreen(
                         Text("Continuar a Verificación")
                     }
                 }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {

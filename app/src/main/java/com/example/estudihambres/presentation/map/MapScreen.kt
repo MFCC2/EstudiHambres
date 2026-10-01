@@ -15,16 +15,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +41,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -93,39 +101,58 @@ fun MapScreen(
     }
 
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var isListViewMode by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // 1. Google Maps interactivo
-        GoogleMap(
-            modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState,
-            properties = MapProperties(isMyLocationEnabled = state.hasLocationPermission),
-            uiSettings = MapUiSettings(
-                myLocationButtonEnabled = false,
-                zoomControlsEnabled = false,
-                compassEnabled = true
-            )
-        ) {
-            // Marcador de la ubicación del usuario
-            Marker(
-                state = MarkerState(position = state.userLocation),
-                title = "Tú estás aquí",
-                snippet = if (state.isDefaultLocation) "Ubicación Campus Universitario" else "GPS Activo",
-                icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
-            )
-
-            // Marcadores de locales con ofertas dentro del radio de 30 km
-            state.nearbyPlaces.forEach { place ->
-                Marker(
-                    state = MarkerState(position = LatLng(place.latitude, place.longitude)),
-                    title = place.name,
-                    snippet = "${place.discountBadge} • ${place.category}",
-                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED),
-                    onClick = {
-                        viewModel.onPlaceSelected(place)
-                        true
-                    }
+        if (isListViewMode) {
+            // 1. Vista alternativa de lista de los locales cercanos (salvaguarda si el mapa no tiene API key activa)
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 80.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(state.nearbyPlaces, key = { it.id }) { place ->
+                    PlaceListItemCard(
+                        place = place,
+                        onClick = { viewModel.onPlaceSelected(place) }
+                    )
+                }
+            }
+        } else {
+            // 1. Google Maps interactivo
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState,
+                properties = MapProperties(isMyLocationEnabled = state.hasLocationPermission),
+                uiSettings = MapUiSettings(
+                    myLocationButtonEnabled = false,
+                    zoomControlsEnabled = false,
+                    compassEnabled = true
                 )
+            ) {
+                // Marcador de la ubicación del usuario
+                Marker(
+                    state = MarkerState(position = state.userLocation),
+                    title = "Tú estás aquí",
+                    snippet = if (state.isDefaultLocation) "Ubicación Campus Universitario" else "GPS Activo",
+                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+                )
+
+                // Marcadores de locales con ofertas dentro del radio de 30 km
+                state.nearbyPlaces.forEach { place ->
+                    Marker(
+                        state = MarkerState(position = LatLng(place.latitude, place.longitude)),
+                        title = place.name,
+                        snippet = "${place.discountBadge} • ${place.category}",
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED),
+                        onClick = {
+                            viewModel.onPlaceSelected(place)
+                            true
+                        }
+                    )
+                }
             }
         }
 
@@ -150,7 +177,7 @@ fun MapScreen(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                 ) {
                     Text(
-                        text = "RADAR 30 KM",
+                        text = if (isListViewMode) "LISTA 30 KM" else "RADAR 30 KM",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -165,19 +192,42 @@ fun MapScreen(
             }
         }
 
-        // 3. Botón flotante para recentrar mapa
-        FloatingActionButton(
-            onClick = {
-                cameraPositionState.position = CameraPosition.fromLatLngZoom(state.userLocation, 14.5f)
-            },
-            shape = CircleShape,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary,
+        // 3. Controles flotantes en la esquina inferior (Alternar Modo y Recentrar GPS)
+        Column(
             modifier = Modifier
-                .padding(16.dp)
                 .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalAlignment = Alignment.End
         ) {
-            Icon(Icons.Default.MyLocation, contentDescription = "Mi ubicación")
+            if (!isListViewMode) {
+                FloatingActionButton(
+                    onClick = {
+                        cameraPositionState.position = CameraPosition.fromLatLngZoom(state.userLocation, 14.5f)
+                    },
+                    shape = CircleShape,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.MyLocation, contentDescription = "Mi ubicación")
+                }
+            }
+
+            ExtendedFloatingActionButton(
+                onClick = { isListViewMode = !isListViewMode },
+                icon = {
+                    Icon(
+                        imageVector = if (isListViewMode) Icons.Default.Map else Icons.AutoMirrored.Filled.List,
+                        contentDescription = null
+                    )
+                },
+                text = {
+                    Text(if (isListViewMode) "Modo Mapa" else "Modo Lista")
+                },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = CampusShapes.medium
+            )
         }
 
         // 4. ModalBottomSheet con el descuento del local seleccionado
@@ -191,6 +241,89 @@ fun MapScreen(
                     place = place,
                     onDismiss = { viewModel.onPlaceSelected(null) }
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Tarjeta interactiva de la lista de locales cercanos dentro del radio de 30 km (Modo Lista / Fallback).
+ */
+@Composable
+private fun PlaceListItemCard(
+    place: Place,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = CampusShapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = CampusShapes.small,
+                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                ) {
+                    Text(
+                        text = place.discountBadge,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFFB300),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = place.rating.toString(),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = place.name, style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "${place.category} • ${place.address}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            place.distanceKm?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "📍 A solo ${"%.1f".format(it)} km",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = onClick,
+                shape = CampusShapes.small,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Ver Descuento / Canjear")
             }
         }
     }

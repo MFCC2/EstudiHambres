@@ -1,6 +1,11 @@
 package com.example.estudihambres.presentation.verification
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -38,7 +43,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.estudihambres.core.theme.CampusShapes
 import com.example.estudihambres.domain.model.VerificationStatus
@@ -46,8 +53,8 @@ import com.example.estudihambres.domain.model.VerificationStatus
 /**
  * Pantalla para la validación del carnet universitario mediante Google ML Kit OCR (presentation/verification).
  *
- * Ofrece captura con cámara, galería, simulación para emuladores y el botón explícito
- * "Omitir por ahora" que asigna el estado PENDING_VERIFICATION según las reglas de negocio.
+ * Ofrece captura segura con cámara (verificando permisos de tiempo de ejecución), selección de imagen
+ * desde galería con GetContent, simulación para emuladores y el botón explícito "Omitir por ahora".
  *
  * @param viewModel ViewModel encargado del procesamiento OCR y persistencia.
  * @param onVerificationCompleted Navegación a Home tras verificar o continuar.
@@ -62,12 +69,68 @@ fun StudentVerificationScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     // Lanzador para capturar foto directamente con la cámara
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap: Bitmap? ->
-        bitmap?.let { viewModel.processImageBitmap(it) }
+        if (bitmap != null) {
+            viewModel.processImageBitmap(bitmap)
+        }
+    }
+
+    // Lanzador para solicitar permiso de cámara en tiempo de ejecución
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            try {
+                cameraLauncher.launch(null)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error al iniciar la cámara: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(
+                context,
+                "Permiso de cámara no concedido. Puedes cargar la foto desde la galería.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    // Función segura para invocar la cámara verificando permisos y atrapando excepciones
+    fun launchCameraSafely() {
+        try {
+            val permissionCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+            if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                cameraLauncher.launch(null)
+            } else {
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "No se pudo acceder a la cámara: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Lanzador para seleccionar imagen desde la galería del dispositivo
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                val inputStream = context.contentResolver.openInputStream(it)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+                if (bitmap != null) {
+                    viewModel.processImageBitmap(bitmap)
+                } else {
+                    Toast.makeText(context, "No se pudo decodificar la imagen seleccionada", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error al cargar imagen: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     Column(
@@ -142,13 +205,13 @@ fun StudentVerificationScreen(
             }
         }
 
-        // Botones de acción fotográfica
+        // Botones de acción fotográfica y carga de archivos
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Button(
-                onClick = { cameraLauncher.launch(null) },
+                onClick = { launchCameraSafely() },
                 shape = CampusShapes.small,
                 modifier = Modifier.weight(1f)
             ) {
@@ -156,15 +219,32 @@ fun StudentVerificationScreen(
                 Spacer(modifier = Modifier.size(6.dp))
                 Text("Tomar Foto")
             }
-            OutlinedButton(
-                onClick = { viewModel.simulateCardScan() },
+            Button(
+                onClick = {
+                    try {
+                        galleryLauncher.launch("image/*")
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Error al abrir galería: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 shape = CampusShapes.small,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.PhotoLibrary, contentDescription = null)
                 Spacer(modifier = Modifier.size(6.dp))
-                Text("Simular Carnet")
+                Text("Galería")
             }
+        }
+
+        OutlinedButton(
+            onClick = { viewModel.simulateCardScan() },
+            shape = CampusShapes.small,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.DocumentScanner, contentDescription = null)
+            Spacer(modifier = Modifier.size(6.dp))
+            Text("Simular Carnet (Demo / Emulador)")
         }
 
         // Resultados del análisis OCR

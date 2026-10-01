@@ -64,10 +64,18 @@ class AuthViewModel(
     private val _currentUser = MutableStateFlow<StudentUser?>(null)
     val currentUser: StateFlow<StudentUser?> = _currentUser.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            authRepository.getCurrentUser().collect { user ->
+                _currentUser.value = user
+            }
+        }
+    }
+
     // --- Manejadores de Login ---
 
     fun onLoginEmailChange(value: String) {
-        _loginState.update { it.copy(email = value.trim(), emailError = null) }
+        _loginState.update { it.copy(email = value, emailError = null) }
     }
 
     fun onLoginPasswordChange(value: String) {
@@ -75,7 +83,7 @@ class AuthViewModel(
     }
 
     fun login(onSuccess: () -> Unit) {
-        val email = _loginState.value.email
+        val email = _loginState.value.email.trim()
         val password = _loginState.value.password
 
         val emailValidation = validator.validateUniversityEmail(email)
@@ -93,6 +101,17 @@ class AuthViewModel(
 
         viewModelScope.launch {
             _loginState.update { it.copy(isLoading = true, errorMessage = null) }
+            val loggedUser = StudentUser(
+                id = "usr-${System.currentTimeMillis()}",
+                fullName = "Estudiante Universitario",
+                email = email,
+                dni = "72945602",
+                university = "Universidad Continental",
+                studentCode = email.substringBefore("@"),
+                verificationStatus = VerificationStatus.PENDING_VERIFICATION
+            )
+            authRepository.saveSession(loggedUser)
+            _currentUser.value = loggedUser
             onSuccess()
             _loginState.update { it.copy(isLoading = false) }
         }
@@ -107,15 +126,16 @@ class AuthViewModel(
     }
 
     fun onRegisterStudentCodeChange(value: String) {
-        _registerState.update { it.copy(studentCode = value.trim(), studentCodeError = null) }
+        _registerState.update { it.copy(studentCode = value, studentCodeError = null) }
     }
 
+    // Sin .trim() en tiempo de escritura para permitir escribir espacios libremente
     fun onRegisterUniversityChange(value: String) {
-        _registerState.update { it.copy(university = value.trim(), universityError = null) }
+        _registerState.update { it.copy(university = value, universityError = null) }
     }
 
     fun onRegisterEmailChange(value: String) {
-        _registerState.update { it.copy(email = value.trim(), emailError = null) }
+        _registerState.update { it.copy(email = value, emailError = null) }
     }
 
     fun onRegisterPasswordChange(value: String) {
@@ -124,11 +144,17 @@ class AuthViewModel(
 
     fun register(onSuccess: () -> Unit) {
         val state = _registerState.value
-        val dniVal = validator.validateDni(state.dni)
-        val emailVal = validator.validateUniversityEmail(state.email)
-        val passVal = validator.validatePassword(state.password)
-        val isCodeValid = state.studentCode.isNotBlank()
-        val isUniValid = state.university.isNotBlank()
+        val cleanDni = state.dni.trim()
+        val cleanCode = state.studentCode.trim()
+        val cleanUni = state.university.trim()
+        val cleanEmail = state.email.trim()
+        val cleanPass = state.password
+
+        val dniVal = validator.validateDni(cleanDni)
+        val emailVal = validator.validateUniversityEmail(cleanEmail)
+        val passVal = validator.validatePassword(cleanPass)
+        val isCodeValid = cleanCode.isNotBlank()
+        val isUniValid = cleanUni.isNotBlank()
 
         if (!dniVal.isValid || !isCodeValid || !isUniValid || !emailVal.isValid || !passVal.isValid) {
             _registerState.update {
@@ -145,15 +171,17 @@ class AuthViewModel(
 
         viewModelScope.launch {
             _registerState.update { it.copy(isLoading = true, errorMessage = null) }
-            _currentUser.value = StudentUser(
+            val newUser = StudentUser(
                 id = "usr-${System.currentTimeMillis()}",
-                fullName = "Estudiante ${state.university}",
-                email = state.email,
-                dni = state.dni,
-                university = state.university,
-                studentCode = state.studentCode,
+                fullName = "Estudiante $cleanUni",
+                email = cleanEmail,
+                dni = cleanDni,
+                university = cleanUni,
+                studentCode = cleanCode,
                 verificationStatus = VerificationStatus.PENDING_VERIFICATION
             )
+            authRepository.saveSession(newUser)
+            _currentUser.value = newUser
             onSuccess()
             _registerState.update { it.copy(isLoading = false) }
         }
@@ -161,11 +189,21 @@ class AuthViewModel(
 
     /**
      * Acceso directo para pruebas locales y desarrollo rápido (Bypass).
-     * Configura el usuario en PENDING_VERIFICATION y ejecuta el callback de navegación.
+     * Configura el usuario en PENDING_VERIFICATION y persiste la sesión.
      */
     fun bypass(onSuccess: () -> Unit) {
         viewModelScope.launch {
-            authRepository.updateVerificationStatus(VerificationStatus.PENDING_VERIFICATION)
+            val demoUser = StudentUser(
+                id = "usr-demo",
+                fullName = "Estudiante Universitario",
+                email = "alumno@continental.edu.pe",
+                dni = "72945602",
+                university = "Universidad Continental",
+                studentCode = "72945602",
+                verificationStatus = VerificationStatus.PENDING_VERIFICATION
+            )
+            authRepository.saveSession(demoUser)
+            _currentUser.value = demoUser
             onSuccess()
         }
     }

@@ -210,3 +210,37 @@ Ejecución del ciclo completo de aseguramiento de calidad (QA). Se ejecutaron sa
 #### Agente 6: GitFlow & Release Manager
 - Generación y verificación del APK debug en `app/build/outputs/apk/debug/app-debug.apk` (20.9 MB).
 - Integración de los cambios hacia la rama `develop` para sincronización con el repositorio remoto.
+
+---
+
+## [Sprint de Estabilidad: Corrección de Bugs Críticos en Dispositivos Físicos] - 2026-10-01
+**Rama:** `develop`
+
+### Resumen de la Entrega
+Resolución prioritaria de los 4 problemas reportados durante pruebas en dispositivos físicos (Xiaomi / MIUI y emuladores):
+1. **Autocomplete de Universidades y eliminación de restricciones de espacios (`RegisterScreen.kt`)**: Reemplazo del campo de texto plano por un `ExposedDropdownMenuBox` interactivo con catálogo de universidades peruanas sugeridas (Universidad Continental, PUCP, UNMSM, UNI, UPC, UTEC, USMP, UCSM, UNSA, etc.), permitiendo escribir espacios sin recorte prematuro (`.trim()`).
+2. **Persistencia de sesión de usuario (`SessionManager` & `AppNavGraph.kt`)**: Almacenamiento local mediante `SharedPreferences` de la sesión del estudiante (nombre, correo, código, universidad, estado de verificación y flag de sesión). Al abrir la app, si la sesión existe, se navega directamente al `HomeScreen` sin solicitar credenciales.
+3. **Corrección de Crash al pulsar "Tomar Foto" (`StudentVerificationScreen.kt`)**: Solicitud preventiva de permisos de tiempo de ejecución para cámara (`Manifest.permission.CAMERA`) mediante `rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission())`, protección con bloque `try-catch` robusto para evitar caídas en MIUI/Android, y adición de la alternativa "Subir imagen desde galería" mediante `ActivityResultContracts.GetContent()`.
+4. **Diagnóstico y Fallback del Radar de Mapa (`MapScreen.kt`)**: Declaración formal de la etiqueta `meta-data` para `com.google.android.geo.API_KEY` en `AndroidManifest.xml` con clave demo e instrucciones de reemplazo; y creación de un botón flotante de alternancia **"Modo Lista / Modo Mapa"** (`ExtendedFloatingActionButton`) que renderiza una lista interactiva de los 9 locales cercanos con sus distancias en km, calificaciones y botón de canje en caso de que los azulejos de Google Maps no carguen por falta de clave activa de Google Cloud.
+
+### Detalle de Modificaciones por Agente
+
+#### Agente 1: Orquestador & Arquitectura
+- `core/util/SessionManager.kt`: Creación de la clase singleton con persistencia `SharedPreferences` para los datos del estudiante y banderas de sesión.
+- `domain/repository/AuthRepository.kt` & `data/repository/MockAuthRepositoryImpl.kt`: Métodos `saveSession()` y `clearSession()` integrados y sincronizados bidireccionalmente con `SessionManager`.
+- `core/navigation/AppNavGraph.kt`: Comprobación inicial de `sessionManager.isUserLoggedIn()` para conmutar `startDestination` dinámicamente entre `Screen.Login.route` y `Screen.Home.route`.
+
+#### Agente 2: UI/UX & Compose Specialist
+- `presentation/auth/RegisterScreen.kt`: Implementación de `ExposedDropdownMenuBox` y `ExposedDropdownMenu` con filtrado dinámico en memoria de universidades peruanas; supresión del `.trim()` durante la digitación.
+- `presentation/auth/AuthViewModel.kt`: Saneamiento de cadenas trasladado al evento de validación y persistencia de sesión inmediata al iniciar sesión, registrarse o usar bypass.
+- `presentation/verification/StudentVerificationScreen.kt`: Botones de acción "Tomar Foto", "Galería" y "Simular Carnet"; decodificación de `Bitmap` segura desde ContentResolver.
+- `presentation/map/MapScreen.kt`: Botón flotante extendido para conmutar entre `GoogleMap` y `PlaceListItemCard` en `LazyColumn`, manteniendo el `ModalBottomSheet` activo en ambos modos.
+
+#### Agente 5: QA & Pruebas Unitarias
+- `app/src/test/java/com/example/estudihambres/data/MockAuthRepositoryTest.kt`: Pruebas automatizadas de persistencia y actualización de estados (`saveSession`, `updateVerificationStatus`, `clearSession`).
+- Ejecución limpia de `./gradlew testDebugUnitTest`: 100% pruebas aprobadas sin fallos.
+
+#### Agente 6: GitFlow & Release Manager
+- Compilación final y generación de APK mediante `./gradlew assembleDebug`.
+- Sincronización de commits y cambios en la rama `develop`.
+

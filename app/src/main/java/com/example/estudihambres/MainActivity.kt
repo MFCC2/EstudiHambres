@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.example.estudihambres.core.navigation.AppNavGraph
 import com.example.estudihambres.core.theme.CampusPassTheme
+import com.example.estudihambres.core.util.SessionManager
 
 /**
  * Actividad principal de CampusPass (EstudiHambres).
@@ -16,6 +17,7 @@ import com.example.estudihambres.core.theme.CampusPassTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SessionManager.getInstance(applicationContext)
         enableEdgeToEdge()
         setContent {
             CampusPassTheme {
