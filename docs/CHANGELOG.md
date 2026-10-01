@@ -105,3 +105,32 @@ Implementación completa del flujo de autenticación para estudiantes universita
 #### Agente 6: GitFlow & Release Manager
 - Compilación verificada con `./gradlew assembleDebug`.
 - APK de depuración validado.
+
+---
+
+## [Fase 3: Verificación de Estudiante con OCR] - 2026-10-01
+**Rama:** `feature/setup-dependencies-and-navigation`
+
+### Resumen de la Entrega
+Integración del flujo de reconocimiento óptico de caracteres (OCR) para carnets universitarios utilizando Google ML Kit Text Recognition. Implementación del caso de uso `ParseStudentCardOcrUseCase` para identificar palabras clave obligatorias ("SUNEDU", "UNIVERSIDAD", año de vigencia 2024-2030), con soporte de botón explícito para omitir y continuar en estado `PENDING_VERIFICATION`.
+
+### Detalle de Modificaciones por Agente
+
+#### Agente 1: Orquestador & Arquitectura
+- `domain/model/StudentCardOcrResult.kt`: Estructura de datos para almacenar el resultado del procesamiento OCR.
+- `domain/usecase/ParseStudentCardOcrUseCase.kt`: Lógica de negocio pura para detección de SUNEDU, nombres de universidades peruanas y expresión regular de año de vigencia.
+
+#### Agente 2: UI/UX & Compose Specialist
+- `presentation/verification/StudentVerificationScreen.kt`: Interfaz intuitiva con visor guía para captura fotográfica con la cámara (`rememberLauncherForActivityResult`), botón para simular lectura en emuladores y botón explícito "Omitir por ahora" que navega a Home.
+- `core/navigation/AppNavGraph.kt`: Enlace con `StudentVerificationScreen` en la ruta `Screen.Verification`.
+
+#### Agente 3: Auth & OCR Verification
+- `presentation/verification/StudentVerificationViewModel.kt`: Inicialización de `TextRecognition.getClient()`, conversión de `Bitmap` a `InputImage`, llamada asíncrona a ML Kit y actualización del estado en `AuthRepository`.
+
+#### Agente 5: QA & Pruebas Unitarias
+- `app/src/test/java/com/example/estudihambres/domain/usecase/ParseStudentCardOcrUseCaseTest.kt`: Pruebas unitarias para carnet universitario completo (SUNEDU + UNIVERSIDAD + Año), carnet simple, recibos de supermercado (no válidos) y texto vacío.
+- `./gradlew testDebugUnitTest`: Aprobación al 100%.
+
+#### Agente 6: GitFlow & Release Manager
+- Compilación verificada con `./gradlew assembleDebug`.
+- APK `app/build/outputs/apk/debug/app-debug.apk` actualizado.

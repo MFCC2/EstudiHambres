@@ -130,7 +130,12 @@ fun AppNavGraph(
                 )
             }
             composable(Screen.Verification.route) {
-                OcrScanScreen(
+                com.example.estudihambres.presentation.verification.StudentVerificationScreen(
+                    onVerificationCompleted = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Verification.route) { inclusive = true }
+                        }
+                    },
                     onSkipClick = {
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Verification.route) { inclusive = true }
