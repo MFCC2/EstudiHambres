@@ -134,3 +134,30 @@ Integración del flujo de reconocimiento óptico de caracteres (OCR) para carnet
 #### Agente 6: GitFlow & Release Manager
 - Compilación verificada con `./gradlew assembleDebug`.
 - APK `app/build/outputs/apk/debug/app-debug.apk` actualizado.
+
+---
+
+## [Fase 4: Pantalla Principal (Home Dashboard)] - 2026-10-01
+**Rama:** `feature/setup-dependencies-and-navigation`
+
+### Resumen de la Entrega
+Construcción del Dashboard principal para estudiantes universitarios con diseño Material 3. Incluye barra superior personalizada con saludo y estado del carnet, tarjeta de ahorro acumulado en Soles, barra de búsqueda reactiva por palabras clave y carrusel de filtrado por categorías temáticas (Comida, Herramientas digitales, Transporte). Se cargó el catálogo con promociones requeridas (Bembos 2x1, Spotify/YouTube Premium, Notion Education Pack, etc.).
+
+### Detalle de Modificaciones por Agente
+
+#### Agente 1: Orquestador & Arquitectura
+- `domain/model/Promotion.kt`: Entidad de promoción universitaria con tags de descuento, ahorro estimado y marcas asociadas.
+- `domain/repository/PromotionRepository.kt`: Contrato para la lectura de beneficios.
+- `data/repository/MockPromotionRepositoryImpl.kt`: Proveedor mock de beneficios y descuentos reales para universitarios.
+
+#### Agente 2: UI/UX & Compose Specialist
+- `presentation/home/HomeScreen.kt`: Scaffold completo con `TopAppBarDashboard`, badge de estado dinámico (`VERIFIED`, `PENDING_VERIFICATION`), tarjeta destacada de ahorro acumulado, campo de búsqueda con botón de limpieza, carrusel con chips seleccionables y lista de tarjetas estilizadas con esquinas redondeadas de 16.dp.
+- `presentation/home/HomeViewModel.kt`: Filtrado reactivo en tiempo real por búsqueda y categoría combinadas.
+
+#### Agente 5: QA & Pruebas Unitarias
+- `app/src/test/java/com/example/estudihambres/domain/usecase/PromotionFilteringTest.kt`: Pruebas de integración para verificar presencia de Bembos 2x1, Spotify, Notion y el filtrado por categoría "Comida".
+- `./gradlew testDebugUnitTest`: Aprobado al 100%.
+
+#### Agente 6: GitFlow & Release Manager
+- Validación de compilación exitosa con `./gradlew assembleDebug`.
+- APK de depuración generado.
