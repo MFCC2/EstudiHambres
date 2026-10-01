@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -23,10 +24,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -37,6 +36,7 @@ import com.example.estudihambres.core.theme.CampusShapes
 /**
  * Pantalla de inicio de sesión de CampusPass (presentation/auth).
  *
+ * @param viewModel ViewModel de autenticación con validaciones y estado reactivo.
  * @param onLoginSuccess Navegación tras autenticación exitosa.
  * @param onNavigateToRegister Navegación hacia el formulario de registro de estudiante.
  * @param onBypassClick Acceso directo para pruebas locales y desarrollo rápido.
@@ -44,13 +44,13 @@ import com.example.estudihambres.core.theme.CampusShapes
  */
 @Composable
 fun LoginScreen(
+    viewModel: AuthViewModel,
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
     onBypassClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val state by viewModel.loginState.collectAsState()
 
     Box(
         modifier = modifier
@@ -83,36 +83,49 @@ fun LoginScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
+                    value = state.email,
+                    onValueChange = { viewModel.onLoginEmailChange(it) },
                     label = { Text("Correo institucional") },
                     placeholder = { Text("ejemplo@universidad.edu.pe") },
                     leadingIcon = { Icon(Icons.Default.Mail, contentDescription = null) },
+                    isError = state.emailError != null,
+                    supportingText = {
+                        state.emailError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
+                    value = state.password,
+                    onValueChange = { viewModel.onLoginPasswordChange(it) },
                     label = { Text("Contraseña") },
                     leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                     visualTransformation = PasswordVisualTransformation(),
+                    isError = state.passwordError != null,
+                    supportingText = {
+                        state.passwordError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Button(
-                    onClick = onLoginSuccess,
+                    onClick = { viewModel.login(onLoginSuccess) },
+                    enabled = !state.isLoading,
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Iniciar Sesión")
+                    if (state.isLoading) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Text("Iniciar Sesión")
+                    }
                 }
                 OutlinedButton(
-                    onClick = onBypassClick,
+                    onClick = { viewModel.bypass(onBypassClick) },
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 ) {

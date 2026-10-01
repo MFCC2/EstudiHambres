@@ -78,3 +78,30 @@ Configuración inicial del proyecto integrando dependencias oficiales para Jetpa
 - Rama de trabajo: `feature/setup-dependencies-and-navigation`.
 - Validación de compilación: `./gradlew assembleDebug` exitoso.
 - Binario verificado: `app/build/outputs/apk/debug/app-debug.apk`.
+
+---
+
+## [Fase 2: Módulo Auth (Login y Registro Estudiantil)] - 2026-10-01
+**Rama:** `feature/setup-dependencies-and-navigation`
+
+### Resumen de la Entrega
+Implementación completa del flujo de autenticación para estudiantes universitarios con diseño Material 3. Formularios para Login y Registro con captura de DNI (8 dígitos), Código de Alumno, Universidad, Correo institucional y Contraseña. Se implementó `AuthViewModel` desacoplado y el caso de uso `ValidateStudentCredentialsUseCase` para validar DNI, email institucional y contraseña, además de un botón de Bypass para agilizar pruebas locales.
+
+### Detalle de Modificaciones por Agente
+
+#### Agente 1: Orquestador & Arquitectura
+- `domain/usecase/ValidateStudentCredentialsUseCase.kt`: Caso de uso puro de validación para DNI de 8 dígitos numéricos, formato de correo universitario (.edu / .edu.pe) y contraseña.
+- `presentation/auth/AuthViewModel.kt`: Gestión reactiva con `StateFlow` (`loginState`, `registerState`), interacción con repositorio y función `bypass()`.
+
+#### Agente 2: UI/UX & Compose Specialist
+- `presentation/auth/LoginScreen.kt`: Formulario estilizado con Material 3, tarjetas redondeadas a 16.dp, mensajes de error en tiempo real, campos de correo, contraseña y botón explícito de **Bypass Dev**.
+- `presentation/auth/RegisterScreen.kt`: Formulario completo de registro con validaciones para DNI, código de alumno, universidad y correo institucional.
+- `core/navigation/AppNavGraph.kt`: Integración de `AuthViewModel` inyectado a nivel de grafo, navegación condicional y soporte para transición fluida al flujo de verificación.
+
+#### Agente 5: QA & Pruebas Unitarias
+- `app/src/test/java/com/example/estudihambres/domain/usecase/ValidateStudentCredentialsUseCaseTest.kt`: Pruebas de validación de DNI (8 dígitos exactos), formatos de correo válidos e inválidos y longitudes de contraseña.
+- `./gradlew testDebugUnitTest`: 100% de pruebas aprobadas.
+
+#### Agente 6: GitFlow & Release Manager
+- Compilación verificada con `./gradlew assembleDebug`.
+- APK de depuración validado.

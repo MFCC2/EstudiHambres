@@ -61,6 +61,8 @@ fun AppNavGraph(
         Screen.Verification.route
     )
 
+    val authViewModel: com.example.estudihambres.presentation.auth.AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
@@ -100,6 +102,7 @@ fun AppNavGraph(
         ) {
             composable(Screen.Login.route) {
                 LoginScreen(
+                    viewModel = authViewModel,
                     onLoginSuccess = {
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Login.route) { inclusive = true }
@@ -117,6 +120,7 @@ fun AppNavGraph(
             }
             composable(Screen.Register.route) {
                 RegisterScreen(
+                    viewModel = authViewModel,
                     onRegisterSuccess = {
                         navController.navigate(Screen.Verification.route)
                     },

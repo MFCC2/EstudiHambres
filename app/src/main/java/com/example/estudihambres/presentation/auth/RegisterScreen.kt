@@ -20,16 +20,15 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -39,23 +38,21 @@ import com.example.estudihambres.core.theme.CampusShapes
 
 /**
  * Pantalla de registro estudiantil con Material 3 (presentation/auth).
- * Solicita DNI, Código de Alumno, Universidad, Correo institucional y Contraseña.
+ * Conecta con [AuthViewModel] para validaciones de 8 dígitos de DNI, correo institucional y campos requeridos.
  *
+ * @param viewModel ViewModel de autenticación.
  * @param onRegisterSuccess Navegación tras registrar correctamente (lleva a la verificación de carnet).
  * @param onNavigateToLogin Navegación de retorno al login.
  * @param modifier Modificador Compose.
  */
 @Composable
 fun RegisterScreen(
+    viewModel: AuthViewModel,
     onRegisterSuccess: () -> Unit,
     onNavigateToLogin: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var dni by remember { mutableStateOf("") }
-    var studentCode by remember { mutableStateOf("") }
-    var university by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val state by viewModel.registerState.collectAsState()
 
     Column(
         modifier = modifier
@@ -90,51 +87,71 @@ fun RegisterScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
-                    value = dni,
-                    onValueChange = { if (it.length <= 8) dni = it },
+                    value = state.dni,
+                    onValueChange = { viewModel.onRegisterDniChange(it) },
                     label = { Text("DNI (8 dígitos)") },
                     leadingIcon = { Icon(Icons.Default.Badge, contentDescription = null) },
+                    isError = state.dniError != null,
+                    supportingText = {
+                        state.dniError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = studentCode,
-                    onValueChange = { studentCode = it },
+                    value = state.studentCode,
+                    onValueChange = { viewModel.onRegisterStudentCodeChange(it) },
                     label = { Text("Código de Alumno") },
                     leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                    isError = state.studentCodeError != null,
+                    supportingText = {
+                        state.studentCodeError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                     singleLine = true,
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = university,
-                    onValueChange = { university = it },
+                    value = state.university,
+                    onValueChange = { viewModel.onRegisterUniversityChange(it) },
                     label = { Text("Universidad") },
                     placeholder = { Text("Ej. UNMSM, UNI, PUCP, UPC") },
                     leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
+                    isError = state.universityError != null,
+                    supportingText = {
+                        state.universityError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                     singleLine = true,
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
+                    value = state.email,
+                    onValueChange = { viewModel.onRegisterEmailChange(it) },
                     label = { Text("Correo institucional") },
                     placeholder = { Text("alumno@universidad.edu.pe") },
                     leadingIcon = { Icon(Icons.Default.Mail, contentDescription = null) },
+                    isError = state.emailError != null,
+                    supportingText = {
+                        state.emailError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
+                    value = state.password,
+                    onValueChange = { viewModel.onRegisterPasswordChange(it) },
                     label = { Text("Contraseña") },
                     leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                     visualTransformation = PasswordVisualTransformation(),
+                    isError = state.passwordError != null,
+                    supportingText = {
+                        state.passwordError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     shape = CampusShapes.small,
@@ -142,11 +159,16 @@ fun RegisterScreen(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Button(
-                    onClick = onRegisterSuccess,
+                    onClick = { viewModel.register(onRegisterSuccess) },
+                    enabled = !state.isLoading,
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Continuar a Verificación")
+                    if (state.isLoading) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Text("Continuar a Verificación")
+                    }
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically
