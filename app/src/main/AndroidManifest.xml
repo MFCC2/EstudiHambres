@@ -17,6 +17,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.EstudiHambres">
+
+        <!-- Clave de Google Maps (Reemplazar con clave de Google Cloud Console si se desea cargar azulejos satelitales) -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyDEMO_KEY_REPLACE_WITH_YOUR_KEY" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
