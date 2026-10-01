@@ -161,3 +161,30 @@ Construcción del Dashboard principal para estudiantes universitarios con diseñ
 #### Agente 6: GitFlow & Release Manager
 - Validación de compilación exitosa con `./gradlew assembleDebug`.
 - APK de depuración generado.
+
+---
+
+## [Fase 5: Mapa Radar 30 km (Google Maps Compose)] - 2026-10-01
+**Rama:** `feature/setup-dependencies-and-navigation`
+
+### Resumen de la Entrega
+Implementación de la experiencia de radar interactivo basada en Google Maps Compose. Integra solicitud en tiempo de ejecución de permisos GPS (`ACCESS_FINE_LOCATION`) con fallback a coordenadas del campus universitario (Lima Centro: -12.0833, -77.0428). Muestra más de 8 pines de comercios con ofertas activas filtradas a un radio de hasta 30 km con la fórmula Haversine, y despliega un `ModalBottomSheet` con la ficha de descuento y botón de canje al presionar cualquier marcador.
+
+### Detalle de Modificaciones por Agente
+
+#### Agente 1: Orquestador & Arquitectura
+- `domain/model/Place.kt`: Campos agregados para descripción de descuento, badge y distancia en km.
+- `domain/usecase/FilterPlacesByDistanceUseCase.kt`: Algoritmo Haversine para filtrar y ordenar lugares dentro de 30 km.
+- `data/model/PlaceLocal.kt` y `data/repository/MockPlaceRepository.kt`: Catálogo de 9 locales cercanos dentro del radio y 1 local foráneo a 65 km para validación de filtrado.
+
+#### Agente 2: UI/UX & Compose Specialist & Agente 4: Geolocalización
+- `presentation/map/MapScreen.kt`: `GoogleMap` reactivo con `rememberCameraPositionState`, marcador azur para la ubicación del estudiante, marcadores rojos para cada local, banner de estado del radar, botón flotante para recentrar vista y `ModalBottomSheet` para detalles del descuento.
+- `presentation/map/MapViewModel.kt`: Manejo de coordenadas actuales vs coordenadas por defecto, cálculo de radio y selección de establecimiento.
+
+#### Agente 5: QA & Pruebas Unitarias
+- `app/src/test/java/com/example/estudihambres/domain/usecase/FilterPlacesByDistanceUseCaseTest.kt`: Prueba de exclusión de locales a más de 30 km, retención de al menos 8 locales dentro del radio y ordenamiento por cercanía.
+- `./gradlew testDebugUnitTest`: Aprobación al 100%.
+
+#### Agente 6: GitFlow & Release Manager
+- Compilación verificada con `./gradlew assembleDebug`.
+- APK de depuración generado.
