@@ -283,3 +283,22 @@ Solución definitiva a los dos bloqueos visuales y de sensor reportados por el u
 3. **Radar de 30 km Dinámico para Estudiantes Fuera de Lima (`MapViewModel.kt`)**:
    - Si el estudiante se ubica fuera de Lima (Huancayo, Arequipa, Cusco, Trujillo, etc.), los convenios aliados se despliegan automáticamente en radios cercanos (250m a 2.5km) en las calles de su ciudad.
    - Retención estricta del local foráneo a >65 km para cumplir el filtro de radio de 30 km.
+
+
+---
+
+## [Cámara Embebida CameraX con Detección OCR Automática e Inteligente de Carnet] - 2026-10-01
+**Rama:** `develop`
+
+### Resumen de la Entrega
+1. **Cámara Embebida en Recuadro con CameraX (`StudentVerificationScreen.kt`)**:
+   - Integración nativa de `CameraX` (`PreviewView`, `ImageAnalysis`, `ImageCapture`, `camera-lifecycle`) directamente dentro del recuadro guiado de la pantalla sin abrir aplicaciones externas.
+   - Superposición visual (`CardScannerOverlay`) con marco delimitador para carnet universitario (formato ID-1) y botón de captura manual integrado.
+2. **Auto-Escaneo Rápido e Inteligente con Google ML Kit**:
+   - Procesamiento en streaming mediante `ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST` analizando los fotogramas en segundo plano cada 300 ms.
+   - Tan pronto como el estudiante encuadra su carnet dentro del recuadro, el OCR detecta automáticamente el documento, congela el visor y aprueba la verificación al instante.
+3. **Parser Inteligente de Carnet Universitario Peruano (`ParseStudentCardOcrUseCase.kt`)**:
+   - Extracción estructurada de campos oficiales: Nombres (`Manuel Fabrizio`), Apellidos (`Callañaupa Cjuiro`), DNI / Código (`72945602`), Universidad (`Universidad Continental`), Carrera (`Ing. de Sistemas e Informática`) y Vigencia (`2026-2027`).
+   - Sincronización automática de los datos verificados con `SessionManager` para personalizar el saludo y perfil en `HomeScreen`.
+4. **Pruebas Unitarias y Aseguramiento de Calidad**:
+   - Adición de caso de prueba unitario exhaustivo en `ParseStudentCardOcrUseCaseTest` con la estructura real del carnet universitario peruano.

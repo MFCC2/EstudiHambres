@@ -8,6 +8,11 @@ package com.example.estudihambres.domain.model
  * @property hasUniversityKeyword Indica si se detectó el término UNIVERSIDAD o acrónimo institucional.
  * @property validityYearDetected Año de vigencia o caducidad detectado (ej. 2025, 2026, 2027).
  * @property universityName Nombre de la universidad extraído si fue identificado.
+ * @property studentName Nombre y apellidos del estudiante extraídos del carnet.
+ * @property studentDni Número de DNI de 8 dígitos extraído.
+ * @property studentCode Código de estudiante universitario.
+ * @property career Carrera universitaria detectada.
+ * @property faculty Facultad detectada.
  * @property rawText Texto completo reconocido por ML Kit Text Recognition.
  */
 data class StudentCardOcrResult(
@@ -16,5 +21,10 @@ data class StudentCardOcrResult(
     val hasUniversityKeyword: Boolean = false,
     val validityYearDetected: String? = null,
     val universityName: String? = null,
+    val studentName: String? = null,
+    val studentDni: String? = null,
+    val studentCode: String? = null,
+    val career: String? = null,
+    val faculty: String? = null,
     val rawText: String = ""
 )

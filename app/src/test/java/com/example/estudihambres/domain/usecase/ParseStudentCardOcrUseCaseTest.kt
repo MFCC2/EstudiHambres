@@ -98,4 +98,30 @@ class ParseStudentCardOcrUseCaseTest {
         assertTrue(result.hasUniversityKeyword)
         assertEquals("2026", result.validityYearDetected)
     }
+
+    @Test
+    fun `actual student card Manuel Fabrizio Callanaupa is verified and extracts all fields`() {
+        val userCardText = """
+            República del Perú
+            Superintendencia Nacional de Educación Superior Universitaria
+            UNIVERSIDAD CONTINENTAL
+            Código: 72945602
+            DNI: 72945602
+            Apellidos: CALLAÑAUPA CJUIRO
+            Nombres: MANUEL FABRIZIO
+            Facultad: INGENIERÍA
+            Carrera: ING. DE SISTEMAS E INFORMÁTICA
+            Expira 02 07 27
+            CARNÉ UNIVERSITARIO 2026
+        """.trimIndent()
+
+        val result = parser(userCardText)
+
+        assertTrue(result.isVerified)
+        assertTrue(result.hasSuneduKeyword)
+        assertTrue(result.hasUniversityKeyword)
+        assertEquals("72945602", result.studentDni)
+        assertEquals("Manuel Fabrizio Callañaupa Cjuiro", result.studentName)
+        assertEquals("Universidad Continental", result.universityName)
+    }
 }

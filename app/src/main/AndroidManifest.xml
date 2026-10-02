@@ -21,7 +21,7 @@
         <!-- Clave de Google Maps (Reemplazar con clave de Google Cloud Console si se desea cargar azulejos satelitales) -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDEMO_KEY_REPLACE_WITH_YOUR_KEY" />
+            android:value="AIzaSyA2C4Or54zSFPGHRIIfcGWvTWGC44azV2g" />
 
         <!-- Descarga automática del modelo OCR de ML Kit -->
         <meta-data

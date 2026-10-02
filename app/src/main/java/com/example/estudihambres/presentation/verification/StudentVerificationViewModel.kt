@@ -83,6 +83,48 @@ class StudentVerificationViewModel(
         handleOcrParsed(result)
     }
 
+    /**
+     * Procesa una imagen de ML Kit proveniente de CameraX ImageAnalysis en tiempo real.
+     */
+    fun processInputImage(inputImage: InputImage, onVerified: (StudentCardOcrResult) -> Unit = {}) {
+        if (_uiState.value.verificationStatus == VerificationStatus.VERIFIED) return
+        try {
+            recognizer.process(inputImage)
+                .addOnSuccessListener { visionText ->
+                    if (visionText.text.isNotBlank()) {
+                        val result = parser(visionText.text)
+                        if (result.isVerified) {
+                            handleOcrParsed(result)
+                            onVerified(result)
+                        } else if (_uiState.value.ocrResult == null || !_uiState.value.ocrResult!!.isVerified) {
+                            _uiState.update { it.copy(ocrResult = result) }
+                        }
+                    }
+                }
+                .addOnFailureListener {
+                    // Ignorar fallas transitorias de frame
+                }
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * Reinicia el estado de verificación para permitir un nuevo escaneo con la cámara.
+     */
+    fun resetVerification() {
+        _uiState.update {
+            it.copy(
+                isProcessing = false,
+                ocrResult = null,
+                verificationStatus = VerificationStatus.UNVERIFIED,
+                errorMessage = null
+            )
+        }
+    }
+
+    fun onCardScannedSuccessfully(result: StudentCardOcrResult) {
+        handleOcrParsed(result)
+    }
+
     private fun handleOcrParsed(result: StudentCardOcrResult) {
         viewModelScope.launch {
             val newStatus = if (result.isVerified) {
@@ -91,6 +133,26 @@ class StudentVerificationViewModel(
                 VerificationStatus.REJECTED
             }
             authRepository.updateVerificationStatus(newStatus)
+
+            if (result.isVerified) {
+                val session = com.example.estudihambres.core.util.SessionManager.getInstanceOrNull()
+                session?.let { mgr ->
+                    val user = mgr.getUserSession()
+                    if (user != null) {
+                        val updated = user.copy(
+                            fullName = result.studentName ?: user.fullName,
+                            dni = result.studentDni ?: user.dni,
+                            studentCode = result.studentCode ?: user.studentCode,
+                            university = result.universityName ?: user.university,
+                            verificationStatus = VerificationStatus.VERIFIED
+                        )
+                        mgr.saveUserSession(updated)
+                    } else {
+                        mgr.updateVerificationStatus(VerificationStatus.VERIFIED)
+                    }
+                }
+            }
+
             _uiState.update {
                 it.copy(
                     isProcessing = false,
