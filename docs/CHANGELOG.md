@@ -244,3 +244,23 @@ Resolución prioritaria de los 4 problemas reportados durante pruebas en disposi
 - Compilación final y generación de APK mediante `./gradlew assembleDebug`.
 - Sincronización de commits y cambios en la rama `develop`.
 
+---
+
+## [Hotfix: Resolución Integral de Visor de Mapa y Detección OCR en Carnet] - 2026-10-01
+**Rama:** `develop`
+
+### Resumen de la Entrega
+Solución definitiva a los dos bloqueos visuales y de sensor reportados por el usuario:
+1. **Radar de Mapa 100% visible sin necesidad de Google Cloud API Key (`MapScreen.kt`)**:
+   - Integración de `InteractiveOsmRadarMap` con OpenStreetMap y Leaflet.js cargado de forma autónoma.
+   - Proporciona mapa callejero completo con azulejos de avenidas, calles, comercios y GPS sin pantallas beige o en blanco.
+   - Selector en tiempo real (`FilterChip`) y botón flotante para conmutar entre: **Radar Mapa (OSM)**, **Google Maps** y **Lista 30 km**.
+   - Presionar cualquier marcador del mapa interactivo abre el `ModalBottomSheet` con el descuento universitario.
+2. **Detección OCR de Carnet en Alta Resolución (`StudentVerificationScreen.kt` & `ParseStudentCardOcrUseCase.kt`)**:
+   - Reemplazo de `TakePicturePreview` (que capturaba únicamente thumbnails comprimidos ilegibles de 128x128 píxeles) por captura en resolución completa mediante `FileProvider` y `ActivityResultContracts.TakePicture()`.
+   - Incorporación de la biblioteca `com.google.mlkit:text-recognition:16.0.1` con modelo embebido offline (`libmlkit_google_ocr_pipeline.so`), eliminando dependencias de descargas de Google Play Services.
+   - Previsualización fotográfica del carnet capturado dentro del visor Compose.
+   - Tolerancia a acentos ortográficos (Á, É, Í, Ó, Ú) y soporte ampliado para universidades peruanas (Continental, San Marcos, Católica, etc.).
+   - Panel de resultados que exhibe el texto leído por ML Kit y botón de aprobación manual ("Aprobar Carnet con Texto Detectado") para garantizar acceso sin trabas.
+
+

@@ -8,6 +8,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -40,21 +41,28 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.estudihambres.core.theme.CampusShapes
 import com.example.estudihambres.domain.model.VerificationStatus
+import java.io.File
 
 /**
  * Pantalla para la validación del carnet universitario mediante Google ML Kit OCR (presentation/verification).
  *
- * Ofrece captura segura con cámara (verificando permisos de tiempo de ejecución), selección de imagen
- * desde galería con GetContent, simulación para emuladores y el botón explícito "Omitir por ahora".
+ * Utiliza FileProvider para capturas fotográficas en alta resolución (sin recortar a thumbnail),
+ * selección de imagen desde galería, visor con preview en tiempo real y flujo de aprobación manual.
  *
  * @param viewModel ViewModel encargado del procesamiento OCR y persistencia.
  * @param onVerificationCompleted Navegación a Home tras verificar o continuar.
@@ -71,12 +79,36 @@ fun StudentVerificationScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // Lanzador para capturar foto directamente con la cámara
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: Bitmap? ->
-        if (bitmap != null) {
-            viewModel.processImageBitmap(bitmap)
+    // Archivo temporal y URI mediante FileProvider para captura en máxima resolución
+    val photoFile = remember {
+        File(context.cacheDir, "camera_student_card.jpg")
+    }
+    val photoUri = remember {
+        FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            photoFile
+        )
+    }
+
+    var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    // Lanzador para capturar foto en resolución completa guardándola en photoFile
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success) {
+            try {
+                val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
+                if (bitmap != null) {
+                    previewBitmap = bitmap
+                    viewModel.processImageBitmap(bitmap)
+                } else {
+                    Toast.makeText(context, "No se pudo leer la foto capturada", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error procesando foto: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -86,7 +118,7 @@ fun StudentVerificationScreen(
     ) { isGranted ->
         if (isGranted) {
             try {
-                cameraLauncher.launch(null)
+                takePictureLauncher.launch(photoUri)
             } catch (e: Exception) {
                 Toast.makeText(context, "Error al iniciar la cámara: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             }
@@ -104,7 +136,7 @@ fun StudentVerificationScreen(
         try {
             val permissionCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
             if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-                cameraLauncher.launch(null)
+                takePictureLauncher.launch(photoUri)
             } else {
                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
@@ -123,6 +155,7 @@ fun StudentVerificationScreen(
                 val bitmap = BitmapFactory.decodeStream(inputStream)
                 inputStream?.close()
                 if (bitmap != null) {
+                    previewBitmap = bitmap
                     viewModel.processImageBitmap(bitmap)
                 } else {
                     Toast.makeText(context, "No se pudo decodificar la imagen seleccionada", Toast.LENGTH_SHORT).show()
@@ -174,11 +207,11 @@ fun StudentVerificationScreen(
             }
         }
 
-        // Visor o contenedor guía para la foto
+        // Visor o contenedor guía para la foto con previsualización
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp)
+                .height(200.dp)
                 .background(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                     shape = CampusShapes.medium
@@ -190,17 +223,50 @@ fun StudentVerificationScreen(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            if (state.isProcessing) {
+            val bitmap = previewBitmap
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Carnet Capturado",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else if (state.isProcessing) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Analizando texto con ML Kit...", style = MaterialTheme.typography.bodyMedium)
                 }
             } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.DocumentScanner,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        modifier = Modifier.size(40.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Ubica el carnet dentro del marco y toma la foto",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // Mensaje de error si ML Kit no responde
+        state.errorMessage?.let { error ->
+            Card(
+                shape = CampusShapes.medium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
-                    text = "Ubica el carnet dentro del marco",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "Aviso OCR: $error",
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(12.dp)
                 )
             }
         }
@@ -253,9 +319,9 @@ fun StudentVerificationScreen(
                 shape = CampusShapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = if (result.isVerified) {
-                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
                     } else {
-                        MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)
                     }
                 ),
                 modifier = Modifier.fillMaxWidth()
@@ -265,20 +331,50 @@ fun StudentVerificationScreen(
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = null,
-                            tint = if (result.isVerified) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                            tint = if (result.isVerified) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary
                         )
                         Spacer(modifier = Modifier.size(8.dp))
                         Text(
-                            text = if (result.isVerified) "¡Carnet Validado con Éxito!" else "No se pudo verificar el carnet",
+                            text = if (result.isVerified) "¡Carnet Validado con Éxito!" else "Texto Extraído por ML Kit",
                             style = MaterialTheme.typography.titleMedium,
-                            color = if (result.isVerified) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                            color = if (result.isVerified) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("• Sello SUNEDU: ${if (result.hasSuneduKeyword) "Detectado ✓" else "No detectado"}")
-                    Text("• Universidad: ${result.universityName ?: if (result.hasUniversityKeyword) "Detectada ✓" else "No identificada"}")
+                    Text("• Sello SUNEDU / Institucional: ${if (result.hasSuneduKeyword) "Detectado ✓" else "Pendiente"}")
+                    Text("• Universidad: ${result.universityName ?: if (result.hasUniversityKeyword) "Detectada ✓" else "Pendiente"}")
                     result.validityYearDetected?.let {
                         Text("• Año de Vigencia: $it ✓")
+                    }
+
+                    if (result.rawText.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = CampusShapes.small,
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Texto leído: \"${result.rawText.take(120).replace("\n", " ")}...\"",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+
+                    if (!result.isVerified) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Button(
+                            onClick = {
+                                viewModel.confirmManualVerification(onVerificationCompleted)
+                            },
+                            shape = CampusShapes.small,
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Aprobar Carnet con Texto Detectado")
+                        }
                     }
                 }
             }

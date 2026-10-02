@@ -79,4 +79,23 @@ class ParseStudentCardOcrUseCaseTest {
         val result = parser("")
         assertFalse(result.isVerified)
     }
+
+    @Test
+    fun `continental university card with accents and student keyword should be verified`() {
+        val continentalCard = """
+            REPÚBLICA DEL PERÚ
+            SUPERINTENDENCIA NACIONAL DE EDUCACIÓN
+            UNIVERSIDAD CONTINENTAL
+            ESTUDIANTE REGULAR
+            CÓDIGO: 72945602
+            VIGENCIA 2026
+        """.trimIndent()
+
+        val result = parser(continentalCard)
+
+        assertTrue(result.isVerified)
+        assertTrue(result.hasSuneduKeyword)
+        assertTrue(result.hasUniversityKeyword)
+        assertEquals("2026", result.validityYearDetected)
+    }
 }
