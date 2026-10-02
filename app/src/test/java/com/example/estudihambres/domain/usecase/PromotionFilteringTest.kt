@@ -24,9 +24,9 @@ class PromotionFilteringTest {
     fun `promotions catalog contains requested perks like Bembos, Spotify, Notion`() = runBlocking {
         val promotions = repository.getPromotions().first()
 
-        assertTrue(promotions.any { it.partnerName == "Bembos" && it.discountTag == "2x1" })
-        assertTrue(promotions.any { it.partnerName == "Spotify" })
-        assertTrue(promotions.any { it.partnerName == "Notion" })
+        assertTrue(promotions.any { it.partnerName.contains("Bembos") && (it.discountTag.contains("2x1") || it.title.contains("2x1")) })
+        assertTrue(promotions.any { it.partnerName.contains("Spotify") })
+        assertTrue(promotions.any { it.partnerName.contains("Notion") })
     }
 
     @Test

@@ -1,8 +1,11 @@
 package com.example.estudihambres.presentation.map
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -585,18 +588,34 @@ private fun PlaceDiscountDetailContent(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+        val context = LocalContext.current
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Button(
+                onClick = {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(place.url))
+                        context.startActivity(intent)
+                    } catch (_: Exception) {}
+                },
+                shape = CampusShapes.small,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Ir al beneficio")
+            }
+
+            Button(
                 onClick = onDismiss,
                 shape = CampusShapes.small,
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(Icons.Default.Directions, contentDescription = null)
+                Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Canjear Beneficio")
+                Text("Canjear Cupón")
             }
         }
         Spacer(modifier = Modifier.height(24.dp))

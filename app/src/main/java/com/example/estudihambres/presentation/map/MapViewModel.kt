@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
  * Estado UI del mapa interactivo de beneficios y radar de 30 km (presentation/map).
  */
 data class MapUiState(
-    val userLocation: LatLng = LatLng(-12.0833, -77.0428), // Campus Universitario (Lima) por defecto
+    val userLocation: LatLng = LatLng(-13.5230, -71.9480), // Real Plaza Cusco / Av. de la Cultura por defecto
     val isDefaultLocation: Boolean = true,
     val hasLocationPermission: Boolean = false,
     val nearbyPlaces: List<Place> = emptyList(),
@@ -29,7 +29,7 @@ data class MapUiState(
 
 /**
  * ViewModel para el mapa radar de 30 km (Agente 4: Geolocalización & Google Maps).
- * Controla permisos de GPS, ubicación del estudiante (o fallback a campus),
+ * Controla permisos de GPS, ubicación del estudiante (o fallback a centros comerciales reales),
  * carga de locales y visualización de descuentos en el BottomSheet.
  *
  * @param placeRepository Repositorio de lugares y comercios afiliados.
@@ -75,15 +75,7 @@ class MapViewModel(
                     latitude = _uiState.value.userLocation.latitude,
                     longitude = _uiState.value.userLocation.longitude
                 )
-                var filtered = filterPlacesUseCase(userCoords, rawPlaces, maxDistanceKm = 30.0)
-
-                // Si el estudiante se encuentra fuera de Lima (ej. Huancayo, Arequipa, Cusco, etc.)
-                // adaptamos dinámicamente los convenios alrededor de su GPS real para que el radar
-                // localice comercios y ofertas en sus calles y campus local.
-                if (filtered.isEmpty() && rawPlaces.isNotEmpty()) {
-                    val dynamicPlaces = generatePlacesAroundUser(userCoords, rawPlaces)
-                    filtered = filterPlacesUseCase(userCoords, dynamicPlaces, maxDistanceKm = 30.0)
-                }
+                val filtered = filterPlacesUseCase(userCoords, rawPlaces, maxDistanceKm = 30.0)
 
                 _uiState.update {
                     it.copy(
@@ -92,29 +84,6 @@ class MapViewModel(
                     )
                 }
             }
-        }
-    }
-
-    private fun generatePlacesAroundUser(userCoords: UserCoordinates, templatePlaces: List<Place>): List<Place> {
-        val offsets = listOf(
-            Pair(0.0035, 0.0040),   // ~550 m NE
-            Pair(-0.0042, 0.0055),  // ~700 m SE
-            Pair(0.0060, -0.0035),  // ~750 m NW
-            Pair(-0.0050, -0.0060), // ~850 m SW
-            Pair(0.0090, 0.0020),   // ~1.0 km N
-            Pair(-0.0085, -0.0030), // ~1.0 km S
-            Pair(0.0120, -0.0080),  // ~1.6 km NW
-            Pair(-0.0150, 0.0110),  // ~2.0 km SE
-            Pair(0.0015, -0.0020),  // ~250 m W (Comercio a unos pasos)
-            Pair(0.5000, 0.5000)    // > 65 km (Fuera de radio para verificar filtro de 30 km)
-        )
-
-        return templatePlaces.mapIndexed { index, place ->
-            val offset = offsets.getOrElse(index) { Pair(0.004 * (index + 1), 0.004 * (index + 1)) }
-            place.copy(
-                latitude = userCoords.latitude + offset.first,
-                longitude = userCoords.longitude + offset.second
-            )
         }
     }
 }

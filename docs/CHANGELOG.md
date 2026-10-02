@@ -302,3 +302,41 @@ Solución definitiva a los dos bloqueos visuales y de sensor reportados por el u
    - Sincronización automática de los datos verificados con `SessionManager` para personalizar el saludo y perfil en `HomeScreen`.
 4. **Pruebas Unitarias y Aseguramiento de Calidad**:
    - Adición de caso de prueba unitario exhaustivo en `ParseStudentCardOcrUseCaseTest` con la estructura real del carnet universitario peruano.
+
+---
+
+## [Sprint de Experiencia Visual y Datos Concretos - v1.2.0] - 2026-10-01
+**Rama:** `develop`
+
+### Resumen de la Entrega
+Incremento de versión a `1.2.0` (`versionCode = 3`) con mejoras sustanciales en la interfaz del dashboard, carruseles horizontales, apertura de enlaces oficiales vía `Intent` de Android, geolocalización de coordenadas comerciales reales y botón de cierre de sesión:
+
+1. **Botón de Cerrar Sesión (`HomeScreen.kt` & `AppNavGraph.kt`)**:
+   - Integración de icono de acción `Icons.Default.ExitToApp` en la `TopAppBar` del dashboard principal.
+   - Al presionarlo, invoca `sessionManager.clearSession()` y redirige de inmediato a la pantalla de Login, limpiando la pila de navegación (`popUpTo(0) { inclusive = true }`) para prevenir accesos hacia atrás sin credenciales.
+
+2. **Rediseño del Dashboard con Carruseles Horizontales (`HomeScreen.kt`)**:
+   - Reemplazo del feed plano vertical por un layout dinámico en `LazyColumn` compuesto de secciones especializadas:
+     - **✨ Para ti (Más Populares)** (`LazyRow`): Convenios destacados de alcance global (Spotify Premium, YouTube Premium, Starbucks 2x1, Bembos), con tags de descuento, nombres de comercios aliados y botón directo "Activar beneficio".
+     - **📍 Cerca de tu campus** (`LazyRow`): Comercios locales con indicador de proximidad y tiempo a pie (e.g. "150m · 2 min"), precio regular tachado y precio universitario con descuento destacado, junto con botón "Canjear".
+     - **💻 Beneficios Virtuales & Tech** (`LazyColumn` item cards): Tarjetas con licencias y software educativo (GitHub Student Developer Pack, Notion Education Plus, Figma for Education) con distintivo "100% GRATIS" y botón "Reclamar licencia ↗".
+
+3. **Redirección Oficial a Sitios Web con Intent (`HomeScreen.kt` & `MapScreen.kt`)**:
+   - Incorporación del atributo `val url: String` en las entidades `Promotion` y `Place`.
+   - Lanzamiento de navegadores del sistema con `Intent(Intent.ACTION_VIEW, Uri.parse(url))` bajo protección `try-catch` para evitar fallos si no hay navegador predeterminado.
+   - Vinculación a sitios oficiales auténticos:
+     - Spotify Student: `https://www.spotify.com/pe-es/student/`
+     - Notion for Education: `https://www.notion.so/product/notion-for-education`
+     - GitHub Student Pack: `https://education.github.com/pack`
+     - Figma for Education: `https://www.figma.com/education/`
+     - Bembos Promociones: `https://www.bembos.com.pe/promociones`
+   - Inclusión del botón "Ir al beneficio" dentro del `ModalBottomSheet` de detalle de locales en el mapa interactivo.
+
+4. **Locales con Coordenadas Reales en el Mapa (`MockPlaceRepository.kt` & `MapViewModel.kt`)**:
+   - Eliminación de algoritmos de generación de coordenadas aleatorias o dispersas que ubicaban pines en pistas de aterrizaje o descampados.
+   - Definición de locales comerciales reales en Cusco (Real Plaza Cusco, Av. de la Cultura, UNSAAC, Campus Continental Cusco, Cineplanet, Starbucks, Bembos, Papa John's) y Lima.
+
+5. **Aseguramiento de Calidad y Release**:
+   - Incremento oficial de versión en `app/build.gradle.kts`: `versionCode = 3`, `versionName = "1.2.0"`.
+   - Pruebas unitarias ejecutadas satisfactoriamente y compilación aprobada: `./gradlew testDebugUnitTest assembleDebug`.
+   - APK verificado en `app/build/outputs/apk/debug/app-debug.apk`.

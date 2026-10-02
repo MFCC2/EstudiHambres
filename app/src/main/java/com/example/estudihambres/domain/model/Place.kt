@@ -24,5 +24,6 @@ data class Place(
     val rating: Double = 4.5,
     val discountBadge: String = "PROMO",
     val discountDescription: String = "Descuento especial con carnet universitario CampusPass",
-    val distanceKm: Double? = null
+    val distanceKm: Double? = null,
+    val url: String = "https://campuspass.pe"
 )

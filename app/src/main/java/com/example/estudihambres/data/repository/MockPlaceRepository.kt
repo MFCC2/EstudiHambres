@@ -13,6 +13,129 @@ import kotlinx.coroutines.flow.flowOf
 class MockPlaceRepository : PlaceRepository {
 
     private val localPlaces = listOf(
+        // === LOCALES REALES CUSCO (Real Plaza Cusco, Av. de la Cultura, Campus Continental, UNSAAC) ===
+        PlaceLocal(
+            id = "cu-01",
+            name = "Bembos Real Plaza Cusco",
+            category = "Comida Rápida",
+            address = "Real Plaza Cusco, Av. Collasuyo 2964, Wanchaq",
+            latitude = -13.5233,
+            longitude = -71.9482,
+            rating = 4.8,
+            discountBadge = "40% DCTO",
+            discountDescription = "Combo Universitario 2x1 en hamburguesas clásicas con carnet",
+            url = "https://www.bembos.com.pe/promociones"
+        ),
+        PlaceLocal(
+            id = "cu-02",
+            name = "Starbucks Real Plaza Cusco",
+            category = "Cafetería & Cowork",
+            address = "Real Plaza Cusco 1er Nivel, Av. Collasuyo",
+            latitude = -13.5231,
+            longitude = -71.9478,
+            rating = 4.9,
+            discountBadge = "2x1 PROMO",
+            discountDescription = "2x1 en Frappuccinos y café del día de lunes a jueves",
+            url = "https://www.starbucks.pe"
+        ),
+        PlaceLocal(
+            id = "cu-03",
+            name = "Papa John's Pizza Av. de la Cultura",
+            category = "Pizzería",
+            address = "Av. de la Cultura 720, Wanchaq",
+            latitude = -13.5222,
+            longitude = -71.9520,
+            rating = 4.7,
+            discountBadge = "2x1 SLICE",
+            discountDescription = "2x1 en porciones dobles y pizzas familiares para estudiantes",
+            url = "https://www.papajohns.com.pe"
+        ),
+        PlaceLocal(
+            id = "cu-04",
+            name = "Cineplanet Real Plaza Cusco",
+            category = "Entretenimiento",
+            address = "Real Plaza Cusco 3er Nivel, Av. Collasuyo",
+            latitude = -13.5235,
+            longitude = -71.9485,
+            rating = 4.8,
+            discountBadge = "2x1 ENTRADAS",
+            discountDescription = "Medio precio en entradas 2D de lunes a viernes con carnet vigente",
+            url = "https://www.cineplanet.com.pe"
+        ),
+        PlaceLocal(
+            id = "cu-05",
+            name = "KFC / Pizza Hut Av. de la Cultura",
+            category = "Comida Rápida",
+            address = "Av. de la Cultura 1024 (Frente a UNSAAC)",
+            latitude = -13.5215,
+            longitude = -71.9540,
+            rating = 4.6,
+            discountBadge = "30% OFF",
+            discountDescription = "30% de descuento en Mega Box Universitario",
+            url = "https://www.kfc.com.pe"
+        ),
+        PlaceLocal(
+            id = "cu-06",
+            name = "Café & Cowork Cultural UNSAAC",
+            category = "Cafetería & Cowork",
+            address = "Av. de la Cultura 733 (Inmediaciones UNSAAC)",
+            latitude = -13.5208,
+            longitude = -71.9585,
+            rating = 4.9,
+            discountBadge = "GRATIS",
+            discountDescription = "Café americano gratis con consumo mínimo de S/ 12",
+            url = "https://campuspass.pe"
+        ),
+        PlaceLocal(
+            id = "cu-07",
+            name = "Pizzería La Previa Cusco",
+            category = "Pizzería",
+            address = "Av. de la Cultura 840, Wanchaq",
+            latitude = -13.5225,
+            longitude = -71.9505,
+            rating = 4.8,
+            discountBadge = "S/ 11.90",
+            discountDescription = "Pizza personal + bebida helada a precio de estudiante",
+            url = "https://campuspass.pe"
+        ),
+        PlaceLocal(
+            id = "cu-08",
+            name = "Sandwichería El Bajón Universitario",
+            category = "Sandwichería",
+            address = "Av. Universitaria / Av. de la Cultura 1150",
+            latitude = -13.5218,
+            longitude = -71.9560,
+            rating = 4.7,
+            discountBadge = "20% OFF",
+            discountDescription = "Pan con chicharrón y jugos naturales con 20% de descuento",
+            url = "https://campuspass.pe"
+        ),
+        PlaceLocal(
+            id = "cu-09",
+            name = "Cafetería Central Campus Continental",
+            category = "Cafetería",
+            address = "Campus Continental, Calle Manuel Prado / Los Sauces",
+            latitude = -13.5240,
+            longitude = -71.9440,
+            rating = 4.9,
+            discountBadge = "15% DTO",
+            discountDescription = "15% en snacks saludables, almuerzos ejecutivos y café",
+            url = "https://campuspass.pe"
+        ),
+        PlaceLocal(
+            id = "cu-10",
+            name = "Restaurante Campestre Valle Sagrado",
+            category = "Comida Campestre",
+            address = "Carretera Urubamba - Ollantaytambo Km 48 (Fuera de 30 km)",
+            latitude = -13.3000,
+            longitude = -72.1100,
+            rating = 4.2,
+            discountBadge = "10% DTO",
+            discountDescription = "Comercio foráneo alejado para verificar exclusión del radar de 30 km",
+            url = "https://campuspass.pe"
+        ),
+
+        // === LOCALES REALES LIMA (Campus UNMSM, PUCP, Av. Universitaria) ===
         PlaceLocal(
             id = "pl-01",
             name = "Bembos Campus",
@@ -22,7 +145,8 @@ class MockPlaceRepository : PlaceRepository {
             longitude = -77.0400,
             rating = 4.7,
             discountBadge = "2x1",
-            discountDescription = "2x1 en hamburguesas clásicas presentando CampusPass"
+            discountDescription = "2x1 en hamburguesas clásicas presentando CampusPass",
+            url = "https://www.bembos.com.pe/promociones"
         ),
         PlaceLocal(
             id = "pl-02",
@@ -33,7 +157,8 @@ class MockPlaceRepository : PlaceRepository {
             longitude = -77.0510,
             rating = 4.8,
             discountBadge = "2x1",
-            discountDescription = "2x1 en pizzas familiares de lunes a jueves"
+            discountDescription = "2x1 en pizzas familiares de lunes a jueves",
+            url = "https://campuspass.pe"
         ),
         PlaceLocal(
             id = "pl-03",
@@ -44,7 +169,8 @@ class MockPlaceRepository : PlaceRepository {
             longitude = -77.0490,
             rating = 4.6,
             discountBadge = "25% OFF",
-            discountDescription = "25% de descuento en combos dobles universitarios"
+            discountDescription = "25% de descuento en combos dobles universitarios",
+            url = "https://campuspass.pe"
         ),
         PlaceLocal(
             id = "pl-04",
@@ -55,7 +181,8 @@ class MockPlaceRepository : PlaceRepository {
             longitude = -77.0380,
             rating = 4.9,
             discountBadge = "GRATIS",
-            discountDescription = "Café americano gratis con consumo mínimo de S/ 15"
+            discountDescription = "Café americano gratis con consumo mínimo de S/ 15",
+            url = "https://campuspass.pe"
         ),
         PlaceLocal(
             id = "pl-05",
@@ -66,7 +193,8 @@ class MockPlaceRepository : PlaceRepository {
             longitude = -77.0428,
             rating = 4.7,
             discountBadge = "S/ 11.50",
-            discountDescription = "Menú casero completo (entrada, segundo y refresco)"
+            discountDescription = "Menú casero completo (entrada, segundo y refresco)",
+            url = "https://campuspass.pe"
         ),
         PlaceLocal(
             id = "pl-06",
@@ -77,7 +205,8 @@ class MockPlaceRepository : PlaceRepository {
             longitude = -77.0460,
             rating = 4.5,
             discountBadge = "20% OFF",
-            discountDescription = "Pan con chicharrón y jugos naturales con 20% de descuento"
+            discountDescription = "Pan con chicharrón y jugos naturales con 20% de descuento",
+            url = "https://campuspass.pe"
         ),
         PlaceLocal(
             id = "pl-07",
@@ -88,7 +217,8 @@ class MockPlaceRepository : PlaceRepository {
             longitude = -77.0350,
             rating = 4.8,
             discountBadge = "S/ 9.00",
-            discountDescription = "Jugo surtido de litro + sándwich mixto a precio universitario"
+            discountDescription = "Jugo surtido de litro + sándwich mixto a precio universitario",
+            url = "https://campuspass.pe"
         ),
         PlaceLocal(
             id = "pl-08",
@@ -99,7 +229,8 @@ class MockPlaceRepository : PlaceRepository {
             longitude = -77.0450,
             rating = 4.6,
             discountBadge = "COMBO",
-            discountDescription = "2 burritos grandes + bebida helada por S/ 15"
+            discountDescription = "2 burritos grandes + bebida helada por S/ 15",
+            url = "https://campuspass.pe"
         ),
         PlaceLocal(
             id = "pl-09",
@@ -110,7 +241,8 @@ class MockPlaceRepository : PlaceRepository {
             longitude = -77.0415,
             rating = 4.4,
             discountBadge = "15% DTO",
-            discountDescription = "15% en snacks saludables y bebidas frías"
+            discountDescription = "15% en snacks saludables y bebidas frías",
+            url = "https://campuspass.pe"
         ),
         PlaceLocal(
             id = "pl-10",
@@ -121,7 +253,8 @@ class MockPlaceRepository : PlaceRepository {
             longitude = -76.5000,
             rating = 4.0,
             discountBadge = "10% DTO",
-            discountDescription = "Comercio foráneo alejado para verificar exclusión del radar"
+            discountDescription = "Comercio foráneo alejado para verificar exclusión del radar",
+            url = "https://campuspass.pe"
         )
     )
 

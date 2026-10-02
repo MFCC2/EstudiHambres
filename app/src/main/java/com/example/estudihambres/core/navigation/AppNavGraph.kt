@@ -152,7 +152,14 @@ fun AppNavGraph(
                 )
             }
             composable(Screen.Home.route) {
-                HomeScreen()
+                HomeScreen(
+                    onLogout = {
+                        sessionManager.clearSession()
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
             }
             composable(Screen.Map.route) {
                 MapScreen()
