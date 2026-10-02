@@ -264,3 +264,22 @@ Solución definitiva a los dos bloqueos visuales y de sensor reportados por el u
    - Panel de resultados que exhibe el texto leído por ML Kit y botón de aprobación manual ("Aprobar Carnet con Texto Detectado") para garantizar acceso sin trabas.
 
 
+
+
+---
+
+## [Soporte Integral Google Maps Nativo y Localización GPS Activa Fuera de Lima] - 2026-10-01
+**Rama:** `develop`
+
+### Resumen de la Entrega
+1. **Google Maps Compose Nativo como Vista Predeterminada (`MapScreen.kt`)**:
+   - Restablecimiento del visor nativo `GoogleMap` como pantalla inicial predeterminada por solicitud del usuario.
+   - Guía completa paso a paso para la activación de **Maps SDK for Android** en Google Cloud Console.
+   - Suministro de huella digital SHA-1 de debug (`46:5A:82:5B:F0:27:B8:2E:94:3A:7E:FD:38:6E:D9:69:AC:42:0E:39`) y paquete `com.example.estudihambres`.
+2. **Geolocalización en Tiempo Real con GPS Activo (`PlayServicesLocationRepositoryImpl.kt`)**:
+   - Inyección formal de `PlayServicesLocationRepositoryImpl` en `MapViewModel` a través de `MapViewModelFactory`.
+   - Solicitud de posición activa de alta precisión con `fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY)` si `lastLocation` es nula.
+   - Actualización inmediata de coordenadas y desplazamiento dinámico de cámara hacia la ubicación física real del estudiante.
+3. **Radar de 30 km Dinámico para Estudiantes Fuera de Lima (`MapViewModel.kt`)**:
+   - Si el estudiante se ubica fuera de Lima (Huancayo, Arequipa, Cusco, Trujillo, etc.), los convenios aliados se despliegan automáticamente en radios cercanos (250m a 2.5km) en las calles de su ciudad.
+   - Retención estricta del local foráneo a >65 km para cumplir el filtro de radio de 30 km.

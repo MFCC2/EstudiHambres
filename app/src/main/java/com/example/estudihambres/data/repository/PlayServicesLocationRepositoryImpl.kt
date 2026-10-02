@@ -53,19 +53,38 @@ class PlayServicesLocationRepositoryImpl(
     @SuppressLint("MissingPermission")
     override suspend fun getLastKnownLocation(): UserCoordinates? {
         return try {
-            val location = suspendCancellableCoroutine<Location?> { cont ->
+            val lastLoc = suspendCancellableCoroutine<Location?> { cont ->
                 fusedClient.lastLocation
                     .addOnSuccessListener { loc ->
                         if (cont.isActive) cont.resume(loc)
                     }
-                    .addOnFailureListener { exc ->
-                        if (cont.isActive) cont.resumeWithException(exc)
+                    .addOnFailureListener {
+                        if (cont.isActive) cont.resume(null)
                     }
                     .addOnCanceledListener {
                         cont.cancel()
                     }
             }
-            location?.let {
+            if (lastLoc != null) {
+                return UserCoordinates(latitude = lastLoc.latitude, longitude = lastLoc.longitude)
+            }
+
+            // Si lastLocation es nulo (p. ej. GPS recién encendido), obtenemos la ubicación activa actual
+            val tokenSource = CancellationTokenSource()
+            val freshLoc = suspendCancellableCoroutine<Location?> { cont ->
+                fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, tokenSource.token)
+                    .addOnSuccessListener { loc ->
+                        if (cont.isActive) cont.resume(loc)
+                    }
+                    .addOnFailureListener {
+                        if (cont.isActive) cont.resume(null)
+                    }
+                    .addOnCanceledListener {
+                        tokenSource.cancel()
+                        cont.cancel()
+                    }
+            }
+            freshLoc?.let {
                 UserCoordinates(latitude = it.latitude, longitude = it.longitude)
             }
         } catch (_: SecurityException) {

@@ -60,6 +60,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.estudihambres.core.theme.CampusShapes
+import com.example.estudihambres.data.repository.MockPlaceRepository
+import com.example.estudihambres.data.repository.PlayServicesLocationRepositoryImpl
 import com.example.estudihambres.domain.model.Place
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -72,38 +74,33 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 
 /**
- * Pantalla de radar interactivo de 30 km construida con Google Maps Compose (presentation/map).
- *
- * Muestra el marcador de ubicación del estudiante (o fallback a campus universitario),
- * al menos 8 marcadores de locales con convenios y un ModalBottomSheet con el descuento
- * al pulsar sobre cualquier marcador.
- *
- * @param viewModel ViewModel del mapa.
- * @param modifier Modificador Compose.
- */
-/**
  * Modos de visualización para el radar de comercios cercanos.
  */
 enum class MapViewType(val title: String) {
-    OPEN_STREET("Radar Mapa"),
     GOOGLE_MAPS("Google Maps"),
+    OPEN_STREET("Radar Mapa"),
     LIST("Lista 30 km")
 }
 
 /**
- * Pantalla de radar interactivo de 30 km construida con Google Maps Compose y OpenStreetMap (presentation/map).
+ * Pantalla de radar interactivo de 30 km construida con Google Maps Compose nativo (presentation/map).
  *
- * Ofrece carga instantánea de mapa real sin requerir clave de facturación de Google Cloud,
- * opción alternativa de Google Maps nativo y modo lista de 9 comercios aliados con distancias y canjes.
+ * Utiliza Google Maps nativo conectado al Maps SDK for Android y geolocalización por GPS en tiempo real.
+ * Incluye respaldo visual en caso de que la clave de Google Cloud esté pendiente de activación.
  *
- * @param viewModel ViewModel del mapa.
  * @param modifier Modificador Compose.
+ * @param viewModel ViewModel del mapa inyectado con geolocalización activa.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
-    viewModel: MapViewModel = viewModel(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: MapViewModel = viewModel(
+        factory = MapViewModelFactory(
+            placeRepository = MockPlaceRepository(),
+            locationRepository = PlayServicesLocationRepositoryImpl(LocalContext.current.applicationContext)
+        )
+    )
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -128,7 +125,7 @@ fun MapScreen(
     }
 
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var viewType by remember { mutableStateOf(MapViewType.OPEN_STREET) }
+    var viewType by remember { mutableStateOf(MapViewType.GOOGLE_MAPS) }
 
     Box(modifier = modifier.fillMaxSize()) {
         when (viewType) {
@@ -280,16 +277,16 @@ fun MapScreen(
             ExtendedFloatingActionButton(
                 onClick = {
                     viewType = when (viewType) {
-                        MapViewType.OPEN_STREET -> MapViewType.GOOGLE_MAPS
                         MapViewType.GOOGLE_MAPS -> MapViewType.LIST
                         MapViewType.LIST -> MapViewType.OPEN_STREET
+                        MapViewType.OPEN_STREET -> MapViewType.GOOGLE_MAPS
                     }
                 },
                 icon = {
                     Icon(
                         imageVector = when (viewType) {
-                            MapViewType.OPEN_STREET -> Icons.Default.Map
-                            MapViewType.GOOGLE_MAPS -> Icons.Default.PinDrop
+                            MapViewType.GOOGLE_MAPS -> Icons.Default.Map
+                            MapViewType.OPEN_STREET -> Icons.Default.PinDrop
                             MapViewType.LIST -> Icons.AutoMirrored.Filled.List
                         },
                         contentDescription = null
