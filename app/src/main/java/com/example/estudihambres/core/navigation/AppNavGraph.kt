@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -48,7 +49,8 @@ fun AppNavGraph(
     val bottomNavItems = listOf(
         NavigationItem(Screen.Home, Icons.Default.Home),
         NavigationItem(Screen.Map, Icons.Default.LocationOn),
-        NavigationItem(Screen.Verification, Icons.Default.QrCodeScanner)
+        NavigationItem(Screen.Verification, Icons.Default.QrCodeScanner),
+        NavigationItem(Screen.Profile, Icons.Default.Person)
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -58,7 +60,8 @@ fun AppNavGraph(
     val showBottomBar = currentRoute in listOf(
         Screen.Home.route,
         Screen.Map.route,
-        Screen.Verification.route
+        Screen.Verification.route,
+        Screen.Profile.route
     )
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -153,6 +156,9 @@ fun AppNavGraph(
             }
             composable(Screen.Home.route) {
                 HomeScreen(
+                    onNavigateToProfile = {
+                        navController.navigate(Screen.Profile.route)
+                    },
                     onLogout = {
                         sessionManager.clearSession()
                         navController.navigate(Screen.Login.route) {
@@ -163,6 +169,22 @@ fun AppNavGraph(
             }
             composable(Screen.Map.route) {
                 MapScreen()
+            }
+            composable(Screen.Profile.route) {
+                com.example.estudihambres.presentation.profile.ProfileScreen(
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigateToVerification = {
+                        navController.navigate(Screen.Verification.route)
+                    },
+                    onLogout = {
+                        sessionManager.clearSession()
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
             }
         }
     }

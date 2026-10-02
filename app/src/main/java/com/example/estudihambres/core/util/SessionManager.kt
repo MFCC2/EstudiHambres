@@ -26,6 +26,10 @@ class SessionManager(context: Context) {
         private const val KEY_STUDENT_CODE = "key_student_code"
         private const val KEY_VERIFICATION_STATUS = "key_verification_status"
 
+        private const val KEY_CAREER = "key_career"
+        private const val KEY_RADAR_RADIUS = "key_radar_radius"
+        private const val KEY_NOTIFICATIONS_ENABLED = "key_notifications_enabled"
+
         @Volatile
         private var instance: SessionManager? = null
 
@@ -51,6 +55,28 @@ class SessionManager(context: Context) {
             .putString(KEY_UNIVERSITY, user.university)
             .putString(KEY_STUDENT_CODE, user.studentCode)
             .putString(KEY_VERIFICATION_STATUS, user.verificationStatus.name)
+            .putString(KEY_CAREER, user.career)
+            .apply()
+    }
+
+    /**
+     * Actualiza los datos editables del perfil universitario.
+     */
+    fun updateProfile(
+        fullName: String,
+        email: String,
+        dni: String,
+        university: String,
+        studentCode: String,
+        career: String
+    ) {
+        prefs.edit()
+            .putString(KEY_FULL_NAME, fullName)
+            .putString(KEY_EMAIL, email)
+            .putString(KEY_DNI, dni)
+            .putString(KEY_UNIVERSITY, university)
+            .putString(KEY_STUDENT_CODE, studentCode)
+            .putString(KEY_CAREER, career)
             .apply()
     }
 
@@ -66,6 +92,7 @@ class SessionManager(context: Context) {
         val dni = prefs.getString(KEY_DNI, "") ?: ""
         val university = prefs.getString(KEY_UNIVERSITY, "Universidad Nacional") ?: "Universidad Nacional"
         val studentCode = prefs.getString(KEY_STUDENT_CODE, "") ?: ""
+        val career = prefs.getString(KEY_CAREER, "Ingeniería de Sistemas") ?: "Ingeniería de Sistemas"
         val statusStr = prefs.getString(KEY_VERIFICATION_STATUS, VerificationStatus.PENDING_VERIFICATION.name)
         val status = try {
             VerificationStatus.valueOf(statusStr ?: VerificationStatus.PENDING_VERIFICATION.name)
@@ -80,7 +107,8 @@ class SessionManager(context: Context) {
             dni = dni,
             university = university,
             studentCode = studentCode,
-            verificationStatus = status
+            verificationStatus = status,
+            career = career
         )
     }
 
@@ -98,6 +126,16 @@ class SessionManager(context: Context) {
         prefs.edit()
             .putString(KEY_VERIFICATION_STATUS, status.name)
             .apply()
+    }
+
+    fun getRadarRadiusKm(): Float = prefs.getFloat(KEY_RADAR_RADIUS, 30.0f)
+    fun setRadarRadiusKm(radius: Float) {
+        prefs.edit().putFloat(KEY_RADAR_RADIUS, radius).apply()
+    }
+
+    fun getNotificationsEnabled(): Boolean = prefs.getBoolean(KEY_NOTIFICATIONS_ENABLED, true)
+    fun setNotificationsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_NOTIFICATIONS_ENABLED, enabled).apply()
     }
 
     /**

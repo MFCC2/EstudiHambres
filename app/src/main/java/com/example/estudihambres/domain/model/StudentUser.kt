@@ -18,5 +18,6 @@ data class StudentUser(
     val dni: String,
     val university: String,
     val studentCode: String,
-    val verificationStatus: VerificationStatus = VerificationStatus.UNVERIFIED
+    val verificationStatus: VerificationStatus = VerificationStatus.UNVERIFIED,
+    val career: String = "Ingeniería de Sistemas"
 )

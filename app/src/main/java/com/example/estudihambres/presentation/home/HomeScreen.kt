@@ -17,12 +17,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.LocalOffer
@@ -56,13 +60,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.estudihambres.R
 import com.example.estudihambres.core.theme.CampusShapes
 import com.example.estudihambres.domain.model.Promotion
 import com.example.estudihambres.domain.model.VerificationStatus
@@ -73,6 +80,7 @@ import com.example.estudihambres.domain.model.VerificationStatus
  * carrusel de categorías temáticas y secciones con carruseles horizontales ("Para ti", "Cerca de tu campus")
  * y lista de "Beneficios Virtuales & Tech" con redirección a sitios oficiales vía Intent.
  *
+ * @param onNavigateToProfile Callback para acceder a la pantalla de configuración de perfil.
  * @param onLogout Callback invocado al pulsar el botón de cerrar sesión en la TopAppBar.
  * @param viewModel ViewModel encargado del estado y filtrado del dashboard.
  * @param modifier Modificador Compose.
@@ -80,6 +88,7 @@ import com.example.estudihambres.domain.model.VerificationStatus
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onNavigateToProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(),
     modifier: Modifier = Modifier
@@ -100,6 +109,7 @@ fun HomeScreen(
         topBar = {
             TopAppBarDashboard(
                 studentName = state.studentName,
+                onAvatarClick = onNavigateToProfile,
                 onLogout = onLogout
             )
         },
@@ -119,7 +129,8 @@ fun HomeScreen(
                     studentName = state.studentName,
                     university = state.university,
                     career = state.career,
-                    verificationStatus = state.verificationStatus
+                    verificationStatus = state.verificationStatus,
+                    onAvatarClick = onNavigateToProfile
                 )
             }
 
@@ -308,27 +319,36 @@ fun HomeScreen(
 @Composable
 private fun TopAppBarDashboard(
     studentName: String,
+    onAvatarClick: () -> Unit,
     onLogout: () -> Unit
 ) {
     CenterAlignedTopAppBar(
+        navigationIcon = {
+            Box(
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                    .clickable { onAvatarClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "Ir a Mi Perfil",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        },
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "🎓", fontSize = 18.sp)
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "CampusPass",
+                        text = "CampusPass 🎓",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -343,6 +363,13 @@ private fun TopAppBarDashboard(
             }
         },
         actions = {
+            IconButton(onClick = onAvatarClick) {
+                Icon(
+                    imageVector = Icons.Default.AccountCircle,
+                    contentDescription = "Configurar Perfil",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
             IconButton(onClick = onLogout) {
                 Icon(
                     imageVector = Icons.Default.ExitToApp,
@@ -365,35 +392,70 @@ private fun StudentGreetingHeader(
     studentName: String,
     university: String,
     career: String,
-    verificationStatus: VerificationStatus
+    verificationStatus: VerificationStatus,
+    onAvatarClick: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = "BIENVENIDA DE VUELTA",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.8.sp
-        )
-        Spacer(modifier = Modifier.height(2.dp))
+    Card(
+        shape = CampusShapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onAvatarClick() }
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "¡Hola, ${studentName.split(" ").firstOrNull() ?: "Estudiante"}! 👋",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            VerificationBadge(status = verificationStatus)
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "Foto de perfil",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "BIENVENIDA DE VUELTA",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.8.sp
+                )
+                Text(
+                    text = "¡Hola, ${studentName.split(" ").firstOrNull() ?: "Estudiante"}! 👋",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "$university · $career",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                VerificationBadge(status = verificationStatus)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Editar ›",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "$university · $career",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 

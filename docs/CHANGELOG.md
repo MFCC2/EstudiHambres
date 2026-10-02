@@ -340,3 +340,35 @@ Incremento de versión a `1.2.0` (`versionCode = 3`) con mejoras sustanciales en
    - Incremento oficial de versión en `app/build.gradle.kts`: `versionCode = 3`, `versionName = "1.2.0"`.
    - Pruebas unitarias ejecutadas satisfactoriamente y compilación aprobada: `./gradlew testDebugUnitTest assembleDebug`.
    - APK verificado en `app/build/outputs/apk/debug/app-debug.apk`.
+
+---
+
+## [Módulo de Perfil Universitario, Logo Mapache Mamey y Suite QA de 84 Pruebas] - 2026-10-01
+**Rama:** `develop`
+
+### Resumen de la Entrega
+1. **Configuración de Perfil de Usuario (`ProfileScreen.kt` & `ProfileViewModel.kt`)**:
+   - Acceso directo e intuitivo al perfil universitario al pulsar el avatar del estudiante o el botón "Editar >" en `HomeScreen.kt`, el icono de usuario en la `TopAppBar`, o la 4ta pestaña en la barra de navegación inferior ("Mi Perfil").
+   - Cabecera estilizada con la mascota oficial Mapache Mamey, nombre del estudiante, universidad, carrera y estado de verificación ("Verificación Pendiente" / "Verificado Oficial").
+   - Fila de métricas del estudiante: "Ahorro Total" (e.g. S/ 142.50), "Canjes" (e.g. 8 cupones) y "Rango" (e.g. Nivel Pro ⭐).
+   - Formulario interactivo con campos editables: Nombre Completo, DNI (8 dígitos con validación), Universidad de procedencia (con autocomplete desplegable `UniversityDropdownField`), Carrera Universitaria / Facultad, Código de Matrícula y Correo Institucional.
+   - Ajustes de convenios y geolocalización: selector de radio de radar GPS (5 km, 15 km, 30 km) y switch de notificaciones de proximidad a comercios (200m).
+   - Botones de acción: "Guardar Cambios" con persistencia en `SessionManager`, "Re-escanear Carnet Universitario" (redirige al scanner CameraX) y "Cerrar Sesión" (limpieza de sesión y redirección segura a login).
+
+2. **Identidad Visual y Logo Oficial (`app_logo.webp`)**:
+   - Integración de la ilustración oficial del Mapache Mamey (Bibliotecario Raccoon con lentes y delantal de estudio) como icono de la app en `AndroidManifest.xml` (`android:icon="@drawable/app_logo"` y `android:roundIcon="@drawable/app_logo"`).
+   - Logo destacado en `LoginScreen.kt`, `HomeScreen.kt` (barra superior y tarjeta de bienvenida), y `ProfileScreen.kt`.
+
+3. **Suite Completa de Aseguramiento de Calidad (>50 Pruebas QA Automatizadas)**:
+   - Implementación de 64 pruebas unitarias adicionales en el paquete `com.example.estudihambres.qa`:
+     - `AuthAndCredentialsQaTest.kt` (16 tests): validaciones de DNI de 8 dígitos, correos con dominios institucionales (.edu.pe, .edu, .pe), longitud de contraseñas y detección de entradas malformadas.
+     - `StudentCardOcrQaTest.kt` (12 tests): reconocimiento de carnet universitario oficial SUNEDU, tolerancia a mayúsculas/minúsculas, extracción de nombres, códigos, universidades peruanas y rechazo de boletas o texto basura.
+     - `GeolocationRadarQaTest.kt` (12 tests): cálculo esférico Haversine, límites de radio de 30 km, simetría de distancias, cobertura de comercios en Cusco y Lima.
+     - `PromotionsAndDealsCatalogQaTest.kt` (12 tests): integridad de URLs oficiales (Spotify, Notion, GitHub, Figma), filtrado por categorías y búsqueda sin distinción de mayúsculas.
+     - `UserProfileAndSessionQaTest.kt` (12 tests): modelo `StudentUser`, persistencia y transiciones de estados de verificación, cálculo de rangos ("Estudiante Pro"), acumulación de ahorros y sanitización de campos.
+   - **Total de pruebas en el proyecto: 84 pruebas unitarias ejecutadas con 100% de éxito.**
+
+4. **Compilación, Verificación en Emulador y Release**:
+   - Compilación completa sin advertencias: `./gradlew testDebugUnitTest assembleDebug` (Build Successful).
+   - Verificación funcional y estética en emulador Android físico/virtual con capturas de pantalla de Login, Home y Perfil.
+

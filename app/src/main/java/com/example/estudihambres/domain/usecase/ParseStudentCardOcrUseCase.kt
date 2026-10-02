@@ -9,7 +9,7 @@ import java.util.Locale
  */
 class ParseStudentCardOcrUseCase {
 
-    private val yearRegex = Regex("""\b(202[4-9]|203[0-9])\b""")
+    private val yearRegex = Regex("""\b(20[1-3][0-9])\b""")
     private val dniRegex = Regex("""\b\d{8}\b""")
 
     /**
@@ -42,20 +42,13 @@ class ParseStudentCardOcrUseCase {
                 normalized.contains("EDUCACION SUPERIOR")
 
         val hasUniversity = normalized.contains("UNIVERSIDAD") ||
-                normalized.contains("UNIV") ||
+                Regex("""\bUNIV\b""").containsMatchIn(normalized) ||
+                Regex("""\bUNIV\.""").containsMatchIn(normalized) ||
                 normalized.contains("FACULTAD") ||
                 normalized.contains("CONTINENTAL") ||
                 normalized.contains("SAN MARCOS") ||
                 normalized.contains("CATOLICA") ||
-                normalized.contains("UNMSM") ||
-                normalized.contains("UNI") ||
-                normalized.contains("PUCP") ||
-                normalized.contains("UPC") ||
-                normalized.contains("UTP") ||
-                normalized.contains("UTEC") ||
-                normalized.contains("USMP") ||
-                normalized.contains("UCSM") ||
-                normalized.contains("UNSA") ||
+                Regex("""\b(UNI|UNMSM|PUCP|UPC|UTP|UTEC|USMP|UCSM|UNSA)\b""").containsMatchIn(normalized) ||
                 normalized.contains("ESTUDIANTE") ||
                 normalized.contains("ALUMNO")
 
