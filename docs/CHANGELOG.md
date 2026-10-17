@@ -449,3 +449,39 @@ Auditoría integral de seguridad, reforzamiento visual y hardening de campos sen
    - Migración completa de iconos `Icons.Default.ExitToApp` y `Icons.Default.OpenInNew` hacia sus versiones oficiales reflejadas `Icons.AutoMirrored.Filled.*`.
    - Depuración de imports no utilizados y actualización de `centerAlignedTopAppBarColors` a `topAppBarColors`, alcanzando compilación limpia con **0 advertencias y 0 errores** (`BUILD SUCCESSFUL in 21s`).
 
+---
+
+## [Intuitividad, Mejoras de UX, Navegación Fluida y Suite QA v1.2.3] - 2026-10-17
+**Rama:** `develop` / `main`
+
+### Resumen de la Entrega
+Optimización holística de la experiencia de usuario (UX) e intuitividad del sistema para estudiantes universitarios:
+1. **Flujo de Acceso y Registro Ágil e Intuitivo (`LoginScreen.kt`, `RegisterScreen.kt`)**:
+   - Selector interactivo de visibilidad de contraseña (`IconButton` con `Icons.Default.Visibility` y `Icons.Default.VisibilityOff`) con soporte de teclado IME (`ImeAction.Next` e `ImeAction.Done`).
+   - Sugerencias rápidas en un solo tap de las principales universidades peruanas ("Continental", "PUCP", "UNMSM", "UNI", "UTEC", "UNSAAC") en el registro.
+   - Contador dinámico de dígitos en vivo para el DNI (`${state.dni.length}/8`) con indicador visual de confirmación al completar los 8 dígitos numéricos.
+   - Tip contextual institucional en el login ("💡 Tip: Ingresa con tu correo institucional (.edu.pe)...").
+
+2. **Guía Visual para Validación de Carnet (`StudentVerificationScreen.kt`)**:
+   - Acordeón interactivo expandible "💡 Consejos para un escaneo exitoso" con recomendaciones claras (superficie plana, buena iluminación, sin reflejos ni boletas comerciales).
+   - HUD multi-frame enriquecido con retroalimentación paso a paso durante el análisis OCR.
+
+3. **Feed Principal y Navegación Mejorada (`HomeScreen.kt`, `AppNavGraph.kt`)**:
+   - Banner de llamada a la acción (CTA) de alto contraste para estudiantes no verificados con acceso directo en un tap a la cámara de verificación.
+   - Chips de búsqueda rápida debajo del buscador (`Bembos`, `Spotify`, `GitHub`, `Café`, `Notion`, `2x1`).
+   - `PromotionDetailSheet` (`ModalBottomSheet`) con información completa de cada beneficio, categoría y guía paso a paso para el canje estudiantil.
+   - Enlace directo "Ver en mapa ›" desde la sección de locales cercanos al campus hacia el radar de 30 km.
+   - Diálogo de confirmación modal (`AlertDialog`) antes de cerrar sesión para evitar salidas accidentales.
+
+4. **Radar de Beneficios y Filtros por Categoría (`MapScreen.kt`, `MockPlaceRepository.kt`)**:
+   - Chips horizontales de filtrado rápido por categoría en el radar: `"Todos"`, `"Comida"`, `"Café"`, `"Librería"`.
+   - Incorporación de comercios académicos esenciales ("Librería & Copias Universitaria Cusco" y "Librería & Papelería San Marcos").
+   - Filtrado reactivo tanto en OpenStreetMap como en Google Maps y en la vista de lista.
+
+5. **Centro de Ayuda y Preguntas Frecuentes (`ProfileScreen.kt`)**:
+   - Acordeón interactivo de FAQs (`FaqAccordionItem`) que explica de forma transparente el por qué de la inmutabilidad de DNI/Universidad, la privacidad del OCR local sin subida a servidores externos y la dinámica de canje en locales físicos.
+   - Diálogo de confirmación modal para cierre seguro de sesión.
+
+6. **Suite Integral de 105 Pruebas QA Automatizadas (`IntuitiveUxAndNavigationQaTest.kt`)**:
+   - Nueva suite de pruebas cubriendo chips rápidos, filtrado por categorías, validación de DNI, dominios `.edu.pe`, metadatos de promociones e integridad de FAQs.
+   - Cobertura de 105 pruebas unitarias exitosas con 100% de aprobación (`BUILD SUCCESSFUL in 13s`).

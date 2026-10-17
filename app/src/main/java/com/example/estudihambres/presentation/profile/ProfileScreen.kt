@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -131,6 +132,36 @@ fun ProfileScreen(
         }
     }
 
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text("¿Cerrar Sesión?", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text("Tendrás que volver a ingresar tus credenciales para acceder a tus beneficios universitarios.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Cerrar Sesión", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -150,7 +181,7 @@ fun ProfileScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onLogout) {
+                    IconButton(onClick = { showLogoutDialog = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                             contentDescription = "Cerrar Sesión",
@@ -497,7 +528,105 @@ fun ProfileScreen(
                 Text(reScanButtonText, fontWeight = FontWeight.SemiBold)
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 6. Sección de Preguntas Frecuentes y Soporte
+            Text(
+                text = "Preguntas Frecuentes y Ayuda 💡",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Card(
+                shape = CampusShapes.medium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FaqAccordionItem(
+                        question = "¿Por qué mi DNI y Universidad están bloqueados?",
+                        answer = "Para prevenir la suplantación de identidad estudiantil ante la SUNEDU y comercios aliados, estos campos son inmutables una vez registrados o escaneados."
+                    )
+                    FaqAccordionItem(
+                        question = "¿Cómo funciona la validación del carnet?",
+                        answer = "El motor de visión artificial (Google ML Kit OCR) procesa tu carnet localmente en el dispositivo, validando sellos oficiales SUNEDU y fechas de vigencia sin almacenar tus fotos en servidores externos."
+                    )
+                    FaqAccordionItem(
+                        question = "¿Cómo canjear beneficios en comercios físicos?",
+                        answer = "En la pestaña 'Radar', ubica el local más cercano dentro del radio de 30 km y muestra tu perfil o carnet universitario al momento de pagar."
+                    )
+                }
+            }
+
+            // 7. Botón explícito para cerrar sesión con confirmación
+            OutlinedButton(
+                onClick = { showLogoutDialog = true },
+                shape = CampusShapes.small,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                ),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Cerrar Sesión Segura", fontWeight = FontWeight.Bold)
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * Elemento colapsable de Preguntas Frecuentes.
+ */
+@Composable
+private fun FaqAccordionItem(
+    question: String,
+    answer: String
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Surface(
+        shape = CampusShapes.small,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = question,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = if (expanded) "▲" else "▼",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            if (expanded) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = answer,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

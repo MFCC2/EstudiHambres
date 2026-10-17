@@ -1,6 +1,6 @@
 # Informe de Aseguramiento de Calidad (QA Report) - CampusPass (EstudiHambres)
 
-**Versión del Sistema:** 1.2.2 (Build 4)  
+**Versión del Sistema:** 1.2.3 (Build 5)  
 **Fecha:** 17 de Octubre de 2026  
 **Rama:** `develop` / `main`  
 **Agente Responsable:** Agente 5 (QA & Pruebas Unitarias) & Agente 6 (GitFlow & Release Manager)  
@@ -10,20 +10,20 @@
 
 ## 1. Resumen Ejecutivo
 
-Se completó la batería exhaustiva de aseguramiento de calidad (QA) sobre el sistema **EstudiHambres (CampusPass)** tras las mejoras de seguridad, blindaje de identidad estudiantil, estabilización multi-frame de OCR, navegación turn-by-turn con Google Maps y personalización segura de fotos de perfil.
+Se completó la batería exhaustiva de aseguramiento de calidad (QA) sobre el sistema **EstudiHambres (CampusPass)** tras las mejoras de seguridad, blindaje de identidad estudiantil, estabilización multi-frame de OCR, navegación turn-by-turn con Google Maps, personalización segura de fotos de perfil, optimizaciones de intuitividad (chips de búsqueda rápida, filtros de categoría en radar, guía interactiva de escaneo, FAQ accordion y confirmación de cierre de sesión).
 
 | Métrica | Valor Auditado | Estado |
 |---|---|:---:|
-| **Total de Pruebas Unitarias Ejecutadas** | **94 pruebas automatizadas** | ✅ Superado (Meta: >=50) |
-| **Pruebas Exitosas** | **94 (100%)** | ✅ Óptimo |
+| **Total de Pruebas Unitarias Ejecutadas** | **105 pruebas automatizadas** | ✅ Superado (Meta: >=50) |
+| **Pruebas Exitosas** | **105 (100%)** | ✅ Óptimo |
 | **Pruebas Fallidas / Errores** | **0 (0%)** | ✅ Cero defectos |
-| **Compilación Gradle** | `BUILD SUCCESSFUL in 12s` | ✅ Limpio |
+| **Compilación Gradle** | `BUILD SUCCESSFUL in 13s` | ✅ Limpio |
 | **Advertencias de Compilación / Lint** | 0 advertencias | ✅ Certificado |
 | **Artefacto Binario Generado** | `app/build/outputs/apk/debug/app-debug.apk` | ✅ Verificado |
 
 ---
 
-## 2. Detalle de Suites de Pruebas Automatizadas (94 Casos)
+## 2. Detalle de Suites de Pruebas Automatizadas (105 Casos)
 
 ### A. Autenticación, Credenciales y Bypass Dev (`AuthAndCredentialsQaTest` - 16 Pruebas)
 * **Ubicación:** `app/src/test/java/com/example/estudihambres/qa/AuthAndCredentialsQaTest.kt`
@@ -74,7 +74,20 @@ Se completó la batería exhaustiva de aseguramiento de calidad (QA) sobre el si
   6. Alternancia de preferencias de radio de radar (5 km, 15 km, 30 km) y notificaciones de proximidad a 200m.
   7. Cálculo acumulativo del indicador financiero de ahorro estudiantil.
 
-### F. Casos de Uso de Dominio (`domain/usecase` - 20 Pruebas)
+### F. Intuitividad, UX y Navegación Fluida (`IntuitiveUxAndNavigationQaTest` - 11 Pruebas)
+* **Ubicación:** `app/src/test/java/com/example/estudihambres/qa/IntuitiveUxAndNavigationQaTest.kt`
+* **Escenarios Clave Validados:**
+  1. Coincidencia y filtrado por chips rápidos de búsqueda (`Bembos`, `Spotify`, `GitHub`, `Notion`).
+  2. Búsqueda y filtrado por tags promocionales específicos (`2x1`).
+  3. Filtrado por categorías de comercio en radar: "Comida", "Café", "Librería".
+  4. Selección de categoría "Todos" devuelve el catálogo completo de comercios.
+  5. Validación de chips de universidades sugeridas frente al catálogo universitario oficial del Perú.
+  6. Cumplimiento de regla de 8 dígitos para DNI numérico.
+  7. Validación de patrón de dominio institucional `.edu.pe`.
+  8. Integridad de metadatos requeridos para la hoja modal de detalle (`PromotionDetailSheet`).
+  9. Consistencia y claridad informativa de preguntas y respuestas en el centro de ayuda FAQ.
+
+### G. Casos de Uso de Dominio (`domain/usecase` - 20 Pruebas)
 * `ValidateStudentCredentialsUseCaseTest` (4 pruebas)
 * `ParseStudentCardOcrUseCaseTest` (6 pruebas)
 * `FilterPlacesByDistanceUseCaseTest` (4 pruebas)
@@ -88,7 +101,7 @@ Se completó la batería exhaustiva de aseguramiento de calidad (QA) sobre el si
 * **Comando de pruebas unitarias:**
   ```powershell
   .\gradlew testDebugUnitTest
-  # Salida: BUILD SUCCESSFUL in 12s - 94/94 pruebas aprobadas (100%)
+  # Salida: BUILD SUCCESSFUL in 13s - 105/105 pruebas aprobadas (100%)
   ```
 * **Comando de ensamble de producción:**
   ```powershell

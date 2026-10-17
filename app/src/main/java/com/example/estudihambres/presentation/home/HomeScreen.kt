@@ -4,10 +4,10 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.asImageBitmap
-import java.io.File
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,9 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -36,10 +33,13 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -51,6 +51,8 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -60,11 +62,15 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -78,15 +84,17 @@ import com.example.estudihambres.R
 import com.example.estudihambres.core.theme.CampusShapes
 import com.example.estudihambres.domain.model.Promotion
 import com.example.estudihambres.domain.model.VerificationStatus
+import java.io.File
 
 /**
  * Dashboard principal de CampusPass (presentation/home).
- * Presenta el saludo personalizado del estudiante, ahorro acumulado, búsqueda en tiempo real,
- * carrusel de categorías temáticas y secciones con carruseles horizontales ("Para ti", "Cerca de tu campus")
- * y lista de "Beneficios Virtuales & Tech" con redirección a sitios oficiales vía Intent.
+ * Totalmente intuitivo: incluye búsqueda con chips de sugerencia rápida, banner interactivo
+ * de validación de carnet, modal con instrucciones de canje y diálogo de confirmación de logout.
  *
  * @param onNavigateToProfile Callback para acceder a la pantalla de configuración de perfil.
- * @param onLogout Callback invocado al pulsar el botón de cerrar sesión en la TopAppBar.
+ * @param onNavigateToVerification Callback para abrir el escáner de carnet universitario.
+ * @param onNavigateToMap Callback para abrir el radar geográfico a 30 km.
+ * @param onLogout Callback invocado al confirmar el cierre de sesión en la TopAppBar.
  * @param viewModel ViewModel encargado del estado y filtrado del dashboard.
  * @param modifier Modificador Compose.
  */
@@ -94,12 +102,15 @@ import com.example.estudihambres.domain.model.VerificationStatus
 @Composable
 fun HomeScreen(
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToVerification: () -> Unit = {},
+    onNavigateToMap: () -> Unit = {},
     onLogout: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    var selectedPromoForDetail by remember { mutableStateOf<Promotion?>(null) }
 
     val openUrl: (String) -> Unit = { url ->
         try {
@@ -148,29 +159,105 @@ fun HomeScreen(
                 )
             }
 
+            // Banner destacado para validar carnet si aún no está VERIFIED
+            if (state.verificationStatus != VerificationStatus.VERIFIED) {
+                item {
+                    Card(
+                        shape = CampusShapes.medium,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToVerification() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.QrCodeScanner,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "🎓 Valida tu Carnet Universitario",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = "Desbloquea hasta 50% de descuento y beneficios tech oficiales.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = onNavigateToVerification,
+                                shape = CampusShapes.small,
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            ) {
+                                Text("Validar", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
             // 2. Tarjeta de Ahorro Acumulado
             item {
                 SavingsHighlightCard(accumulatedSavings = state.accumulatedSavings)
             }
 
-            // 3. Barra de Búsqueda Funcional
+            // 3. Barra de Búsqueda Funcional con chips sugeridos
             item {
-                OutlinedTextField(
-                    value = state.searchQuery,
-                    onValueChange = { viewModel.onSearchQueryChange(it) },
-                    placeholder = { Text("Buscar marcas, comida, apps...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (state.searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = state.searchQuery,
+                        onValueChange = { viewModel.onSearchQueryChange(it) },
+                        placeholder = { Text("Buscar marcas, comida, apps...") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (state.searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                                }
                             }
+                        },
+                        shape = CampusShapes.small,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Búsquedas sugeridas en 1 solo tap
+                    val quickSearchTags = listOf("Bembos", "Spotify", "GitHub", "Café", "Notion", "2x1")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        quickSearchTags.forEach { tag ->
+                            val isSelected = state.searchQuery.equals(tag, ignoreCase = true)
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    if (isSelected) {
+                                        viewModel.onSearchQueryChange("")
+                                    } else {
+                                        viewModel.onSearchQueryChange(tag)
+                                    }
+                                },
+                                label = { Text(tag, style = MaterialTheme.typography.labelSmall) },
+                                shape = CampusShapes.small
+                            )
                         }
-                    },
-                    shape = CampusShapes.small,
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                    }
+                }
             }
 
             // 4. Carrusel Horizontal de Categorías
@@ -214,6 +301,7 @@ fun HomeScreen(
                     items(state.filteredPromotions, key = { it.id }) { promo ->
                         DetailedPromotionCard(
                             promotion = promo,
+                            onCardClick = { selectedPromoForDetail = promo },
                             onOpenUrl = { openUrl(promo.url) }
                         )
                     }
@@ -250,6 +338,7 @@ fun HomeScreen(
                             items(state.popularPromotions, key = { it.id }) { promo ->
                                 FeaturedPromoCard(
                                     promotion = promo,
+                                    onCardClick = { selectedPromoForDetail = promo },
                                     onActivate = { openUrl(promo.url) }
                                 )
                             }
@@ -277,8 +366,8 @@ fun HomeScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            TextButton(onClick = { viewModel.onCategorySelect("🍕 Comida") }) {
-                                Text("Ver locales")
+                            TextButton(onClick = onNavigateToMap) {
+                                Text("Ver en mapa ›", fontWeight = FontWeight.Bold)
                             }
                         }
 
@@ -288,6 +377,7 @@ fun HomeScreen(
                             items(state.nearbyPromotions, key = { it.id }) { promo ->
                                 NearbyPromoCard(
                                     promotion = promo,
+                                    onCardClick = { selectedPromoForDetail = promo },
                                     onRedeem = { openUrl(promo.url) }
                                 )
                             }
@@ -314,6 +404,7 @@ fun HomeScreen(
                 items(state.digitalPromotions, key = { it.id }) { promo ->
                     DigitalBenefitCard(
                         promotion = promo,
+                        onCardClick = { selectedPromoForDetail = promo },
                         onClaim = { openUrl(promo.url) }
                     )
                 }
@@ -323,11 +414,21 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+
+        // Modal BottomSheet con el detalle completo del beneficio e instrucciones
+        selectedPromoForDetail?.let { promo ->
+            PromotionDetailSheet(
+                promotion = promo,
+                onDismiss = { selectedPromoForDetail = null },
+                onOpenUrl = openUrl,
+                onNavigateToMap = onNavigateToMap
+            )
+        }
     }
 }
 
 /**
- * TopAppBar que incluye el logo/marca de CampusPass y el botón de acción para Cerrar Sesión.
+ * TopAppBar que incluye el avatar, la marca de CampusPass y diálogo seguro de confirmación al cerrar sesión.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -337,6 +438,8 @@ private fun TopAppBarDashboard(
     onAvatarClick: () -> Unit,
     onLogout: () -> Unit
 ) {
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
     val avatarBitmap = remember(profilePhotoPath) {
         if (!profilePhotoPath.isNullOrBlank()) {
             val file = File(profilePhotoPath)
@@ -344,6 +447,34 @@ private fun TopAppBarDashboard(
                 BitmapFactory.decodeFile(file.absolutePath)
             } else null
         } else null
+    }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text("¿Cerrar Sesión?", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text("Tendrás que volver a ingresar tus credenciales para acceder a tus beneficios universitarios.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Cerrar Sesión", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     CenterAlignedTopAppBar(
@@ -419,7 +550,7 @@ private fun TopAppBarDashboard(
                     )
                 }
             }
-            IconButton(onClick = onLogout) {
+            IconButton(onClick = { showLogoutDialog = true }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                     contentDescription = "Cerrar Sesión",
@@ -493,7 +624,7 @@ private fun StudentGreetingHeader(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "BIENVENIDA DE VUELTA",
+                    text = "BIENVENIDO(A)",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.SemiBold,
@@ -540,11 +671,11 @@ private fun VerificationBadge(status: VerificationStatus) {
     }
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = badgeColor.copy(alpha = 0.15f)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -681,13 +812,16 @@ private fun CategoryCarousel(
 @Composable
 private fun FeaturedPromoCard(
     promotion: Promotion,
+    onCardClick: () -> Unit = {},
     onActivate: () -> Unit
 ) {
     Card(
         shape = CampusShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        modifier = Modifier.width(260.dp)
+        modifier = Modifier
+            .width(260.dp)
+            .clickable { onCardClick() }
     ) {
         Column {
             // Header simulado de imagen con gradiente y badge de descuento
@@ -779,13 +913,16 @@ private fun FeaturedPromoCard(
 @Composable
 private fun NearbyPromoCard(
     promotion: Promotion,
+    onCardClick: () -> Unit = {},
     onRedeem: () -> Unit
 ) {
     Card(
         shape = CampusShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.width(250.dp)
+        modifier = Modifier
+            .width(250.dp)
+            .clickable { onCardClick() }
     ) {
         Column(
             modifier = Modifier
@@ -882,13 +1019,16 @@ private fun NearbyPromoCard(
 @Composable
 private fun DigitalBenefitCard(
     promotion: Promotion,
+    onCardClick: () -> Unit = {},
     onClaim: () -> Unit
 ) {
     Card(
         shape = CampusShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCardClick() }
     ) {
         Column(
             modifier = Modifier
@@ -977,13 +1117,16 @@ private fun DigitalBenefitCard(
 @Composable
 private fun DetailedPromotionCard(
     promotion: Promotion,
+    onCardClick: () -> Unit = {},
     onOpenUrl: () -> Unit
 ) {
     Card(
         shape = CampusShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCardClick() }
     ) {
         Column(
             modifier = Modifier
@@ -1060,6 +1203,133 @@ private fun DetailedPromotionCard(
                     Text("Ir al beneficio")
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * ModalBottomSheet con el detalle completo de la promoción e instrucciones claras de canje.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PromotionDetailSheet(
+    promotion: Promotion,
+    onDismiss: () -> Unit,
+    onOpenUrl: (String) -> Unit,
+    onNavigateToMap: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = CampusShapes.large
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = CampusShapes.small,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = promotion.category.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Surface(
+                    shape = CampusShapes.small,
+                    color = Color(0xFFFF6D00)
+                ) {
+                    Text(
+                        text = promotion.discountTag,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Text(
+                text = promotion.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Text(
+                text = "Aliado: ${promotion.partnerName}",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Text(
+                text = promotion.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // Tarjeta de requisitos y canje
+            Surface(
+                shape = CampusShapes.medium,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "📋 Instrucciones de canje:",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text("1. Presenta tu carnet universitario físico o digital.", style = MaterialTheme.typography.bodySmall)
+                    Text("2. En convenios web, regístrate con tu correo .edu.pe institucional.", style = MaterialTheme.typography.bodySmall)
+                    Text("3. El beneficio aplica según disponibilidad del establecimiento.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Button(
+                onClick = {
+                    onDismiss()
+                    onOpenUrl(promotion.url)
+                },
+                shape = CampusShapes.small,
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Ir al beneficio oficial", fontWeight = FontWeight.Bold)
+            }
+
+            if (promotion.category.contains("Comida", ignoreCase = true) || promotion.category.contains("Café", ignoreCase = true)) {
+                OutlinedButton(
+                    onClick = {
+                        onDismiss()
+                        onNavigateToMap()
+                    },
+                    shape = CampusShapes.small,
+                    modifier = Modifier.fillMaxWidth().height(44.dp)
+                ) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Ver locales aliados en radar de 30 km")
                 }
             }
         }
