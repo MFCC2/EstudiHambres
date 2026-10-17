@@ -82,7 +82,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.estudihambres.R
+import com.example.estudihambres.core.theme.CampusGold
+import com.example.estudihambres.core.theme.CampusGradientEmerald
+import com.example.estudihambres.core.theme.CampusGradientPrimary
+import com.example.estudihambres.core.theme.CampusGradientPurple
+import com.example.estudihambres.core.theme.CampusGradientSunset
 import com.example.estudihambres.core.theme.CampusShapes
+import com.example.estudihambres.core.theme.CampusTagCulture
+import com.example.estudihambres.core.theme.CampusTagFood
+import com.example.estudihambres.core.theme.CampusTagTech
+import com.example.estudihambres.core.theme.CampusTagTransport
 import com.example.estudihambres.core.util.SessionManager
 import com.example.estudihambres.domain.model.Promotion
 import com.example.estudihambres.domain.model.RedeemedCoupon
@@ -872,6 +881,7 @@ private fun CategoryCarousel(
 
 /**
  * Tarjeta horizontal de "✨ Para ti (Más Populares)".
+ * Diseñada con degradados por categoría, badges de ahorro acumulado y estética fintech moderna.
  */
 @Composable
 private fun FeaturedPromoCard(
@@ -879,54 +889,83 @@ private fun FeaturedPromoCard(
     onCardClick: () -> Unit = {},
     onActivate: () -> Unit
 ) {
+    val bannerGradient = when {
+        promotion.category.contains("Tech", ignoreCase = true) -> CampusGradientEmerald
+        promotion.category.contains("Comida", ignoreCase = true) -> CampusGradientSunset
+        promotion.category.contains("Cine", ignoreCase = true) -> CampusGradientPurple
+        else -> CampusGradientPrimary
+    }
+
+    val categoryEmoji = when {
+        promotion.category.contains("Comida", ignoreCase = true) || promotion.partnerName.contains("Bembos", ignoreCase = true) || promotion.partnerName.contains("KFC", ignoreCase = true) -> "🍔"
+        promotion.category.contains("Cine", ignoreCase = true) || promotion.partnerName.contains("Cine", ignoreCase = true) -> "🎬"
+        promotion.category.contains("Tech", ignoreCase = true) || promotion.partnerName.contains("JetBrains", ignoreCase = true) || promotion.partnerName.contains("Apple", ignoreCase = true) || promotion.partnerName.contains("Microsoft", ignoreCase = true) -> "💻"
+        promotion.category.contains("Transporte", ignoreCase = true) || promotion.partnerName.contains("ATU", ignoreCase = true) -> "🚌"
+        else -> "⭐"
+    }
+
     Card(
         shape = CampusShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
         modifier = Modifier
-            .width(260.dp)
+            .width(265.dp)
             .clickable { onCardClick() }
     ) {
         Column {
-            // Header simulado de imagen con gradiente y badge de descuento
+            // Header con degradado temático, categoría y badge de descuento
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(110.dp)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.tertiary
-                            )
-                        )
-                    )
-                    .padding(10.dp)
+                    .height(118.dp)
+                    .background(bannerGradient)
+                    .padding(12.dp)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.TopStart)
+                Row(
+                    modifier = Modifier.align(Alignment.TopStart),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = promotion.discountTag,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.error
+                    ) {
+                        Text(
+                            text = promotion.discountTag,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color.Black.copy(alpha = 0.35f)
+                    ) {
+                        Text(
+                            text = "$categoryEmoji ${promotion.category}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
                 }
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color.Black.copy(alpha = 0.4f),
+                    color = Color.White.copy(alpha = 0.22f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.40f)),
                     modifier = Modifier.align(Alignment.BottomStart)
                 ) {
                     Text(
-                        text = "🎓 Plan Estudiantes",
+                        text = "🪙 Ahorro ~S/ ${"%.2f".format(promotion.estimatedSavingsSoles)}",
                         style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
             }
@@ -934,13 +973,14 @@ private fun FeaturedPromoCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp)
+                    .padding(14.dp)
             ) {
                 Text(
                     text = promotion.partnerName.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
@@ -961,10 +1001,10 @@ private fun FeaturedPromoCard(
                 Spacer(modifier = Modifier.height(10.dp))
                 Button(
                     onClick = onActivate,
-                    shape = CampusShapes.small,
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().height(42.dp)
                 ) {
-                    Text("Activar beneficio", style = MaterialTheme.typography.labelMedium)
+                    Text("Activar beneficio", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -972,7 +1012,7 @@ private fun FeaturedPromoCard(
 }
 
 /**
- * Tarjeta horizontal de "📍 Cerca de tu campus".
+ * Tarjeta horizontal de "📍 Cerca de tu campus" con indicador de caminata a pie y precios contrastados.
  */
 @Composable
 private fun NearbyPromoCard(
@@ -980,12 +1020,20 @@ private fun NearbyPromoCard(
     onCardClick: () -> Unit = {},
     onRedeem: () -> Unit
 ) {
+    val tagColor = when {
+        promotion.category.contains("Comida", ignoreCase = true) -> CampusTagFood
+        promotion.category.contains("Tech", ignoreCase = true) -> CampusTagTech
+        promotion.category.contains("Transporte", ignoreCase = true) -> CampusTagTransport
+        else -> CampusTagCulture
+    }
+
     Card(
         shape = CampusShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
         modifier = Modifier
-            .width(250.dp)
+            .width(255.dp)
             .clickable { onCardClick() }
     ) {
         Column(
@@ -999,24 +1047,36 @@ private fun NearbyPromoCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                    shape = RoundedCornerShape(8.dp),
+                    color = tagColor.copy(alpha = 0.15f)
                 ) {
                     Text(
                         text = promotion.discountTag,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        color = tagColor,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
 
-                Text(
-                    text = "📍 ${promotion.distanceText}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
-                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.09f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "🚶", fontSize = 11.sp)
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = promotion.distanceText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -1030,7 +1090,8 @@ private fun NearbyPromoCard(
             Text(
                 text = promotion.partnerName.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
@@ -1059,14 +1120,14 @@ private fun NearbyPromoCard(
                     Text(
                         text = promotion.discountedPrice.ifBlank { "S/ 12.90" },
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
 
                 Button(
                     onClick = onRedeem,
-                    shape = CampusShapes.small,
+                    shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                 ) {
@@ -1078,7 +1139,7 @@ private fun NearbyPromoCard(
 }
 
 /**
- * Tarjeta individual de "💻 Beneficios Virtuales & Tech" con botón de reclamo oficial.
+ * Tarjeta individual de "💻 Beneficios Virtuales & Tech" con estética para desarrolladores y estudiantes.
  */
 @Composable
 private fun DigitalBenefitCard(
@@ -1089,7 +1150,8 @@ private fun DigitalBenefitCard(
     Card(
         shape = CampusShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(1.dp, CampusTagTech.copy(alpha = 0.30f)),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCardClick() }
@@ -1105,37 +1167,45 @@ private fun DigitalBenefitCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = Color(0xFF00C853).copy(alpha = 0.15f)
+                    shape = RoundedCornerShape(8.dp),
+                    color = CampusTagTech.copy(alpha = 0.15f)
                 ) {
                     Text(
                         text = promotion.discountTag,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF00C853),
+                        color = CampusTagTech,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
 
-                Text(
-                    text = promotion.distanceText.ifBlank { "Licencia Anual" },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                ) {
+                    Text(
+                        text = promotion.distanceText.ifBlank { "Licencia Estudiantil" },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(CampusTagTech.copy(alpha = 0.12f))
+                        .border(1.dp, CampusTagTech.copy(alpha = 0.30f), RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "💻", fontSize = 18.sp)
+                    Text(text = "💻", fontSize = 20.sp)
                 }
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
                         text = promotion.title,
@@ -1160,8 +1230,8 @@ private fun DigitalBenefitCard(
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = onClaim,
-                shape = CampusShapes.small,
-                modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().height(44.dp)
             ) {
                 Text("Reclamar licencia", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.width(6.dp))
@@ -1187,7 +1257,8 @@ private fun DetailedPromotionCard(
     Card(
         shape = CampusShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCardClick() }
@@ -1203,26 +1274,28 @@ private fun DetailedPromotionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = CampusShapes.small,
+                    shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
                 ) {
                     Text(
                         text = promotion.discountTag,
                         style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
 
                 Surface(
-                    shape = CampusShapes.small,
+                    shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
                 ) {
                     Text(
-                        text = "Ahorras ~S/ ${"%.2f".format(promotion.estimatedSavingsSoles)}",
+                        text = "🪙 Ahorras ~S/ ${"%.2f".format(promotion.estimatedSavingsSoles)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
             }
@@ -1256,15 +1329,17 @@ private fun DetailedPromotionCard(
                     Text(
                         text = "${promotion.partnerName} • ${promotion.category}",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
                 Button(
                     onClick = onOpenUrl,
-                    shape = CampusShapes.small
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                 ) {
-                    Text("Ir al beneficio")
+                    Text("Ir al beneficio", fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                 }

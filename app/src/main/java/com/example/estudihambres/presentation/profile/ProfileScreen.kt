@@ -89,6 +89,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.estudihambres.R
+import com.example.estudihambres.core.theme.CampusGold
+import com.example.estudihambres.core.theme.CampusPrimary
 import com.example.estudihambres.core.theme.CampusShapes
 import com.example.estudihambres.core.util.SessionManager
 import com.example.estudihambres.domain.model.RedeemedCoupon
@@ -832,51 +834,90 @@ private fun StudentMetricsRow(savings: Double, coupons: Int) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        // Métrica 1: Ahorro Total (Verde Éxito)
         Card(
-            shape = CampusShapes.small,
+            shape = CampusShapes.medium,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+            border = BorderStroke(1.dp, Color(0xFF00C853).copy(alpha = 0.25f)),
             modifier = Modifier.weight(1f)
         ) {
             Column(
-                modifier = Modifier.padding(14.dp),
+                modifier = Modifier.padding(vertical = 14.dp, horizontal = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Ahorro Total", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = "🪙 AHORRO",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF00C853),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("S/ ${"%.2f".format(savings)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    text = "S/ ${"%.2f".format(savings)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF00A844)
+                )
             }
         }
 
+        // Métrica 2: Cupones Canjeados (Azul Primario)
         Card(
-            shape = CampusShapes.small,
+            shape = CampusShapes.medium,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+            border = BorderStroke(1.dp, CampusPrimary.copy(alpha = 0.25f)),
             modifier = Modifier.weight(1f)
         ) {
             Column(
-                modifier = Modifier.padding(14.dp),
+                modifier = Modifier.padding(vertical = 14.dp, horizontal = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Canjes", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = "🎟️ CANJES",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CampusPrimary,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("$coupons cupones", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                Text(
+                    text = "$coupons vales",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = CampusPrimary
+                )
             }
         }
 
+        // Métrica 3: Rango Universitario (Dorado Ámbar)
         Card(
-            shape = CampusShapes.small,
+            shape = CampusShapes.medium,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+            border = BorderStroke(1.dp, CampusGold.copy(alpha = 0.35f)),
             modifier = Modifier.weight(1f)
         ) {
             Column(
-                modifier = Modifier.padding(14.dp),
+                modifier = Modifier.padding(vertical = 14.dp, horizontal = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Rango", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = "⭐ RANGO",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CampusGold,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Nivel Pro ⭐", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFFFFB300))
+                Text(
+                    text = "Nivel Pro",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = CampusGold
+                )
             }
         }
     }

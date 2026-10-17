@@ -8,9 +8,11 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -272,6 +274,7 @@ fun MapScreen(
             shape = CampusShapes.medium,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 10.dp)
@@ -703,10 +706,11 @@ private fun PlaceMapPreviewCard(
 ) {
     Card(
         shape = CampusShapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)),
         modifier = Modifier
-            .width(220.dp)
+            .width(225.dp)
             .clickable { onClick() }
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
@@ -777,7 +781,8 @@ private fun PlaceListItemCard(
     Card(
         shape = CampusShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -791,7 +796,7 @@ private fun PlaceListItemCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = CampusShapes.small,
+                    shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
                 ) {
                     Text(
@@ -813,7 +818,8 @@ private fun PlaceListItemCard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = place.rating.toString(),
-                        style = MaterialTheme.typography.labelLarge
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -841,7 +847,8 @@ private fun PlaceListItemCard(
                     Text(
                         text = "📍 A solo ${"%.1f".format(dist)} km (~$walkMinutes min caminando)",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
@@ -867,7 +874,7 @@ private fun PlaceListItemCard(
                             } catch (_: Exception) {}
                         }
                     },
-                    shape = CampusShapes.small,
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -877,12 +884,12 @@ private fun PlaceListItemCard(
 
                 Button(
                     onClick = onClick,
-                    shape = CampusShapes.small,
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Default.LocalOffer, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Ver Descuento", style = MaterialTheme.typography.labelSmall)
+                    Text("Ver Descuento", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
             }
         }
