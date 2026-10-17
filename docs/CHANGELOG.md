@@ -485,3 +485,39 @@ Optimización holística de la experiencia de usuario (UX) e intuitividad del si
 6. **Suite Integral de 105 Pruebas QA Automatizadas (`IntuitiveUxAndNavigationQaTest.kt`)**:
    - Nueva suite de pruebas cubriendo chips rápidos, filtrado por categorías, validación de DNI, dominios `.edu.pe`, metadatos de promociones e integridad de FAQs.
    - Cobertura de 105 pruebas unitarias exitosas con 100% de aprobación (`BUILD SUCCESSFUL in 13s`).
+---
+
+## [Optimización y Rediseño Integral del Radar de Mapas v1.2.4] - 2026-10-17
+**Rama:** `develop` / `main`
+
+### Resumen de la Entrega
+Mejora integral del sistema de mapas y radar geográfico de convenios universitarios:
+1. **Buscador en Vivo en el Mapa (`MapScreen.kt`, `MapViewModel.kt`)**:
+   - Integración de campo de búsqueda en tiempo real dentro del banner flotante superior con filtrado reactivo por nombre, dirección, categoría y etiqueta de descuento.
+   - Botón de limpieza rápida para restablecer el término buscado en 1 toque.
+
+2. **Selector Dinámico de Radio de Radar (`MapViewModel.kt`, `MapScreen.kt`)**:
+   - Chips de selección rápida de radio: `⚡ 5 km` (a pie / campus inmediato), `🚲 15 km` (bici / transporte) y `🚗 30 km` (todo el radar metropolitano).
+   - El filtrado por distancia recalcula instantáneamente los locales visibles mediante el algoritmo esférico de Haversine.
+
+3. **Alternancia Rápida de Sedes Universitarias (Cusco / Lima)**:
+   - Enum `CampusLocation` con coordenadas oficiales:
+     - `Cusco (Campus Continental / UNSAAC)`: `-13.5230, -71.9480`.
+     - `Lima (Campus UNMSM / PUCP)`: `-12.0833, -77.0428`.
+   - Chips interactivos en la cabecera que permiten al estudiante o evaluador conmutar entre campus y animar automáticamente la cámara hacia la sede seleccionada.
+
+4. **Círculo Visual de Cobertura de Radar**:
+   - **Google Maps:** Componente `Circle` nativo con relleno translúcido (`#3344EE` con 8% de opacidad) y borde definido que ilustra el alcance físico del radio configurado.
+   - **OpenStreetMap / Leaflet:** Incorporación de `L.circle` dinámico centrado en la posición del estudiante/campus con radio exacto en metros.
+
+5. **Carrusel Inferior de Previsualización de Locales (`PlaceMapPreviewCard`)**:
+   - Carrusel flotante horizontal (`LazyRow`) que muestra tarjetas compactas de comercios directamente sobre el mapa.
+   - Al pulsar una tarjeta, la cámara de Google Maps vuela suavemente hacia las coordenadas del local y despliega su información detallada.
+
+6. **Pines Cromáticos en Leaflet y Cálculo de Tiempo de Caminata (ETA)**:
+   - Pines diferenciados por color en Leaflet: Naranja para Gastronomía, Ámbar para Cafeterías, Cyan para Librerías/Fotocopias, Púrpura para Entretenimiento.
+   - Indicador de tiempo estimado de caminata: `🚶‍♂️ ~X min a pie` calculado a ~12 min/km promedio y `🚗 ~Y min en auto`.
+
+7. **Ampliación de Suite QA a 109 Pruebas Unitarias Automatizadas**:
+   - 4 nuevas pruebas en `IntuitiveUxAndNavigationQaTest.kt` validando coordenadas de sedes, filtrado estricto a 5 km, búsqueda textual y fórmula de ETA de caminata.
+   - 109 pruebas ejecutadas con 100% de éxito y cero advertencias de compilación.
