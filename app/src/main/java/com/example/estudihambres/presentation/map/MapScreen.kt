@@ -63,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.annotation.SuppressLint
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.estudihambres.core.theme.CampusShapes
 import com.example.estudihambres.data.repository.MockPlaceRepository
@@ -75,8 +76,8 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberMarkerState
 
 /**
  * Modos de visualización para el radar de comercios cercanos.
@@ -167,7 +168,7 @@ fun MapScreen(
                     )
                 ) {
                     Marker(
-                        state = MarkerState(position = state.userLocation),
+                        state = rememberMarkerState(position = state.userLocation),
                         title = "Tú estás aquí",
                         snippet = if (state.isDefaultLocation) "Ubicación Campus Universitario" else "GPS Activo",
                         icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
@@ -175,7 +176,7 @@ fun MapScreen(
 
                     filteredPlaces.forEach { place ->
                         Marker(
-                            state = MarkerState(position = LatLng(place.latitude, place.longitude)),
+                            state = rememberMarkerState(key = place.id, position = LatLng(place.latitude, place.longitude)),
                             title = place.name,
                             snippet = "${place.discountBadge} • ${place.category}",
                             icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED),
@@ -357,6 +358,7 @@ fun MapScreen(
  * Radar interactivo OpenStreetMap basado en Leaflet.js.
  * Carga azulejos reales de calles, avenidas y comercios de forma garantizada y autónoma sin requerir API key de pago.
  */
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun InteractiveOsmRadarMap(
     userLocation: LatLng,

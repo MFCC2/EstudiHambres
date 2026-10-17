@@ -58,6 +58,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -92,10 +95,10 @@ import java.util.concurrent.Executors
  */
 @Composable
 fun StudentVerificationScreen(
-    viewModel: StudentVerificationViewModel = viewModel(),
     onVerificationCompleted: () -> Unit,
     onSkipClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: StudentVerificationViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -536,11 +539,11 @@ fun EmbeddedCameraCardScanner(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var isScanningActive by remember { mutableStateOf(true) }
-    var lastAnalyzedMs by remember { mutableStateOf(0L) }
+    var lastAnalyzedMs by remember { mutableLongStateOf(0L) }
     var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
 
-    var consecutiveValidFrames by remember { mutableStateOf(0) }
-    var scanProgress by remember { mutableStateOf(0f) }
+    var consecutiveValidFrames by remember { mutableIntStateOf(0) }
+    var scanProgress by remember { mutableFloatStateOf(0f) }
     var scanStatusMessage by remember { mutableStateOf("Enfoca el carnet universitario oficial dentro del recuadro") }
 
     val parser = remember { ParseStudentCardOcrUseCase() }

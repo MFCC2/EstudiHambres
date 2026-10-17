@@ -32,8 +32,8 @@ import com.example.estudihambres.core.theme.CampusShapes
  */
 @Composable
 fun AuthScreen(
-    onLoginSuccess: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLoginSuccess: () -> Unit = {}
 ) {
     var email by remember { mutableStateOf("") }
     var dni by remember { mutableStateOf("") }

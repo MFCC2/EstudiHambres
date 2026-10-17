@@ -101,12 +101,12 @@ import java.io.File
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    modifier: Modifier = Modifier,
     onNavigateToProfile: () -> Unit = {},
     onNavigateToVerification: () -> Unit = {},
     onNavigateToMap: () -> Unit = {},
     onLogout: () -> Unit = {},
-    viewModel: HomeViewModel = viewModel(),
-    modifier: Modifier = Modifier
+    viewModel: HomeViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
