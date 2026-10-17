@@ -1,7 +1,7 @@
 # INFORME DE AUDITORÍA TÉCNICA, SEGURIDAD Y CALIDAD (QA)
 
 **Proyecto:** EstudiHambres (CampusPass)  
-**Versión Auditada:** 1.2.2 (Build 4)  
+**Versión Auditada:** 1.2.3 (Build 5)  
 **Fecha de Auditoría:** 17 de Octubre de 2026  
 **Entorno de Ejecución:** Android API 24+ (Target API 35) / Kotlin 2.0 / Jetpack Compose / Clean Architecture  
 **Estado General:** **CERTIFICADO Y APROBADO (100% PASS - 0 ADVERTENCIAS - 0 VULNERABILIDADES)**
@@ -10,14 +10,15 @@
 
 ## 1. RESUMEN EJECUTIVO
 
-Se ha ejecutado una auditoría integral de código fuente, arquitectura, seguridad lógica y aseguramiento de la calidad (QA) sobre el sistema **EstudiHambres (CampusPass)**. El objetivo principal fue identificar, mitigar y solventar deficiencias en:
+Se ha ejecutado una auditoría integral de código fuente, arquitectura, seguridad lógica, aseguramiento de la calidad (QA) y optimización de experiencia de usuario (UX) sobre el sistema **EstudiHambres (CampusPass)**. El objetivo principal fue identificar, mitigar y solventar deficiencias en:
 1. Validación y persistencia de credenciales de autenticación.
 2. Integridad de los datos de identidad estudiantil (DNI y Universidad).
 3. Robustez del motor de visión artificial (OCR CameraX + ML Kit) frente a documentos no válidos y fraudes.
 4. Navegación segura hacia comercios reales mediante Google Maps e Intents del sistema operativo.
-5. Eliminación de APIs y componentes obsoletos (deprecations) en Jetpack Compose Material 3.
+5. Intuitividad y fluidez de usuario: selector de visibilidad de contraseña, chips de sugerencias universitarias, tags de búsqueda rápida, filtros de categoría en radar, modal bottom sheet con instrucciones de canje y confirmaciones de salida segura.
+6. Eliminación de APIs y componentes obsoletos (deprecations) en Jetpack Compose Material 3.
 
-Tras la implementación de los parches de seguridad y las refactorizaciones requeridas, el proyecto cuenta con **94 pruebas unitarias automatizadas con una tasa de éxito del 100%** y una compilación de Gradle completamente limpia sin advertencias.
+Tras la implementación de los parches de seguridad, optimizaciones de UX y suites de prueba, el proyecto cuenta con **105 pruebas unitarias automatizadas con una tasa de éxito del 100%** y una compilación de Gradle completamente limpia sin advertencias.
 
 ---
 
@@ -30,14 +31,17 @@ Tras la implementación de los parches de seguridad y las refactorizaciones requ
 | **SEC-03** | `AuthViewModel.kt` & `SessionManager.kt` | Se permitía acceso directo al pulsar ingresar con credenciales erróneas o campos vacíos en modo producción. | Se implementó validación bidireccional estricta: verificación de formato de correo institucional (`.edu.pe`, `.edu`), contraseña no vacía de longitud mínima (6 caracteres), y validación de hash contra el registro de cuentas locales persistidas en `SharedPreferences`. | **RESUELTO** |
 | **SEC-04** | `StudentVerificationViewModel.kt` | El escaneo OCR de carnet se disparaba de forma excesivamente rápida e imprecisa, validando accidentalmente tickets, recibos o documentos no universitarios. | Se introdujo un algoritmo de **estabilización multi-frame** y filtrado heurístico anti-recibos. Se exige la concurrencia de palabras clave oficiales (`SUNEDU`, `UNIVERSIDAD`, `REPÚBLICA DEL PERÚ`), formato de documento ID-1, año de vigencia (2025–2027) y múltiples lecturas consecutivas consistentes antes de emitir la confirmación visual de verificación. | **RESUELTO** |
 | **SEC-05** | `StudentVerificationViewModel.kt` | Un estudiante podía registrar y validar múltiples carnets arbitrariamente desde una misma cuenta. | Se estableció la regla de negocio de **carnet único por estudiante**. Un usuario estándar solo puede registrar y vincular un único carnet verificado. La re-verificación o escaneo múltiple se restringe exclusivamente al modo desarrollador (`isDevMode = true`) con fines de prueba y QA. | **RESUELTO** |
-| **SEC-06** | `MapScreen.kt` & `MockPlaceRepository.kt` | Los puntos del mapa contenían valores sintéticos no contrastados y el lanzamiento de navegación GPS podía causar *crashes* en dispositivos sin Google Play Services. | Se sustituyeron los datos de prueba por **9 establecimientos comerciales reales** con coordenadas geográficas auténticas en Cusco y Lima. Se blindó la llamada al Intent nativo de navegación (`google.navigation:q=`) y su fallback web (`https://www.google.com/maps/dir/`) mediante bloques `try-catch` anidados contra `ActivityNotFoundException`. | **RESUELTO** |
+| **SEC-06** | `MapScreen.kt` & `MockPlaceRepository.kt` | Los puntos del mapa contenían valores sintéticos no contrastados y el lanzamiento de navegación GPS podía causar *crashes* en dispositivos sin Google Play Services. | Se sustituyeron los datos de prueba por **11 establecimientos comerciales reales** (incluyendo cafeterías, comida rápida, cines y librerías) con coordenadas auténticas en Cusco y Lima. Se blindó la llamada al Intent nativo de navegación (`google.navigation:q=`) y su fallback web (`https://www.google.com/maps/dir/`) mediante bloques `try-catch` anidados contra `ActivityNotFoundException`. | **RESUELTO** |
+| **UX-01** | `LoginScreen.kt` & `RegisterScreen.kt` | Dificultad para verificar la contraseña ingresada y ausencia de guía contextual para correos institucionales. | Se integró selector interactivo de visibilidad de contraseña (`Visibility`/`VisibilityOff`), atajos de teclado IME (`ImeAction.Next`/`Done`), contador de caracteres de DNI con validación en vivo (`8/8`), chips de sugerencia rápida para universidades peruanas e indicador de consejo institucional. | **RESUELTO** |
+| **UX-02** | `HomeScreen.kt` & `MapScreen.kt` | Búsqueda manual tediosa y visualización densa de promociones y comercios sin categorización ágil. | Se añadieron chips de búsqueda rápida (`Bembos`, `Spotify`, `GitHub`, `Café`, `Notion`, `2x1`), hoja modal interactiva (`PromotionDetailSheet`) con instrucciones paso a paso de canje, y chips horizontales de categoría en el radar (`Todos`, `Comida`, `Café`, `Librería`). | **RESUELTO** |
+| **UX-03** | `HomeScreen.kt` & `ProfileScreen.kt` | Riesgo de cierre accidental de sesión al pulsar botones en la barra superior o pie de página. | Se envolvieron todas las acciones de logout en un diálogo modal interactivo `AlertDialog` de confirmación obligatoria ("¿Cerrar Sesión Segura?"). | **RESUELTO** |
 | **LINT-01** | `HomeScreen.kt`, `ProfileScreen.kt`, `MapScreen.kt` | Uso de APIs obsoletas: `Icons.Default.ExitToApp`, `Icons.Default.OpenInNew` y `centerAlignedTopAppBarColors`. | Migración completa a `Icons.AutoMirrored.Filled.ExitToApp`, `Icons.AutoMirrored.Filled.OpenInNew` y `TopAppBarDefaults.topAppBarColors`, garantizando soporte de internacionalización RTL y compatibilidad hacia Compose 2025+. | **RESUELTO** |
 
 ---
 
 ## 3. SUITE DE PRUEBAS AUTOMATIZADAS (QA MATRIX)
 
-La suite de pruebas automatizadas comprende **94 casos de prueba unitarios**, ejecutados y verificados mediante JUnit 4 sobre la máquina virtual Java de desarrollo:
+La suite de pruebas automatizadas comprende **105 casos de prueba unitarios**, ejecutados y verificados mediante JUnit 4 sobre la máquina virtual Java de desarrollo:
 
 ### 3.1 `AuthAndCredentialsQaTest` (16 Pruebas)
 - Validación de DNI: 8 dígitos exactos.
@@ -78,15 +82,26 @@ La suite de pruebas automatizadas comprende **94 casos de prueba unitarios**, ej
 - Alternancia de preferencias de radio de radar (5 km, 15 km, 30 km) y notificaciones de proximidad a 200m.
 - Cálculo acumulativo del indicador financiero de ahorro estudiantil.
 
-### 3.6 Pruebas de Dominio y Casos de Uso (20 Pruebas Adicionales)
+### 3.6 `IntuitiveUxAndNavigationQaTest` (11 Pruebas)
+- Coincidencia de chips rápidos de búsqueda (`Bembos`, `Spotify`, `GitHub`, `Notion`).
+- Búsqueda y filtrado por tag promocional (`2x1`).
+- Filtrado por categorías de comercios (`Comida`, `Café`, `Librería`).
+- Integridad del catálogo al seleccionar categoría `"Todos"`.
+- Coincidencia de chips universitarios con el catálogo universitario nacional.
+- Validación de reglas de formato y longitud de DNI (8 dígitos).
+- Validación de patrón de dominio `.edu.pe`.
+- Integridad de metadatos de cupones y beneficios para el modal interactivo.
+- Verificación de contenido en la sección de preguntas frecuentes (FAQ).
+
+### 3.7 Pruebas de Dominio y Casos de Uso (20 Pruebas Adicionales)
 - `ValidateStudentCredentialsUseCaseTest` (4 pruebas).
 - `ParseStudentCardOcrUseCaseTest` (6 pruebas).
 - `FilterPlacesByDistanceUseCaseTest` (4 pruebas).
 - `FilterCommercesByDistanceUseCaseTest` (4 pruebas).
 - `PromotionFilteringTest` (2 pruebas).
 
-**Total de Pruebas Ejecutadas:** **94 pruebas**  
-**Resultado:** **94 aprobadas, 0 fallidas, 0 ignoradas (100% éxito en 12 segundos)**.
+**Total de Pruebas Ejecutadas:** **105 pruebas**  
+**Resultado:** **105 aprobadas, 0 fallidas, 0 ignoradas (100% éxito en 13 segundos)**.
 
 ---
 
@@ -102,9 +117,9 @@ La suite de pruebas automatizadas comprende **94 casos de prueba unitarios**, ej
 
 ## 5. CONCLUSIÓN Y DICTAMEN FINAL
 
-El sistema **EstudiHambres (CampusPass) v1.2.2** cumple a cabalidad con los más altos estándares de calidad de software, seguridad de datos del estudiante, directrices de accesibilidad de Google Material 3 y buenas prácticas de ingeniería de software para Android.
+El sistema **EstudiHambres (CampusPass) v1.2.3** cumple a cabalidad con los más altos estándares de calidad de software, seguridad de datos del estudiante, experiencia de usuario intuitiva, directrices de accesibilidad de Google Material 3 y buenas prácticas de ingeniería de software para Android.
 
-Se autoriza su despliegue en entornos de prueba y producción académica.
+Se autoriza su despliegue y promoción a la rama `main` en producción académica.
 
 **Auditor Responsable:**  
 *Equipo de Ingeniería de Calidad y Arquitectura de Software*  

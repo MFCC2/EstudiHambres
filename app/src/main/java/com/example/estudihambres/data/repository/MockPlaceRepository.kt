@@ -134,6 +134,18 @@ class MockPlaceRepository : PlaceRepository {
             discountDescription = "Comercio foráneo alejado para verificar exclusión del radar de 30 km",
             url = "https://campuspass.pe"
         ),
+        PlaceLocal(
+            id = "cu-11",
+            name = "Librería & Copias Universitaria Cusco",
+            category = "Librería & Fotocopias",
+            address = "Av. de la Cultura 920 (Frente a UNSAAC)",
+            latitude = -13.5212,
+            longitude = -71.9555,
+            rating = 4.9,
+            discountBadge = "20% DTO",
+            discountDescription = "20% de descuento en impresiones de tesis, anillados y útiles de escritorio",
+            url = "https://campuspass.pe"
+        ),
 
         // === LOCALES REALES LIMA (Campus UNMSM, PUCP, Av. Universitaria) ===
         PlaceLocal(
@@ -242,6 +254,18 @@ class MockPlaceRepository : PlaceRepository {
             rating = 4.4,
             discountBadge = "15% DTO",
             discountDescription = "15% en snacks saludables y bebidas frías",
+            url = "https://campuspass.pe"
+        ),
+        PlaceLocal(
+            id = "pl-11",
+            name = "Librería & Papelería San Marcos",
+            category = "Librería & Fotocopias",
+            address = "Av. Universitaria 1350",
+            latitude = -12.0825,
+            longitude = -77.0410,
+            rating = 4.8,
+            discountBadge = "15% DTO",
+            discountDescription = "15% de descuento en libros académicos, impresiones y útiles",
             url = "https://campuspass.pe"
         ),
         PlaceLocal(

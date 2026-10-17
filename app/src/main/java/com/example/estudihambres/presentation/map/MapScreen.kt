@@ -60,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -131,13 +132,24 @@ fun MapScreen(
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var viewType by remember { mutableStateOf(MapViewType.GOOGLE_MAPS) }
 
+    val placeCategories = listOf("Todos", "Comida", "Café", "Librería")
+    var selectedCategory by remember { mutableStateOf("Todos") }
+
+    val filteredPlaces = remember(state.nearbyPlaces, selectedCategory) {
+        if (selectedCategory == "Todos") {
+            state.nearbyPlaces
+        } else {
+            state.nearbyPlaces.filter { it.category.contains(selectedCategory, ignoreCase = true) }
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         when (viewType) {
             MapViewType.OPEN_STREET -> {
                 // 1. Radar Interactivo con OpenStreetMap y Leaflet (100% visible, sin requerir API key de Google)
                 InteractiveOsmRadarMap(
                     userLocation = state.userLocation,
-                    nearbyPlaces = state.nearbyPlaces,
+                    nearbyPlaces = filteredPlaces,
                     onPlaceSelected = { viewModel.onPlaceSelected(it) },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -161,7 +173,7 @@ fun MapScreen(
                         icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
                     )
 
-                    state.nearbyPlaces.forEach { place ->
+                    filteredPlaces.forEach { place ->
                         Marker(
                             state = MarkerState(position = LatLng(place.latitude, place.longitude)),
                             title = place.name,
@@ -176,15 +188,15 @@ fun MapScreen(
                 }
             }
             MapViewType.LIST -> {
-                // 3. Vista de lista interactiva de los 9 locales cercanos con sus calificaciones y distancias
+                // 3. Vista de lista interactiva de los locales cercanos filtrados con sus calificaciones y distancias
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 110.dp, bottom = 96.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 148.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(state.nearbyPlaces, key = { it.id }) { place ->
+                    items(filteredPlaces, key = { it.id }) { place ->
                         PlaceListItemCard(
                             place = place,
                             onClick = { viewModel.onPlaceSelected(place) }
@@ -194,7 +206,7 @@ fun MapScreen(
             }
         }
 
-        // 2. Banner flotante con el estado del radar y selector de vista
+        // 2. Banner flotante con el estado del radar, selector de vista y categorías
         Card(
             shape = CampusShapes.medium,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
@@ -226,8 +238,9 @@ fun MapScreen(
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "${state.nearbyPlaces.size} convenios cercanos",
+                        text = "${filteredPlaces.size} convenios visibles",
                         style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -241,7 +254,7 @@ fun MapScreen(
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    MapViewType.values().forEach { mode ->
+                    MapViewType.entries.forEach { mode ->
                         FilterChip(
                             selected = viewType == mode,
                             onClick = { viewType = mode },
@@ -251,6 +264,25 @@ fun MapScreen(
                                 selectedContainerColor = MaterialTheme.colorScheme.primary,
                                 selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Filtro rápido por categoría de comercio
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    placeCategories.forEach { cat ->
+                        FilterChip(
+                            selected = selectedCategory == cat,
+                            onClick = { selectedCategory = cat },
+                            label = { Text(cat, style = MaterialTheme.typography.labelSmall) },
+                            shape = CampusShapes.small
                         )
                     }
                 }

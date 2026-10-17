@@ -159,6 +159,12 @@ fun AppNavGraph(
                     onNavigateToProfile = {
                         navController.navigate(Screen.Profile.route)
                     },
+                    onNavigateToVerification = {
+                        navController.navigate(Screen.Verification.route)
+                    },
+                    onNavigateToMap = {
+                        navController.navigate(Screen.Map.route)
+                    },
                     onLogout = {
                         sessionManager.clearSession()
                         navController.navigate(Screen.Login.route) {
