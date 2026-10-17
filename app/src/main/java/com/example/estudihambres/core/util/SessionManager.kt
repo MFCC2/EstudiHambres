@@ -168,6 +168,7 @@ class SessionManager(context: Context) {
             .putString("status_$normalizedEmail", user.verificationStatus.name)
             .putBoolean("isDev_$normalizedEmail", user.isDev)
             .putString("scanned_card_$normalizedEmail", user.scannedCardDni)
+            .putString("photo_$normalizedEmail", user.profilePhotoPath)
             .putString("dni_to_email_${user.dni}", normalizedEmail)
             .apply()
     }

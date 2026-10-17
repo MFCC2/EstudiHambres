@@ -444,3 +444,8 @@ Auditoría integral de seguridad, reforzamiento visual y hardening de campos sen
      - `testProfilePhotoPersistenceAndPath()`: Comprueba la asignación y persistencia de `profilePhotoPath`.
    - Ejecución exitosa de la suite completa de pruebas unitarias y generación de APK debug: `./gradlew testDebugUnitTest assembleDebug` (`BUILD SUCCESSFUL in 39s`).
 
+4. **Blindaje Preventivo de Intents y Cero Advertencias de Compilación**:
+   - Protección contra `ActivityNotFoundException` mediante bloques `try-catch` robustos en la resolución de URLs externas y navegación nativa de Google Maps.
+   - Migración completa de iconos `Icons.Default.ExitToApp` y `Icons.Default.OpenInNew` hacia sus versiones oficiales reflejadas `Icons.AutoMirrored.Filled.*`.
+   - Depuración de imports no utilizados y actualización de `centerAlignedTopAppBarColors` a `topAppBarColors`, alcanzando compilación limpia con **0 advertencias y 0 errores** (`BUILD SUCCESSFUL in 21s`).
+

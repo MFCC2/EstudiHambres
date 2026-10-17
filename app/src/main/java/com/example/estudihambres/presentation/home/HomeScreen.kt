@@ -31,12 +31,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Verified
@@ -421,13 +421,13 @@ private fun TopAppBarDashboard(
             }
             IconButton(onClick = onLogout) {
                 Icon(
-                    imageVector = Icons.Default.ExitToApp,
+                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                     contentDescription = "Cerrar Sesión",
                     tint = MaterialTheme.colorScheme.error
                 )
             }
         },
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+        colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.background
         )
     )
@@ -962,7 +962,7 @@ private fun DigitalBenefitCard(
                 Text("Reclamar licencia", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.width(6.dp))
                 Icon(
-                    imageVector = Icons.Default.OpenInNew,
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )
@@ -1059,7 +1059,7 @@ private fun DetailedPromotionCard(
                 ) {
                     Text("Ir al beneficio")
                     Spacer(modifier = Modifier.width(4.dp))
-                    Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                 }
             }
         }

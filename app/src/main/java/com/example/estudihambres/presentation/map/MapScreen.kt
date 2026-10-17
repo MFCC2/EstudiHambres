@@ -27,6 +27,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Map
@@ -502,8 +503,12 @@ private fun PlaceListItemCard(
                             }
                             context.startActivity(navIntent)
                         } catch (_: Exception) {
-                            val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}")
-                            context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                            try {
+                                val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}")
+                                context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                            } catch (_: Exception) {
+                                // Evitar excepciones si el entorno no dispone de navegador
+                            }
                         }
                     },
                     shape = CampusShapes.small,
@@ -629,8 +634,12 @@ private fun PlaceDiscountDetailContent(
                         }
                         context.startActivity(navIntent)
                     } catch (_: Exception) {
-                        val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}")
-                        context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                        try {
+                            val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}")
+                            context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                        } catch (_: Exception) {
+                            // Evitar excepciones si el entorno no dispone de navegador
+                        }
                     }
                 },
                 shape = CampusShapes.small,
@@ -655,7 +664,7 @@ private fun PlaceDiscountDetailContent(
                     shape = CampusShapes.small,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Sitio Oficial")
                 }
