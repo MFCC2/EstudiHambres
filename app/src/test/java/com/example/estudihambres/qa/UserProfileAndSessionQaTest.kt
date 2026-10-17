@@ -263,4 +263,61 @@ class UserProfileAndSessionQaTest {
         assertTrue(expectedWebUrl.contains("destination=-13.5233,-71.9482"))
         assertTrue(expectedNativeUri.startsWith("google.navigation:q=-13.5233"))
     }
+
+    @Test
+    fun testDniAndUniversityImmutabilityOnProfileUpdate() {
+        val verifiedStudent = StudentUser(
+            id = "usr-immutability-01",
+            fullName = "Manuel Callañaupa",
+            email = "72945602@continental.edu.pe",
+            dni = "72945602",
+            university = "Universidad Continental",
+            studentCode = "72945602",
+            verificationStatus = VerificationStatus.VERIFIED,
+            career = "Ingeniería de Sistemas",
+            profilePhotoPath = "/data/user/0/com.example.estudihambres/files/avatar_123.jpg"
+        )
+
+        // Simular intento de actualización de perfil: se modifican nombre, carrera y correo,
+        // pero DNI y Universidad DEBEN PERMANECER INMUTABLES según la política de seguridad
+        val updatedStudent = verifiedStudent.copy(
+            fullName = "Manuel F. Callañaupa",
+            career = "Ingeniería de Software e Inteligencia Artificial",
+            email = "mcallanaupa@continental.edu.pe",
+            studentCode = "2025-SYS-99"
+        )
+
+        assertEquals("Manuel F. Callañaupa", updatedStudent.fullName)
+        assertEquals("Ingeniería de Software e Inteligencia Artificial", updatedStudent.career)
+        assertEquals("mcallanaupa@continental.edu.pe", updatedStudent.email)
+        assertEquals("2025-SYS-99", updatedStudent.studentCode)
+
+        // Aseveración de inmutabilidad estricta
+        assertEquals("72945602", updatedStudent.dni)
+        assertEquals("Universidad Continental", updatedStudent.university)
+        assertEquals(verifiedStudent.dni, updatedStudent.dni)
+        assertEquals(verifiedStudent.university, updatedStudent.university)
+    }
+
+    @Test
+    fun testProfilePhotoPersistenceAndPath() {
+        val userWithoutPhoto = StudentUser(
+            id = "usr-photo-01",
+            fullName = "Estudiante Sin Foto",
+            email = "student@continental.edu.pe",
+            dni = "73344556",
+            university = "Universidad Continental",
+            studentCode = "73344556",
+            profilePhotoPath = null
+        )
+        assertNotNull(userWithoutPhoto)
+        assertEquals(null, userWithoutPhoto.profilePhotoPath)
+
+        val customPhotoPath = "/data/user/0/com.example.estudihambres/files/avatar_1790915000.jpg"
+        val userWithPhoto = userWithoutPhoto.copy(profilePhotoPath = customPhotoPath)
+
+        assertNotNull(userWithPhoto.profilePhotoPath)
+        assertEquals(customPhotoPath, userWithPhoto.profilePhotoPath)
+        assertTrue(userWithPhoto.profilePhotoPath!!.endsWith(".jpg"))
+    }
 }

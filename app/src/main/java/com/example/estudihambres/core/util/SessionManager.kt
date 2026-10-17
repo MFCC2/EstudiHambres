@@ -34,6 +34,7 @@ class SessionManager(context: Context) {
         private const val KEY_CAREER = "key_career"
         private const val KEY_IS_DEV = "key_is_dev"
         private const val KEY_SCANNED_CARD_DNI = "key_scanned_card_dni"
+        private const val KEY_PROFILE_PHOTO_PATH = "key_profile_photo_path"
 
         private const val KEY_RADAR_RADIUS = "key_radar_radius"
         private const val KEY_NOTIFICATIONS_ENABLED = "key_notifications_enabled"
@@ -184,6 +185,7 @@ class SessionManager(context: Context) {
         val statusStr = accountPrefs.getString("status_$normalizedEmail", VerificationStatus.PENDING_VERIFICATION.name)
         val isDev = accountPrefs.getBoolean("isDev_$normalizedEmail", false)
         val scannedCard = accountPrefs.getString("scanned_card_$normalizedEmail", null)
+        val photo = accountPrefs.getString("photo_$normalizedEmail", null)
 
         val status = try {
             VerificationStatus.valueOf(statusStr ?: VerificationStatus.PENDING_VERIFICATION.name)
@@ -201,7 +203,8 @@ class SessionManager(context: Context) {
             verificationStatus = status,
             career = career,
             isDev = isDev,
-            scannedCardDni = scannedCard
+            scannedCardDni = scannedCard,
+            profilePhotoPath = photo
         )
     }
 
@@ -223,6 +226,7 @@ class SessionManager(context: Context) {
             .putString(KEY_CAREER, user.career)
             .putBoolean(KEY_IS_DEV, user.isDev)
             .putString(KEY_SCANNED_CARD_DNI, user.scannedCardDni)
+            .putString(KEY_PROFILE_PHOTO_PATH, user.profilePhotoPath)
             .apply()
 
         // También sincronizar en el almacén de cuentas si existe
@@ -234,12 +238,58 @@ class SessionManager(context: Context) {
                 .putString("career_$normalized", user.career)
                 .putString("status_$normalized", user.verificationStatus.name)
                 .putString("scanned_card_$normalized", user.scannedCardDni)
+                .putString("photo_$normalized", user.profilePhotoPath)
                 .apply()
         }
     }
 
     /**
+     * Actualiza la foto de perfil del usuario en sesión activa y su cuenta persistente.
+     */
+    fun updateProfilePhoto(path: String) {
+        val current = getUserSession() ?: return
+        val updated = current.copy(profilePhotoPath = path)
+        saveUserSession(updated)
+    }
+
+    /**
      * Actualiza los datos editables del perfil universitario.
+     * Por estricta seguridad y normativa SUNEDU, los campos [dni] y [university] son inmutables
+     * y se preservan exactamente como fueron validados o registrados.
+     */
+    fun updateProfile(
+        fullName: String,
+        email: String,
+        career: String,
+        studentCode: String = ""
+    ) {
+        val current = getUserSession() ?: return
+        val preservedDni = current.dni
+        val preservedUni = current.university
+
+        sessionPrefs.edit()
+            .putString(KEY_FULL_NAME, fullName)
+            .putString(KEY_EMAIL, email)
+            .putString(KEY_DNI, preservedDni)
+            .putString(KEY_UNIVERSITY, preservedUni)
+            .putString(KEY_STUDENT_CODE, studentCode)
+            .putString(KEY_CAREER, career)
+            .apply()
+
+        if (!current.isDev && isEmailRegistered(email)) {
+            val normalized = email.trim().lowercase()
+            accountPrefs.edit()
+                .putString("name_$normalized", fullName)
+                .putString("uni_$normalized", preservedUni)
+                .putString("career_$normalized", career)
+                .putString("code_$normalized", studentCode)
+                .apply()
+        }
+    }
+
+    /**
+     * Sobrecarga de compatibilidad para llamadas previas de updateProfile.
+     * Preserva inmutables el DNI y la Universidad.
      */
     fun updateProfile(
         fullName: String,
@@ -249,25 +299,7 @@ class SessionManager(context: Context) {
         studentCode: String,
         career: String
     ) {
-        val current = getUserSession()
-        sessionPrefs.edit()
-            .putString(KEY_FULL_NAME, fullName)
-            .putString(KEY_EMAIL, email)
-            .putString(KEY_DNI, dni)
-            .putString(KEY_UNIVERSITY, university)
-            .putString(KEY_STUDENT_CODE, studentCode)
-            .putString(KEY_CAREER, career)
-            .apply()
-
-        if (current != null && !current.isDev && isEmailRegistered(email)) {
-            val normalized = email.trim().lowercase()
-            accountPrefs.edit()
-                .putString("name_$normalized", fullName)
-                .putString("uni_$normalized", university)
-                .putString("career_$normalized", career)
-                .putString("code_$normalized", studentCode)
-                .apply()
-        }
+        updateProfile(fullName, email, career, studentCode)
     }
 
     /**
@@ -285,6 +317,7 @@ class SessionManager(context: Context) {
         val career = sessionPrefs.getString(KEY_CAREER, "Ingeniería de Sistemas") ?: "Ingeniería de Sistemas"
         val isDev = sessionPrefs.getBoolean(KEY_IS_DEV, false)
         val scannedCard = sessionPrefs.getString(KEY_SCANNED_CARD_DNI, null)
+        val photo = sessionPrefs.getString(KEY_PROFILE_PHOTO_PATH, null)
         val statusStr = sessionPrefs.getString(KEY_VERIFICATION_STATUS, VerificationStatus.PENDING_VERIFICATION.name)
         val status = try {
             VerificationStatus.valueOf(statusStr ?: VerificationStatus.PENDING_VERIFICATION.name)
@@ -302,7 +335,8 @@ class SessionManager(context: Context) {
             verificationStatus = status,
             career = career,
             isDev = isDev,
-            scannedCardDni = scannedCard
+            scannedCardDni = scannedCard,
+            profilePhotoPath = photo
         )
     }
 

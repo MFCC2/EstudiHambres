@@ -21,5 +21,6 @@ data class StudentUser(
     val verificationStatus: VerificationStatus = VerificationStatus.UNVERIFIED,
     val career: String = "Ingeniería de Sistemas",
     val isDev: Boolean = false,
-    val scannedCardDni: String? = null
+    val scannedCardDni: String? = null,
+    val profilePhotoPath: String? = null
 )

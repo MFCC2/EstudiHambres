@@ -1,5 +1,10 @@
 package com.example.estudihambres.presentation.profile
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,8 +32,10 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Save
@@ -68,9 +75,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import java.io.File
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -99,6 +108,24 @@ fun ProfileScreen(
     )
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { selectedUri ->
+            try {
+                val file = File(context.filesDir, "avatar_${System.currentTimeMillis()}.jpg")
+                context.contentResolver.openInputStream(selectedUri)?.use { input ->
+                    file.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                viewModel.onProfilePhotoUpdated(file.absolutePath)
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     // Ocultar mensaje de retroalimentación tras 3 segundos
     LaunchedEffect(state.saveSuccessMessage, state.errorMessage) {
@@ -150,13 +177,14 @@ fun ProfileScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Cabecera con Avatar (Logo Oficial Mapache Mamey) y estado de verificación
+            // 1. Cabecera con Avatar (Editable) y estado de verificación
             ProfileHeaderCard(
                 fullName = state.fullName,
                 university = state.university,
                 career = state.career,
                 verificationStatus = state.verificationStatus,
-                onAvatarClick = onNavigateToVerification
+                profilePhotoPath = state.profilePhotoPath,
+                onChangePhoto = { photoPickerLauncher.launch("image/*") }
             )
 
             // Indicador de Modo Desarrollador o Carnet Único Vinculado
@@ -288,19 +316,52 @@ fun ProfileScreen(
 
                     OutlinedTextField(
                         value = state.dni,
-                        onValueChange = { viewModel.onDniChange(it) },
-                        label = { Text("DNI (8 dígitos)") },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("DNI (Identidad Nacional)") },
                         leadingIcon = { Icon(Icons.Default.CreditCard, contentDescription = null) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Campo protegido",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        supportingText = {
+                            Text(
+                                text = "🔒 Bloqueado: Validado oficialmente por SUNEDU/RENIEC",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = CampusShapes.small,
                         singleLine = true
                     )
 
-                    // Selector interactivo de Universidad con sugerencias
-                    UniversityDropdownField(
-                        selectedUniversity = state.university,
-                        onUniversitySelected = { viewModel.onUniversityChange(it) }
+                    OutlinedTextField(
+                        value = state.university,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Universidad de Procedencia") },
+                        leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Campo protegido",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        supportingText = {
+                            Text(
+                                text = "🔒 Bloqueado: Acreditación académica no modificable",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = CampusShapes.small,
+                        singleLine = true
                     )
 
                     OutlinedTextField(
@@ -446,7 +507,7 @@ fun ProfileScreen(
 }
 
 /**
- * Cabecera con Avatar (Logo Oficial Mapache Mamey) y estado de verificación.
+ * Cabecera con Avatar (Editable y reactivo) y estado de verificación.
  */
 @Composable
 private fun ProfileHeaderCard(
@@ -454,8 +515,18 @@ private fun ProfileHeaderCard(
     university: String,
     career: String,
     verificationStatus: VerificationStatus,
-    onAvatarClick: () -> Unit
+    profilePhotoPath: String?,
+    onChangePhoto: () -> Unit
 ) {
+    val avatarBitmap = remember(profilePhotoPath) {
+        if (!profilePhotoPath.isNullOrBlank()) {
+            val file = File(profilePhotoPath)
+            if (file.exists()) {
+                BitmapFactory.decodeFile(file.absolutePath)
+            } else null
+        } else null
+    }
+
     Card(
         shape = CampusShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
@@ -472,18 +543,63 @@ private fun ProfileHeaderCard(
                     .size(96.dp)
                     .clip(CircleShape)
                     .border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                    .clickable { onAvatarClick() },
+                    .clickable { onChangePhoto() },
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_logo),
-                    contentDescription = "Mascota Oficial Mapache Mamey",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                if (avatarBitmap != null) {
+                    Image(
+                        bitmap = avatarBitmap.asImageBitmap(),
+                        contentDescription = "Foto de perfil del estudiante",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "Mascota Oficial Mapache Mamey",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                // Overlay de cámara para indicar que se puede cambiar la foto
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                        .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PhotoCamera,
+                        contentDescription = "Cambiar foto",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onChangePhoto,
+                shape = CampusShapes.small
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PhotoCamera,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Cambiar Foto de Perfil",
+                    style = MaterialTheme.typography.labelMedium
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = fullName.ifBlank { "Estudiante Universitario" },
                 style = MaterialTheme.typography.titleLarge,
@@ -587,65 +703,6 @@ private fun StudentMetricsRow(savings: Double, coupons: Int) {
                 Text("Rango", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("Nivel Pro ⭐", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFFFFB300))
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun UniversityDropdownField(
-    selectedUniversity: String,
-    onUniversitySelected: (String) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val universities = listOf(
-        "Universidad Continental",
-        "Universidad Nacional de San Antonio Abad del Cusco (UNSAAC)",
-        "Pontificia Universidad Católica del Perú (PUCP)",
-        "Universidad Nacional Mayor de San Marcos (UNMSM)",
-        "Universidad Nacional de Ingeniería (UNI)",
-        "Universidad Peruana de Ciencias Aplicadas (UPC)",
-        "Universidad de Lima (ULima)",
-        "Universidad Tecnológica del Perú (UTP)",
-        "Universidad Católica de Santa María (UCSM)",
-        "Universidad Nacional de San Agustín (UNSA)",
-        "Universidad San Martín de Porres (USMP)"
-    )
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        OutlinedTextField(
-            value = selectedUniversity,
-            onValueChange = onUniversitySelected,
-            label = { Text("Universidad de Procedencia") },
-            leadingIcon = { Icon(Icons.Default.School, contentDescription = null) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
-            shape = CampusShapes.small,
-            readOnly = false
-        )
-
-        val filtered = universities.filter { it.contains(selectedUniversity, ignoreCase = true) }
-        if (filtered.isNotEmpty()) {
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                filtered.forEach { uni ->
-                    DropdownMenuItem(
-                        text = { Text(uni) },
-                        onClick = {
-                            onUniversitySelected(uni)
-                            expanded = false
-                        }
-                    )
-                }
             }
         }
     }

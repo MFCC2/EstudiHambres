@@ -36,7 +36,8 @@ data class HomeUiState(
     val nearbyPromotions: List<Promotion> = emptyList(),
     val digitalPromotions: List<Promotion> = emptyList(),
     val isDev: Boolean = false,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val profilePhotoPath: String? = null
 )
 
 /**
@@ -70,7 +71,8 @@ class HomeViewModel(
                         studentName = if (isDevMode) "Modo Desarrollador (Vista Genérica)" else (user?.fullName?.ifBlank { "Estudiante Universitario" } ?: "Estudiante Universitario"),
                         university = if (isDevMode) "Entorno Sandbox / Testing" else (user?.university?.ifBlank { "Universidad Continental" } ?: "Universidad Continental"),
                         career = if (isDevMode) "Pruebas de Integración y Validación OCR" else if (!user?.studentCode.isNullOrBlank()) "${user.university} · Cód. ${user.studentCode}" else "Ingeniería de Software · Ciclo 2025-I",
-                        verificationStatus = user?.verificationStatus ?: VerificationStatus.PENDING_VERIFICATION
+                        verificationStatus = user?.verificationStatus ?: VerificationStatus.PENDING_VERIFICATION,
+                        profilePhotoPath = user?.profilePhotoPath
                     )
                 }
             }

@@ -31,7 +31,8 @@ data class ProfileUiState(
     val saveSuccessMessage: String? = null,
     val errorMessage: String? = null,
     val isDev: Boolean = false,
-    val scannedCardDni: String? = null
+    val scannedCardDni: String? = null,
+    val profilePhotoPath: String? = null
 )
 
 /**
@@ -55,6 +56,7 @@ class ProfileViewModel(
                 it.copy(
                     isDev = user.isDev,
                     scannedCardDni = user.scannedCardDni,
+                    profilePhotoPath = user.profilePhotoPath,
                     fullName = user.fullName,
                     email = user.email,
                     dni = user.dni,
@@ -71,10 +73,13 @@ class ProfileViewModel(
 
     fun onFullNameChange(value: String) = _uiState.update { it.copy(fullName = value) }
     fun onEmailChange(value: String) = _uiState.update { it.copy(email = value) }
-    fun onDniChange(value: String) = _uiState.update { it.copy(dni = value.filter { c -> c.isDigit() }.take(8)) }
-    fun onUniversityChange(value: String) = _uiState.update { it.copy(university = value) }
     fun onStudentCodeChange(value: String) = _uiState.update { it.copy(studentCode = value) }
     fun onCareerChange(value: String) = _uiState.update { it.copy(career = value) }
+    
+    fun onProfilePhotoUpdated(path: String) {
+        _uiState.update { it.copy(profilePhotoPath = path) }
+        sessionManager.updateProfilePhoto(path)
+    }
     
     fun onRadarRadiusChange(value: Float) {
         _uiState.update { it.copy(radarRadiusKm = value) }
@@ -98,10 +103,8 @@ class ProfileViewModel(
             sessionManager.updateProfile(
                 fullName = state.fullName.trim(),
                 email = state.email.trim(),
-                dni = state.dni.trim(),
-                university = state.university.trim(),
-                studentCode = state.studentCode.trim(),
-                career = state.career.trim()
+                career = state.career.trim(),
+                studentCode = state.studentCode.trim()
             )
             _uiState.update {
                 it.copy(

@@ -1,7 +1,12 @@
 package com.example.estudihambres.presentation.home
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.asImageBitmap
+import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -109,6 +114,7 @@ fun HomeScreen(
         topBar = {
             TopAppBarDashboard(
                 studentName = state.studentName,
+                profilePhotoPath = state.profilePhotoPath,
                 onAvatarClick = onNavigateToProfile,
                 onLogout = onLogout
             )
@@ -137,6 +143,7 @@ fun HomeScreen(
                     university = state.university,
                     career = state.career,
                     verificationStatus = state.verificationStatus,
+                    profilePhotoPath = state.profilePhotoPath,
                     onAvatarClick = onNavigateToProfile
                 )
             }
@@ -326,9 +333,19 @@ fun HomeScreen(
 @Composable
 private fun TopAppBarDashboard(
     studentName: String,
+    profilePhotoPath: String?,
     onAvatarClick: () -> Unit,
     onLogout: () -> Unit
 ) {
+    val avatarBitmap = remember(profilePhotoPath) {
+        if (!profilePhotoPath.isNullOrBlank()) {
+            val file = File(profilePhotoPath)
+            if (file.exists()) {
+                BitmapFactory.decodeFile(file.absolutePath)
+            } else null
+        } else null
+    }
+
     CenterAlignedTopAppBar(
         navigationIcon = {
             Box(
@@ -340,12 +357,21 @@ private fun TopAppBarDashboard(
                     .clickable { onAvatarClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_logo),
-                    contentDescription = "Ir a Mi Perfil",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                if (avatarBitmap != null) {
+                    Image(
+                        bitmap = avatarBitmap.asImageBitmap(),
+                        contentDescription = "Ir a Mi Perfil",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "Ir a Mi Perfil",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
         },
         title = {
@@ -371,11 +397,27 @@ private fun TopAppBarDashboard(
         },
         actions = {
             IconButton(onClick = onAvatarClick) {
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = "Configurar Perfil",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                if (avatarBitmap != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                    ) {
+                        Image(
+                            bitmap = avatarBitmap.asImageBitmap(),
+                            contentDescription = "Configurar Perfil",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "Configurar Perfil",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
             IconButton(onClick = onLogout) {
                 Icon(
@@ -400,8 +442,18 @@ private fun StudentGreetingHeader(
     university: String,
     career: String,
     verificationStatus: VerificationStatus,
+    profilePhotoPath: String?,
     onAvatarClick: () -> Unit
 ) {
+    val avatarBitmap = remember(profilePhotoPath) {
+        if (!profilePhotoPath.isNullOrBlank()) {
+            val file = File(profilePhotoPath)
+            if (file.exists()) {
+                BitmapFactory.decodeFile(file.absolutePath)
+            } else null
+        } else null
+    }
+
     Card(
         shape = CampusShapes.medium,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
@@ -422,12 +474,21 @@ private fun StudentGreetingHeader(
                     .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_logo),
-                    contentDescription = "Foto de perfil",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                if (avatarBitmap != null) {
+                    Image(
+                        bitmap = avatarBitmap.asImageBitmap(),
+                        contentDescription = "Foto de perfil",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "Foto de perfil",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {

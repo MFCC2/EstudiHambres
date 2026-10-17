@@ -416,3 +416,31 @@ Resolución integral de las fallas críticas reportadas en pruebas en dispositiv
    - Incorporación de 8 nuevas pruebas unitarias y de QA validando rechazo de contraseñas erróneas, cuentas inexistentes, duplicados, modo Dev, carnet único y URLs de navegación.
    - Ejecución de `testDebugUnitTest` y `assembleDebug`: 92 pruebas ejecutadas con 100% de éxito (`BUILD SUCCESSFUL in 27s`).
 
+---
+
+## [Auditoría de Seguridad, Inmutabilidad de Identidad Académica y Avatar de Perfil Modificable - v1.2.2] - 2026-10-17
+**Rama:** `develop`
+
+### Resumen de la Entrega
+Auditoría integral de seguridad, reforzamiento visual y hardening de campos sensibles según solicitud de auditoría:
+1. **Inmutabilidad Estricta de Campos Oficiales de Identidad (`ProfileScreen.kt`, `ProfileViewModel.kt`, `SessionManager.kt`)**:
+   - Los campos **DNI** y **UNIVERSIDAD** quedan permanentemente bloqueados para edición por parte del usuario, al constituir acreditaciones oficiales validadas mediante SUNEDU y RENIEC.
+   - En `ProfileScreen.kt`, se sustituyó el dropdown interactivo de universidades y el campo de texto editable de DNI por `OutlinedTextField` de solo lectura (`readOnly = true`) acompañados de:
+     - Icono de candado de seguridad `Icons.Default.Lock`.
+     - Textos de apoyo explicativos: `"🔒 Bloqueado: Validado oficialmente por SUNEDU/RENIEC"` y `"🔒 Bloqueado: Acreditación académica no modificable"`.
+   - En `SessionManager.kt` y `ProfileViewModel.kt`, la función `updateProfile()` asegura a nivel de lógica de negocio y persistencia que los valores de `dni` y `university` provienen exclusivamente de la sesión verificada y no pueden ser sobreescritos ni alterados por payloads de cliente.
+
+2. **Personalización y Modificación Dinámica de la Foto de Perfil (`ProfileScreen.kt`, `HomeScreen.kt`, `SessionManager.kt`, `StudentUser.kt`)**:
+   - Integración de selector nativo de imágenes con `ActivityResultContracts.GetContent()` para permitir al estudiante cambiar su avatar desde la galería del dispositivo.
+   - Copia segura del archivo en almacenamiento interno aislado (`context.filesDir/avatar_*.jpg`), evitando problemas de expiración de URIs y persistiendo la ruta en `KEY_PROFILE_PHOTO_PATH` de `SessionManager`.
+   - Visualización reactiva del avatar personalizado en:
+     - `ProfileScreen.kt`: En `ProfileHeaderCard` con badge superpuesto de cámara `Icons.Default.PhotoCamera` y botón dedicado `"Cambiar Foto de Perfil"`.
+     - `HomeScreen.kt`: En la barra superior `TopAppBarDashboard` y en la tarjeta de saludo institucional `StudentGreetingHeader`.
+     - Fallback automático al logotipo oficial (Mapache Mamey) cuando no existe foto personalizada.
+
+3. **Pruebas de Calidad QA y Verificación de Compilación**:
+   - Incorporación de pruebas en `UserProfileAndSessionQaTest.kt`:
+     - `testDniAndUniversityImmutabilityOnProfileUpdate()`: Comprueba la inmutabilidad de DNI y Universidad ante intentos de modificación de perfil.
+     - `testProfilePhotoPersistenceAndPath()`: Comprueba la asignación y persistencia de `profilePhotoPath`.
+   - Ejecución exitosa de la suite completa de pruebas unitarias y generación de APK debug: `./gradlew testDebugUnitTest assembleDebug` (`BUILD SUCCESSFUL in 39s`).
+
