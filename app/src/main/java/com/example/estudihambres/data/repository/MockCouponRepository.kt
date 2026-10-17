@@ -14,30 +14,48 @@ class MockCouponRepository : CouponRepository {
     private val localCoupons = listOf(
         CouponLocal(
             id = "cp-01",
-            title = "2x1 en Pizzas Medianas",
-            description = "Válido de lunes a jueves presentando credencial activa de CampusPass.",
+            title = "2x1 en Pizzas Medianas Pan Pizza",
+            description = "Válido de lunes a jueves en salón y para llevar con carnet universitario activo.",
             discountPercentage = 50,
-            placeId = "pl-01",
-            placeName = "Pizzería La Previa",
+            placeId = "pl-02",
+            placeName = "Pizza Hut",
             expirationDate = "2026-12-31"
         ),
         CouponLocal(
             id = "cp-02",
-            title = "25% off en Combo Doble",
-            description = "Incluye papas rústicas y bebida universitaria.",
-            discountPercentage = 25,
-            placeId = "pl-02",
-            placeName = "Burger Campus",
+            title = "Combo Clásica Universitaria a S/ 14.90",
+            description = "Hamburguesa clásica a la parrilla + papas medianas + bebida personal con carnet.",
+            discountPercentage = 35,
+            placeId = "pl-01",
+            placeName = "Bembos",
             expirationDate = "2026-11-30"
         ),
         CouponLocal(
             id = "cp-03",
-            title = "Café Americano Gratis",
-            description = "Por compras mayores a S/ 15 en repostería durante época de parciales.",
-            discountPercentage = 100,
-            placeId = "pl-03",
-            placeName = "Café & Tesis",
-            expirationDate = "2026-10-31"
+            title = "2x1 en Frappuccinos y Café del Día",
+            description = "2x1 en bebidas seleccionadas de lunes a jueves en tamaño Alto para universitarios.",
+            discountPercentage = 50,
+            placeId = "cu-02",
+            placeName = "Starbucks Coffee",
+            expirationDate = "2026-12-31"
+        ),
+        CouponLocal(
+            id = "cp-04",
+            title = "2x1 en Entradas 2D de Lunes a Viernes",
+            description = "Medio precio o 2x1 en entradas regulares 2D presentando carnet universitario activo.",
+            discountPercentage = 50,
+            placeId = "cu-04",
+            placeName = "Cineplanet",
+            expirationDate = "2026-12-31"
+        ),
+        CouponLocal(
+            id = "cp-05",
+            title = "Mega Box Estudiantil a S/ 14.90",
+            description = "2 piezas de pollo crujiente + papas + puré + ensalada y gaseosa con carnet.",
+            discountPercentage = 30,
+            placeId = "cu-05",
+            placeName = "KFC Perú",
+            expirationDate = "2026-12-31"
         )
     )
 
