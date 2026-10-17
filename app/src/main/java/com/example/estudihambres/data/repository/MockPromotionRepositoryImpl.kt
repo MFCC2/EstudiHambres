@@ -291,6 +291,20 @@ class MockPromotionRepositoryImpl : PromotionRepository {
             distanceText = "Cusco & Nacional",
             originalPrice = "S/ 70.00",
             discountedPrice = "S/ 35.00"
+        ),
+        Promotion(
+            id = "p-21",
+            title = "Librerías Crisol: 20% en Textos Universitarios",
+            description = "20% de descuento en libros seleccionados de ingeniería, ciencias, humanidades y literatura académica presentando carnet universitario activo.",
+            category = "Educación",
+            discountTag = "20% DCTO",
+            partnerName = "Librerías Crisol",
+            estimatedSavingsSoles = 24.00,
+            isFeatured = false,
+            url = "https://www.crisol.com.pe",
+            distanceText = "400m · 5 min",
+            originalPrice = "S/ 120.00",
+            discountedPrice = "S/ 96.00"
         )
     )
 
