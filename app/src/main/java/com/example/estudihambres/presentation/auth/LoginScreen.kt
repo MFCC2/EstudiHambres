@@ -37,18 +37,28 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.imeNestedScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +71,8 @@ import androidx.compose.ui.unit.sp
 import com.example.estudihambres.R
 import com.example.estudihambres.core.theme.CampusSecondary
 import com.example.estudihambres.core.theme.CampusShapes
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Pantalla de inicio de sesión de CampusPass (presentation/auth).
@@ -73,6 +85,7 @@ import com.example.estudihambres.core.theme.CampusShapes
  * @param onBypassClick Acceso directo para pruebas locales y desarrollo rápido.
  * @param modifier Modificador Compose.
  */
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel,
@@ -85,6 +98,19 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+    val isImeVisible = WindowInsets.isImeVisible
+    val passwordBringIntoViewRequester = remember { BringIntoViewRequester() }
+    var isPasswordFocused by remember { mutableStateOf(false) }
+
+    // Auto-desplazamiento inteligente al enfocar la contraseña o al abrirse el teclado
+    LaunchedEffect(isImeVisible, isPasswordFocused) {
+        if (isImeVisible && isPasswordFocused) {
+            delay(150)
+            passwordBringIntoViewRequester.bringIntoView()
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -99,6 +125,7 @@ fun LoginScreen(
                 )
             )
             .imePadding()
+            .imeNestedScroll()
             .verticalScroll(scrollState)
             .padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.Center,
@@ -241,7 +268,19 @@ fun LoginScreen(
                         onDone = { viewModel.login(onLoginSuccess) }
                     ),
                     shape = CampusShapes.small,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .bringIntoViewRequester(passwordBringIntoViewRequester)
+                        .onFocusChanged { focusState ->
+                            isPasswordFocused = focusState.isFocused
+                            if (focusState.isFocused) {
+                                coroutineScope.launch {
+                                    delay(150)
+                                    passwordBringIntoViewRequester.bringIntoView()
+                                    scrollState.animateScrollTo(scrollState.maxValue)
+                                }
+                            }
+                        }
                 )
 
                 // Alerta de error en caso de fallo de autenticación
@@ -309,7 +348,8 @@ fun LoginScreen(
             }
         }
 
-        // Espaciador de despeje para permitir desplazamiento cómodo al abrir el teclado virtual
-        Spacer(modifier = Modifier.height(60.dp))
+        // Espaciador de despeje dinámico: se amplía con el teclado virtual abierto
+        val bottomClearance = if (isImeVisible) 240.dp else 60.dp
+        Spacer(modifier = Modifier.height(bottomClearance))
     }
 }
