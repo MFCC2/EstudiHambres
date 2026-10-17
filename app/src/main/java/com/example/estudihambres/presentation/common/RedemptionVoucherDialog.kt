@@ -146,21 +146,23 @@ fun RedemptionVoucherDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Tarjeta estilo Voucher / Boleto
+                // Tarjeta estilo Voucher / Boleto universitario
                 Card(
                     shape = CampusShapes.medium,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
+                            .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Surface(
-                            shape = CampusShapes.small,
+                            shape = RoundedCornerShape(8.dp),
                             color = Color(0xFFFF6D00)
                         ) {
                             Text(
@@ -168,7 +170,7 @@ fun RedemptionVoucherDialog(
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                             )
                         }
 
@@ -179,19 +181,19 @@ fun RedemptionVoucherDialog(
                             textAlign = TextAlign.Center
                         )
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
 
-                        // Código oficial en monospace
+                        // Código oficial en monospace con borde refinado
                         Surface(
-                            shape = CampusShapes.small,
-                            color = MaterialTheme.colorScheme.background,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.04f),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -200,7 +202,8 @@ fun RedemptionVoucherDialog(
                                         text = "CÓDIGO DE VALIDACIÓN:",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontSize = 10.sp
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
                                     )
                                     Text(
                                         text = coupon.redemptionCode,
@@ -214,7 +217,8 @@ fun RedemptionVoucherDialog(
 
                                 OutlinedButton(
                                     onClick = copyToClipboard,
-                                    shape = CampusShapes.small,
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isCopied) Color(0xFF00C853) else MaterialTheme.colorScheme.primary),
                                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                                 ) {
                                     Icon(
@@ -226,7 +230,9 @@ fun RedemptionVoucherDialog(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = if (isCopied) "Copiado" else "Copiar",
-                                        style = MaterialTheme.typography.labelSmall
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isCopied) Color(0xFF00C853) else MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
@@ -239,6 +245,7 @@ fun RedemptionVoucherDialog(
                             text = coupon.redemptionCode,
                             style = MaterialTheme.typography.labelSmall,
                             fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
