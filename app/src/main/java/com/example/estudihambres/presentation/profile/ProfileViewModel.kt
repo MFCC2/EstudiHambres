@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.example.estudihambres.domain.model.RedeemedCoupon
+
 /**
  * Estado UI para la gestión y configuración del perfil del estudiante universitario.
  */
@@ -24,7 +26,8 @@ data class ProfileUiState(
     val career: String = "",
     val verificationStatus: VerificationStatus = VerificationStatus.PENDING_VERIFICATION,
     val accumulatedSavings: Double = 142.50,
-    val couponsRedeemed: Int = 8,
+    val couponsRedeemed: Int = 3,
+    val redeemedCoupons: List<RedeemedCoupon> = emptyList(),
     val radarRadiusKm: Float = 30f,
     val notificationsEnabled: Boolean = true,
     val isSaving: Boolean = false,
@@ -51,6 +54,8 @@ class ProfileViewModel(
 
     fun loadUserProfile() {
         val user = sessionManager.getUserSession()
+        val coupons = sessionManager.getRedeemedCoupons()
+        val savings = sessionManager.getAccumulatedSavings()
         if (user != null) {
             _uiState.update {
                 it.copy(
@@ -65,9 +70,32 @@ class ProfileViewModel(
                     career = user.career,
                     verificationStatus = user.verificationStatus,
                     radarRadiusKm = sessionManager.getRadarRadiusKm(),
-                    notificationsEnabled = sessionManager.getNotificationsEnabled()
+                    notificationsEnabled = sessionManager.getNotificationsEnabled(),
+                    accumulatedSavings = savings,
+                    couponsRedeemed = coupons.size,
+                    redeemedCoupons = coupons
                 )
             }
+        } else {
+            _uiState.update {
+                it.copy(
+                    accumulatedSavings = savings,
+                    couponsRedeemed = coupons.size,
+                    redeemedCoupons = coupons
+                )
+            }
+        }
+    }
+
+    fun refreshCouponsAndSavings() {
+        val coupons = sessionManager.getRedeemedCoupons()
+        val savings = sessionManager.getAccumulatedSavings()
+        _uiState.update {
+            it.copy(
+                accumulatedSavings = savings,
+                couponsRedeemed = coupons.size,
+                redeemedCoupons = coupons
+            )
         }
     }
 

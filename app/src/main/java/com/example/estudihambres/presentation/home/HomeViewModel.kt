@@ -30,7 +30,7 @@ data class HomeUiState(
     val accumulatedSavings: Double = 142.50,
     val searchQuery: String = "",
     val selectedCategory: String = "Todas",
-    val categories: List<String> = listOf("Todas", "🔥 Destacados", "🍕 Comida", "💻 Software", "🚌 Transporte"),
+    val categories: List<String> = listOf("Todas", "🔥 Destacados", "🍕 Comida", "💻 Software", "🎬 Ocio & Cine", "📚 Educación", "🚌 Transporte"),
     val filteredPromotions: List<Promotion> = emptyList(),
     val popularPromotions: List<Promotion> = emptyList(),
     val nearbyPromotions: List<Promotion> = emptyList(),
@@ -49,7 +49,8 @@ data class HomeUiState(
  */
 class HomeViewModel(
     private val promotionRepository: PromotionRepository = MockPromotionRepositoryImpl(),
-    private val authRepository: AuthRepository = MockAuthRepositoryImpl()
+    private val authRepository: AuthRepository = MockAuthRepositoryImpl(),
+    private val sessionManager: com.example.estudihambres.core.util.SessionManager? = com.example.estudihambres.core.util.SessionManager.getInstanceOrNull()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -61,7 +62,13 @@ class HomeViewModel(
         loadData()
     }
 
+    fun refreshSavings() {
+        val savings = sessionManager?.getAccumulatedSavings() ?: 142.50
+        _uiState.update { it.copy(accumulatedSavings = savings) }
+    }
+
     private fun loadData() {
+        refreshSavings()
         viewModelScope.launch {
             authRepository.getCurrentUser().collect { user ->
                 val isDevMode = user?.isDev ?: false
@@ -81,8 +88,8 @@ class HomeViewModel(
         viewModelScope.launch {
             promotionRepository.getPromotions().collect { list ->
                 allPromotions.value = list
-                val popular = list.filter { it.isFeatured || it.id in listOf("p-02", "p-07", "p-03", "p-01") }
-                val nearby = list.filter { it.category == "Comida" || it.distanceText.contains("m") }
+                val popular = list.filter { it.isFeatured || it.id in listOf("p-02", "p-07", "p-03", "p-01", "p-10", "p-11", "p-12") }
+                val nearby = list.filter { it.category in listOf("Comida", "Entretenimiento", "Educación") || it.distanceText.contains("m") }
                 val digital = list.filter { it.category == "Herramientas digitales" }
 
                 _uiState.update {
@@ -118,6 +125,8 @@ class HomeViewModel(
                 category.contains("Comida", ignoreCase = true) -> promo.category.equals("Comida", ignoreCase = true)
                 category.contains("Software", ignoreCase = true) -> promo.category.equals("Herramientas digitales", ignoreCase = true)
                 category.contains("Transporte", ignoreCase = true) -> promo.category.equals("Transporte", ignoreCase = true)
+                category.contains("Cine", ignoreCase = true) || category.contains("Ocio", ignoreCase = true) -> promo.category.equals("Entretenimiento", ignoreCase = true)
+                category.contains("Educación", ignoreCase = true) || category.contains("Libros", ignoreCase = true) -> promo.category.equals("Educación", ignoreCase = true)
                 else -> promo.category.contains(category, ignoreCase = true)
             }
             val matchesQuery = query.isEmpty() ||

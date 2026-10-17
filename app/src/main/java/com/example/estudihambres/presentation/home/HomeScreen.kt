@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -82,8 +83,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.estudihambres.R
 import com.example.estudihambres.core.theme.CampusShapes
+import com.example.estudihambres.core.util.SessionManager
 import com.example.estudihambres.domain.model.Promotion
+import com.example.estudihambres.domain.model.RedeemedCoupon
 import com.example.estudihambres.domain.model.VerificationStatus
+import com.example.estudihambres.presentation.common.RedemptionVoucherDialog
 import java.io.File
 
 /**
@@ -111,6 +115,7 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var selectedPromoForDetail by remember { mutableStateOf<Promotion?>(null) }
+    var redeemedCouponForDialog by remember { mutableStateOf<RedeemedCoupon?>(null) }
 
     val openUrl: (String) -> Unit = { url ->
         try {
@@ -234,7 +239,7 @@ fun HomeScreen(
                     )
 
                     // Búsquedas sugeridas en 1 solo tap
-                    val quickSearchTags = listOf("Bembos", "Spotify", "GitHub", "Café", "Notion", "2x1")
+                    val quickSearchTags = listOf("Bembos", "Cineplanet", "Spotify", "Apple", "GitHub", "KFC", "JetBrains", "2x1")
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -421,7 +426,32 @@ fun HomeScreen(
                 promotion = promo,
                 onDismiss = { selectedPromoForDetail = null },
                 onOpenUrl = openUrl,
-                onNavigateToMap = onNavigateToMap
+                onNavigateToMap = onNavigateToMap,
+                onRedeemCoupon = { p ->
+                    val sessionManager = SessionManager.getInstance(context)
+                    val coupon = sessionManager.redeemCoupon(
+                        title = p.title,
+                        partnerName = p.partnerName,
+                        category = p.category,
+                        discountBadge = p.discountTag,
+                        couponId = p.id
+                    )
+                    selectedPromoForDetail = null
+                    redeemedCouponForDialog = coupon
+                    viewModel.refreshSavings()
+                }
+            )
+        }
+
+        // Diálogo de comprobante oficial de cupón canjeado
+        redeemedCouponForDialog?.let { coupon ->
+            RedemptionVoucherDialog(
+                coupon = coupon,
+                onDismiss = {
+                    redeemedCouponForDialog = null
+                    viewModel.refreshSavings()
+                },
+                onNavigateToProfile = onNavigateToProfile
             )
         }
     }
@@ -587,7 +617,9 @@ private fun StudentGreetingHeader(
 
     Card(
         shape = CampusShapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onAvatarClick() }
@@ -702,74 +734,106 @@ private fun VerificationBadge(status: VerificationStatus) {
 private fun SavingsHighlightCard(accumulatedSavings: Double) {
     Card(
         shape = CampusShapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                width = 1.dp,
+                brush = Brush.horizontalGradient(
+                    listOf(
+                        Color(0xFF81C784).copy(alpha = 0.5f),
+                        Color(0xFF64B5F6).copy(alpha = 0.5f)
+                    )
+                ),
+                shape = CampusShapes.medium
+            )
     ) {
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Savings,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "TU AHORRO ACUMULADO",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            text = "S/ ${"%.2f".format(accumulatedSavings)}",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFF0D6838),
+                            Color(0xFF107C41),
+                            Color(0xFF00695C)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color.White.copy(alpha = 0.25f)
-                        ) {
+                    )
+                )
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color.White.copy(alpha = 0.18f))
+                            .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Savings,
+                            contentDescription = null,
+                            tint = Color(0xFFFFD54F),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "+28% este mes",
+                                text = "TU AHORRO ACUMULADO",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                color = Color.White.copy(alpha = 0.88f),
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.6.sp
                             )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "🪙", fontSize = 12.sp)
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = "S/ ${"%.2f".format(accumulatedSavings)}",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color.White.copy(alpha = 0.22f)
+                            ) {
+                                Text(
+                                    text = "CampusPass Ahorro",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Color.White.copy(alpha = 0.2f)
-            ) {
-                Text(
-                    text = "Ver ›",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White.copy(alpha = 0.22f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f))
+                ) {
+                    Text(
+                        text = "Activo ›",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
     }
@@ -1218,11 +1282,14 @@ private fun PromotionDetailSheet(
     promotion: Promotion,
     onDismiss: () -> Unit,
     onOpenUrl: (String) -> Unit,
-    onNavigateToMap: () -> Unit
+    onNavigateToMap: () -> Unit,
+    modifier: Modifier = Modifier,
+    onRedeemCoupon: (Promotion) -> Unit = {}
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        shape = CampusShapes.large
+        shape = CampusShapes.large,
+        modifier = modifier
     ) {
         Column(
             modifier = Modifier
@@ -1305,13 +1372,27 @@ private fun PromotionDetailSheet(
 
             Spacer(modifier = Modifier.height(6.dp))
 
+            // Botón Principal: Canjear cupón y generar token
             Button(
+                onClick = {
+                    onRedeemCoupon(promotion)
+                },
+                shape = CampusShapes.small,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Icon(Icons.Default.LocalOffer, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("🎟️ Canjear Cupón y Generar Token", fontWeight = FontWeight.Bold)
+            }
+
+            OutlinedButton(
                 onClick = {
                     onDismiss()
                     onOpenUrl(promotion.url)
                 },
                 shape = CampusShapes.small,
-                modifier = Modifier.fillMaxWidth().height(48.dp)
+                modifier = Modifier.fillMaxWidth().height(46.dp)
             ) {
                 Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))

@@ -78,9 +78,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.estudihambres.core.theme.CampusShapes
+import com.example.estudihambres.core.util.SessionManager
 import com.example.estudihambres.data.repository.MockPlaceRepository
 import com.example.estudihambres.data.repository.PlayServicesLocationRepositoryImpl
 import com.example.estudihambres.domain.model.Place
+import com.example.estudihambres.domain.model.RedeemedCoupon
+import com.example.estudihambres.presentation.common.RedemptionVoucherDialog
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -121,6 +124,8 @@ fun MapScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var redeemedCouponForDialog by remember { mutableStateOf<RedeemedCoupon?>(null) }
 
     // Solicitar permiso de ubicación al ingresar
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -520,9 +525,29 @@ fun MapScreen(
             ) {
                 PlaceDiscountDetailContent(
                     place = place,
-                    onDismiss = { viewModel.onPlaceSelected(null) }
+                    onDismiss = { viewModel.onPlaceSelected(null) },
+                    onRedeemCoupon = { p ->
+                        val sessionManager = SessionManager.getInstance(context)
+                        val coupon = sessionManager.redeemCoupon(
+                            title = p.discountDescription,
+                            partnerName = p.name,
+                            category = p.category,
+                            discountBadge = p.discountBadge,
+                            couponId = p.id
+                        )
+                        viewModel.onPlaceSelected(null)
+                        redeemedCouponForDialog = coupon
+                    }
                 )
             }
+        }
+
+        // 6. Diálogo interactivo del vale de canje con código de barras y token único
+        redeemedCouponForDialog?.let { coupon ->
+            RedemptionVoucherDialog(
+                coupon = coupon,
+                onDismiss = { redeemedCouponForDialog = null }
+            )
         }
     }
 }
@@ -922,10 +947,12 @@ private fun EmptyPlacesCard(
 @Composable
 private fun PlaceDiscountDetailContent(
     place: Place,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    onRedeemCoupon: (Place) -> Unit = {}
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
@@ -1056,7 +1083,7 @@ private fun PlaceDiscountDetailContent(
                 }
 
                 Button(
-                    onClick = onDismiss,
+                    onClick = { onRedeemCoupon(place) },
                     shape = CampusShapes.small,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                     modifier = Modifier.weight(1f)

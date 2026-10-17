@@ -5,9 +5,11 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -77,15 +79,21 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import java.io.File
+import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.estudihambres.R
 import com.example.estudihambres.core.theme.CampusShapes
 import com.example.estudihambres.core.util.SessionManager
+import com.example.estudihambres.domain.model.RedeemedCoupon
 import com.example.estudihambres.domain.model.VerificationStatus
+import com.example.estudihambres.presentation.common.RedemptionVoucherDialog
 import kotlinx.coroutines.delay
 
 /**
@@ -133,6 +141,21 @@ fun ProfileScreen(
     }
 
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var selectedCouponForVoucher by remember { mutableStateOf<RedeemedCoupon?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshCouponsAndSavings()
+    }
+
+    selectedCouponForVoucher?.let { coupon ->
+        RedemptionVoucherDialog(
+            coupon = coupon,
+            onDismiss = {
+                selectedCouponForVoucher = null
+                viewModel.refreshCouponsAndSavings()
+            }
+        )
+    }
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -310,6 +333,14 @@ fun ProfileScreen(
             StudentMetricsRow(
                 savings = state.accumulatedSavings,
                 coupons = state.couponsRedeemed
+            )
+
+            // 2.1. Sección de Cupones y Vales Canjeados Activos
+            RedeemedCouponsSection(
+                coupons = state.redeemedCoupons,
+                onCouponClick = { coupon ->
+                    selectedCouponForVoucher = coupon
+                }
             )
 
             // 3. Formulario de Datos Académicos y Personales
@@ -654,7 +685,9 @@ private fun ProfileHeaderCard(
 
     Card(
         shape = CampusShapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -663,6 +696,22 @@ private fun ProfileHeaderCard(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+            ) {
+                Text(
+                    text = "REPÚBLICA DEL PERÚ · CARNET DIGITAL",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.5.sp,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
             Box(
                 modifier = Modifier
                     .size(96.dp)
@@ -828,6 +877,200 @@ private fun StudentMetricsRow(savings: Double, coupons: Int) {
                 Text("Rango", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("Nivel Pro ⭐", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color(0xFFFFB300))
+            }
+        }
+    }
+}
+
+/**
+ * Sección interactiva que lista los cupones y vales canjeados por el estudiante.
+ * Permite visualizar el código, código de barras y estado de vigencia de cada cupón.
+ */
+@Composable
+private fun RedeemedCouponsSection(
+    coupons: List<RedeemedCoupon>,
+    onCouponClick: (RedeemedCoupon) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Mis Cupones y Vales Canjeados 🎟️",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Surface(
+                shape = CampusShapes.small,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            ) {
+                Text(
+                    text = "${coupons.size} activos",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        if (coupons.isEmpty()) {
+            Card(
+                shape = CampusShapes.medium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(text = "🎟️", fontSize = 28.sp)
+                    Text(
+                        text = "Aún no has canjeado cupones",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Explora el Radar de comercios o el Dashboard principal para canjear beneficios universitarios al instante.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            coupons.forEach { coupon ->
+                RedeemedCouponCardItem(
+                    coupon = coupon,
+                    onClick = { onCouponClick(coupon) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RedeemedCouponCardItem(
+    coupon: RedeemedCoupon,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        shape = CampusShapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = if (coupon.isUsed) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            else MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (coupon.isUsed) 0.dp else 2.dp),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (coupon.isUsed) MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            else MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CampusShapes.small)
+                    .background(
+                        if (coupon.isUsed) MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocalOffer,
+                    contentDescription = null,
+                    tint = if (coupon.isUsed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = coupon.partnerName,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Surface(
+                        shape = CampusShapes.small,
+                        color = if (coupon.isUsed) MaterialTheme.colorScheme.surfaceVariant else Color(0xFFFF6D00)
+                    ) {
+                        Text(
+                            text = if (coupon.isUsed) "USADO" else coupon.discountBadge,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (coupon.isUsed) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = coupon.title,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = coupon.redemptionCode,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                    Text(
+                        text = "Ahorro: +S/ ${"%.2f".format(coupon.savingsAmountSoles)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF007A33)
+                    )
+                }
             }
         }
     }

@@ -1,6 +1,6 @@
 # Informe de Aseguramiento de Calidad (QA Report) - CampusPass (EstudiHambres)
 
-**Versión del Sistema:** 1.2.4 (Build 6)  
+**Versión del Sistema:** 1.2.7 (Build 8)  
 **Fecha:** 17 de Octubre de 2026  
 **Rama:** `develop` / `main`  
 **Agente Responsable:** Agente 5 (QA & Pruebas Unitarias) & Agente 6 (GitFlow & Release Manager)  
@@ -10,21 +10,21 @@
 
 ## 1. Resumen Ejecutivo
 
-Se completó la batería exhaustiva de aseguramiento de calidad (QA) sobre el sistema **EstudiHambres (CampusPass)** tras las mejoras de seguridad, blindaje de identidad estudiantil, estabilización multi-frame de OCR, optimización del mapa interactivo (círculo de radar, selector dinámico de 5/15/30 km, buscador en vivo, alternancia de campus Cusco/Lima, carrusel inferior de locales y cálculo de tiempo de caminata a pie).
+Se completó la batería exhaustiva de aseguramiento de calidad (QA) sobre el sistema **EstudiHambres (CampusPass)** tras las mejoras de ergonomía de teclado (insets `imePadding`), ampliación de catálogo a promociones 100% reales, modernización visual y suite integral de pruebas con diversas personas estudiantiles.
 
 | Métrica | Valor Auditado | Estado |
 |---|---|:---:|
-| **Total de Pruebas Unitarias Ejecutadas** | **109 pruebas automatizadas** | ✅ Superado (Meta: >=50) |
-| **Pruebas Exitosas** | **109 (100%)** | ✅ Óptimo (1.012s) |
+| **Total de Pruebas Unitarias Ejecutadas** | **129 pruebas automatizadas** | ✅ Superado (Meta: >=50) |
+| **Pruebas Exitosas** | **129 (100%)** | ✅ Óptimo (16s) |
 | **Pruebas Fallidas / Errores** | **0 (0%)** | ✅ Cero defectos |
-| **Análisis Estático Android Lint** | `BUILD SUCCESSFUL in 51s` (0 errores) | ✅ Certificado |
-| **Compilación Gradle** | `BUILD SUCCESSFUL in 25s` | ✅ Limpio |
+| **Análisis Estático Android Lint** | `BUILD SUCCESSFUL in 49s` (0 errores) | ✅ Certificado |
+| **Compilación Gradle** | `BUILD SUCCESSFUL in 14s` | ✅ Limpio |
 | **Advertencias de Compilación** | 0 advertencias | ✅ Certificado |
 | **Artefacto Binario Generado** | `app/build/outputs/apk/debug/app-debug.apk` | ✅ Verificado |
 
 ---
 
-## 2. Detalle de Suites de Pruebas Automatizadas (109 Casos)
+## 2. Detalle de Suites de Pruebas Automatizadas (129 Casos)
 
 ### A. Autenticación, Credenciales y Bypass Dev (`AuthAndCredentialsQaTest` - 16 Pruebas)
 * **Ubicación:** `app/src/test/java/com/example/estudihambres/qa/AuthAndCredentialsQaTest.kt`
@@ -99,6 +99,34 @@ Se completó la batería exhaustiva de aseguramiento de calidad (QA) sobre el si
 * `FilterCommercesByDistanceUseCaseTest` (4 pruebas)
 * `PromotionFilteringTest` (2 pruebas)
 
+### H. Canje Funcional de Cupones, Tokens y Ahorros (`FunctionalRedemptionAndSavingsQaTest` - 10 Pruebas)
+* **Ubicación:** `app/src/test/java/com/example/estudihambres/qa/FunctionalRedemptionAndSavingsQaTest.kt`
+* **Escenarios Clave Validados:**
+  1. Generación de código token oficial siguiendo estrictamente el estándar `CP-[A-Z0-9]{4}-[A-Z0-9]{4}`.
+  2. Prefijo automático de 4 caracteres extraído y sanitizado del nombre del aliado (`Bembos` -> `CP-BEMB-`).
+  3. Cálculo matemático de ahorros porcentuales (50% DCTO -> S/ 16.00, 30% OFF -> S/ 9.60).
+  4. Cálculo de promociones 2x1 (S/ 16.50 de ahorro medio estudiantil).
+  5. Cálculo de productos y consumos gratuitos (S/ 14.00 de ahorro en café/bebidas).
+  6. Cálculo de precios fijos promocionales ("S/ 11.90" calculando diferencia real contra precio estándar).
+  7. Ventana de expiración institucional estricta de 48 horas (`expiresAtMillis - redeemedAtMillis = 48h`).
+  8. Detección automática de cupón expirado (`isExpired = true` al sobrepasar el límite).
+  9. Formateadores legibles en español peruano de fechas de canje y expiración.
+  10. Unicidad probabilística garantizada: 50 cupones generados en ráfaga producen 50 tokens únicos distintos.
+
+### I. Experiencia de Usuario y Personas Estudiantiles (`UserExperienceAndPersonaQaTest` - 10 Pruebas)
+* **Ubicación:** `app/src/test/java/com/example/estudihambres/qa/UserExperienceAndPersonaQaTest.kt`
+* **Escenarios Clave Validados:**
+  1. Persona Cachimbo/Ingresante: Admisión exitosa con DNI peruano de 8 dígitos y correo `.edu.pe`.
+  2. Persona Cachimbo/Ingresante: Rechazo preventivo de DNI menor a 8 dígitos, no numérico y correos comerciales `@gmail.com`.
+  3. Persona Senior de Ingeniería: Canje de developer packs (JetBrains y GitHub) con tokens únicos formateados `CP-XXXX-YYYY`.
+  4. Persona Estudiante con Presupuesto: Canje de combos gastronómicos (Bembos 2x1, KFC) y suma matemática en billetera.
+  5. Persona Estudiante Conmutador: Soporte para radios de radar de 5km, 15km y 30km y medio pasaje de transporte ATU.
+  6. Regla de Seguridad: Inmutabilidad de DNI y Universidad ante intentos de alteración de campos protegidos.
+  7. Transición en Punto de Venta: Marcado de cupones como utilizados en caja conservando registro histórico.
+  8. Ciclo de Vida: Expiración garantizada tras 48 horas de vigencia (`isExpired = true`).
+  9. Búsqueda Reactiva: Búsqueda precisa de marcas reales añadidas (Cineplanet, Apple, KFC, JetBrains).
+  10. Auditoría de Catálogo: Integridad de URLs HTTPS oficiales, precios de descuento y estimación de ahorro positiva.
+
 ---
 
 ## 3. Estado de Compilación e Integración Continua
@@ -106,17 +134,17 @@ Se completó la batería exhaustiva de aseguramiento de calidad (QA) sobre el si
 * **Comando de pruebas unitarias:**
   ```powershell
   .\gradlew testDebugUnitTest
-  # Salida: BUILD SUCCESSFUL in 25s - 109/109 pruebas aprobadas (100% en 1.012s)
+  # Salida: BUILD SUCCESSFUL in 16s - 129/129 pruebas aprobadas (100% en 15 suites)
   ```
 * **Comando de análisis estático Lint:**
   ```powershell
   .\gradlew lintDebug
-  # Salida: BUILD SUCCESSFUL in 51s - 0 errores
+  # Salida: BUILD SUCCESSFUL in 49s - 0 errores
   ```
 * **Comando de ensamble de producción:**
   ```powershell
   .\gradlew assembleDebug
-  # Salida: BUILD SUCCESSFUL - 0 errores, 0 warnings
+  # Salida: BUILD SUCCESSFUL in 14s - 0 errores, 0 warnings
   ```
 
 ---

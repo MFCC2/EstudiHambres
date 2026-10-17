@@ -2,8 +2,10 @@ package com.example.estudihambres.core.util
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.estudihambres.domain.model.RedeemedCoupon
 import com.example.estudihambres.domain.model.StudentUser
 import com.example.estudihambres.domain.model.VerificationStatus
+import com.example.estudihambres.domain.usecase.RedeemCouponUseCase
 
 /**
  * Gestor de persistencia local y autenticación para CampusPass (EstudiHambres).
@@ -38,6 +40,9 @@ class SessionManager(context: Context) {
 
         private const val KEY_RADAR_RADIUS = "key_radar_radius"
         private const val KEY_NOTIFICATIONS_ENABLED = "key_notifications_enabled"
+
+        private const val KEY_ACCUMULATED_SAVINGS = "key_accumulated_savings"
+        private const val KEY_REDEEMED_COUPONS = "key_redeemed_coupons"
 
         @Volatile
         private var instance: SessionManager? = null
@@ -420,6 +425,190 @@ class SessionManager(context: Context) {
     fun getNotificationsEnabled(): Boolean = sessionPrefs.getBoolean(KEY_NOTIFICATIONS_ENABLED, true)
     fun setNotificationsEnabled(enabled: Boolean) {
         sessionPrefs.edit().putBoolean(KEY_NOTIFICATIONS_ENABLED, enabled).apply()
+    }
+
+    // --- GESTIÓN DE AHORROS Y CUPONES CANJEADOS (FUNCIONALIDAD REAL) ---
+
+    /**
+     * Retorna el total acumulado de ahorros universitarios en Soles (PEN).
+     */
+    fun getAccumulatedSavings(): Double {
+        return sessionPrefs.getFloat(KEY_ACCUMULATED_SAVINGS, 142.50f).toDouble()
+    }
+
+    /**
+     * Actualiza el total acumulado de ahorros en sesión activa y almacén de cuenta.
+     */
+    fun setAccumulatedSavings(amount: Double) {
+        sessionPrefs.edit().putFloat(KEY_ACCUMULATED_SAVINGS, amount.toFloat()).apply()
+        val user = getUserSession()
+        if (user != null && !user.isDev && isEmailRegistered(user.email)) {
+            val normalized = user.email.trim().lowercase()
+            accountPrefs.edit().putFloat("savings_$normalized", amount.toFloat()).apply()
+        }
+    }
+
+    /**
+     * Incrementa los ahorros acumulados tras redimir un cupón.
+     */
+    fun addAccumulatedSavings(additionalAmount: Double): Double {
+        val current = getAccumulatedSavings()
+        val updated = ((current + additionalAmount) * 100.0).toLong() / 100.0
+        setAccumulatedSavings(updated)
+        return updated
+    }
+
+    /**
+     * Obtiene la lista activa de cupones canjeados por el estudiante.
+     * Si no existen cupones registrados, siembra los cupones activos iniciales.
+     */
+    fun getRedeemedCoupons(): List<RedeemedCoupon> {
+        val raw = sessionPrefs.getString(KEY_REDEEMED_COUPONS, null)
+        if (raw.isNullOrBlank()) {
+            val defaults = getInitialDefaultCoupons()
+            saveRedeemedCouponsInternal(defaults)
+            return defaults
+        }
+        return raw.split(";").mapNotNull { deserializeCoupon(it) }
+    }
+
+    /**
+     * Canjea un nuevo cupón generando un token único, persistiendo en sesión y sumando al ahorro acumulado.
+     */
+    fun redeemCoupon(
+        title: String,
+        partnerName: String,
+        category: String,
+        discountBadge: String,
+        couponId: String = ""
+    ): RedeemedCoupon {
+        val newCoupon = RedeemCouponUseCase().invoke(
+            partnerName = partnerName,
+            title = title,
+            category = category,
+            discountBadge = discountBadge,
+            couponId = couponId
+        )
+        val currentCoupons = getRedeemedCoupons().toMutableList()
+        currentCoupons.add(0, newCoupon)
+        saveRedeemedCouponsInternal(currentCoupons)
+        addAccumulatedSavings(newCoupon.savingsAmountSoles)
+        return newCoupon
+    }
+
+    /**
+     * Marca un cupón existente como utilizado en caja.
+     */
+    fun markCouponAsUsed(couponCode: String): Boolean {
+        val currentCoupons = getRedeemedCoupons().toMutableList()
+        val index = currentCoupons.indexOfFirst { it.redemptionCode.equals(couponCode, ignoreCase = true) }
+        if (index >= 0) {
+            val updated = currentCoupons[index].copy(isUsed = true)
+            currentCoupons[index] = updated
+            saveRedeemedCouponsInternal(currentCoupons)
+            return true
+        }
+        return false
+    }
+
+    /**
+     * Conteo total de cupones canjeados.
+     */
+    fun getCouponsRedeemedCount(): Int = getRedeemedCoupons().size
+
+    private fun saveRedeemedCouponsInternal(coupons: List<RedeemedCoupon>) {
+        val serialized = coupons.joinToString(";") { serializeCoupon(it) }
+        sessionPrefs.edit().putString(KEY_REDEEMED_COUPONS, serialized).apply()
+        val user = getUserSession()
+        if (user != null && !user.isDev && isEmailRegistered(user.email)) {
+            val normalized = user.email.trim().lowercase()
+            accountPrefs.edit().putString("coupons_$normalized", serialized).apply()
+        }
+    }
+
+    private fun serializeCoupon(c: RedeemedCoupon): String {
+        fun esc(s: String) = s.replace("%", "%25").replace("|", "%7C").replace(";", "%3B")
+        return listOf(
+            esc(c.id),
+            esc(c.couponId),
+            esc(c.title),
+            esc(c.partnerName),
+            esc(c.category),
+            esc(c.discountBadge),
+            esc(c.redemptionCode),
+            c.savingsAmountSoles.toString(),
+            c.redeemedAtMillis.toString(),
+            c.expiresAtMillis.toString(),
+            c.isUsed.toString()
+        ).joinToString("|")
+    }
+
+    private fun deserializeCoupon(s: String): RedeemedCoupon? {
+        try {
+            val parts = s.split("|")
+            if (parts.size < 11) return null
+            fun unesc(str: String) = str.replace("%3B", ";").replace("%7C", "|").replace("%25", "%")
+            return RedeemedCoupon(
+                id = unesc(parts[0]),
+                couponId = unesc(parts[1]),
+                title = unesc(parts[2]),
+                partnerName = unesc(parts[3]),
+                category = unesc(parts[4]),
+                discountBadge = unesc(parts[5]),
+                redemptionCode = unesc(parts[6]),
+                savingsAmountSoles = parts[7].toDoubleOrNull() ?: 12.0,
+                redeemedAtMillis = parts[8].toLongOrNull() ?: System.currentTimeMillis(),
+                expiresAtMillis = parts[9].toLongOrNull() ?: (System.currentTimeMillis() + 48L * 3600 * 1000),
+                isUsed = parts[10].toBoolean()
+            )
+        } catch (_: Exception) {
+            return null
+        }
+    }
+
+    private fun getInitialDefaultCoupons(): List<RedeemedCoupon> {
+        val now = System.currentTimeMillis()
+        return listOf(
+            RedeemedCoupon(
+                id = "red-init-01",
+                couponId = "cu-02",
+                title = "2x1 en Frappuccinos y Café del Día",
+                partnerName = "Starbucks Real Plaza Cusco",
+                category = "Cafetería & Cowork",
+                discountBadge = "2x1 PROMO",
+                redemptionCode = "CP-STAR-9214",
+                savingsAmountSoles = 16.50,
+                redeemedAtMillis = now - 3600_000L * 4,
+                expiresAtMillis = now + 3600_000L * 44,
+                isUsed = false
+            ),
+            RedeemedCoupon(
+                id = "red-init-02",
+                couponId = "cu-01",
+                title = "Combo Universitario 2x1 en Hamburguesas",
+                partnerName = "Bembos Real Plaza Cusco",
+                category = "Comida Rápida",
+                discountBadge = "40% DCTO",
+                redemptionCode = "CP-BEMB-4819",
+                savingsAmountSoles = 14.50,
+                redeemedAtMillis = now - 3600_000L * 12,
+                expiresAtMillis = now + 3600_000L * 36,
+                isUsed = false
+            ),
+            RedeemedCoupon(
+                id = "red-init-03",
+                couponId = "p-01",
+                title = "Plan Estudiantil Spotify Premium",
+                partnerName = "Spotify",
+                category = "Herramientas digitales",
+                discountBadge = "50% DCTO",
+                redemptionCode = "CP-SPOT-7102",
+                savingsAmountSoles = 10.95,
+                redeemedAtMillis = now - 3600_000L * 24,
+                expiresAtMillis = now + 3600_000L * 24,
+                isUsed = true
+            )
+        )
     }
 
     /**

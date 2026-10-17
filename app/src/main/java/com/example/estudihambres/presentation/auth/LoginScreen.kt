@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
@@ -72,11 +75,16 @@ fun LoginScreen(
     val state by viewModel.loginState.collectAsState()
     var passwordVisible by remember { mutableStateOf(false) }
 
-    Box(
+    val scrollState = rememberScrollState()
+
+    Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+            .imePadding()
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Card(
             shape = CampusShapes.medium,
@@ -252,5 +260,8 @@ fun LoginScreen(
                 }
             }
         }
+
+        // Espaciador de despeje para permitir desplazamiento cómodo al abrir el teclado virtual
+        Spacer(modifier = Modifier.height(60.dp))
     }
 }
