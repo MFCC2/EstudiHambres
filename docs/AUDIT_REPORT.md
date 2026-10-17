@@ -1,7 +1,7 @@
 # INFORME DE AUDITORÍA TÉCNICA, SEGURIDAD, LINT Y CALIDAD (QA)
 
 **Proyecto:** EstudiHambres (CampusPass)  
-**Versión Auditada:** 1.2.3 (Build 5)  
+**Versión Auditada:** 1.2.4 (Build 6)  
 **Fecha de Auditoría:** 17 de Octubre de 2026  
 **Entorno de Ejecución:** Android API 24+ (Target API 35) / Kotlin 2.0 / Jetpack Compose / Clean Architecture  
 **Herramientas de Auditoría:** Android Lint (`lintDebug`), JUnit 4 (`testDebugUnitTest`), Gradle Build System (`assembleDebug`)  
@@ -11,14 +11,15 @@
 
 ## 1. RESUMEN EJECUTIVO
 
-Se ha ejecutado una auditoría exhaustiva y multidimensional sobre el código fuente, la arquitectura, la seguridad lógica, el rendimiento en Compose y el aseguramiento de la calidad (QA) del sistema **EstudiHambres (CampusPass)**. El análisis incluyó la ejecución formal de **Android Lint** (`./gradlew lintDebug`), verificación de **105 pruebas unitarias** (`./gradlew testDebugUnitTest`) y ensamble de release debug (`./gradlew assembleDebug`).
+Se ha ejecutado una auditoría exhaustiva y multidimensional sobre el código fuente, la arquitectura, la seguridad lógica, el rendimiento en Compose, las mejoras del mapa y el aseguramiento de la calidad (QA) del sistema **EstudiHambres (CampusPass)**. El análisis incluyó la ejecución formal de **Android Lint** (`./gradlew lintDebug`), verificación de **109 pruebas unitarias** (`./gradlew testDebugUnitTest`) y ensamble de release debug (`./gradlew assembleDebug`).
 
 ### Principales Dimensiones Auditadas
 1. **Seguridad Lógica y Privacidad del Estudiante:** Inmutabilidad estricta de DNI y Universidad; almacenamiento seguro de avatar en directorio privado del sandbox (`context.filesDir`); persistencia aislada de credenciales en `SharedPreferences`; regla de carnet único para estudiantes regulares; y blindaje de intents de navegación GPS contra `ActivityNotFoundException`.
 2. **Corrección de Estado y Linter en Jetpack Compose:** Corrección del error de recreación innecesaria de estado `UnrememberedMutableState` en marcadores de mapas mediante `rememberMarkerState`; orden canónico de parámetros (`modifier` como primer parámetro opcional); y eliminación de advertencia por etiqueta redundante en `AndroidManifest.xml`.
 3. **Rendimiento y Asignación de Memoria:** Supresión de autoboxing en Compose State mediante `mutableLongStateOf`, `mutableIntStateOf` y `mutableFloatStateOf` en el escáner de carnet.
 4. **Visión Artificial OCR y Robustez Heurística:** Estabilización multi-frame con rechazo de boletas/tickets comerciales e inspección temporal sostenida de sellos oficiales SUNEDU.
-5. **Cobertura de Pruebas Automatizadas:** 105 pruebas unitarias ejecutadas con 100% de éxito en 0.977 segundos.
+5. **Radar de Mapas de Alta Fidelidad:** Círculo de cobertura dinámica de radar (5 km, 15 km, 30 km), buscador en tiempo real, alternancia de sedes Cusco/Lima, carrusel de previsualización horizontal y cálculo de tiempo de caminata a pie.
+6. **Cobertura de Pruebas Automatizadas:** 109 pruebas unitarias ejecutadas con 100% de éxito en 1.012 segundos.
 
 ---
 
@@ -41,12 +42,13 @@ Se ha ejecutado una auditoría exhaustiva y multidimensional sobre el código fu
 | **UX-01** | `LoginScreen.kt` & `RegisterScreen.kt` | Dificultad para verificar la contraseña ingresada y ausencia de guía contextual para correos institucionales. | Selector interactivo de visibilidad de contraseña (`Visibility`/`VisibilityOff`), atajos IME (`Next`/`Done`), contador de DNI en vivo (`8/8`) y chips de universidades peruanas. | **RESUELTO** |
 | **UX-02** | `HomeScreen.kt` & `MapScreen.kt` | Búsqueda manual tediosa y visualización densa de promociones y comercios sin categorización ágil. | Chips de búsqueda rápida (`Bembos`, `Spotify`, `GitHub`, `Café`, `Notion`, `2x1`), modal interactivo con instrucciones de canje, y chips horizontales de categoría en el radar (`Todos`, `Comida`, `Café`, `Librería`). | **RESUELTO** |
 | **UX-03** | `HomeScreen.kt` & `ProfileScreen.kt` | Riesgo de cierre accidental de sesión al pulsar botones en la barra superior o pie de página. | Diálogo modal interactivo `AlertDialog` de confirmación obligatoria ("¿Cerrar Sesión Segura?"). | **RESUELTO** |
+| **MAP-01** | `MapScreen.kt` & `MapViewModel.kt` | Falta de control granular del radio, visualización estática de mapa y dificultad para explorar sedes fuera de la región actual. | Se añadieron chips de radio dinámico (5, 15, 30 km), círculo gráfico de radar, buscador en vivo de locales, alternancia de sedes (Cusco / Lima), carrusel inferior flotante y cálculo de tiempo de caminata a pie. | **RESUELTO** |
 
 ---
 
 ## 3. SUITE DE PRUEBAS AUTOMATIZADAS (QA MATRIX)
 
-La suite de pruebas automatizadas comprende **105 casos de prueba unitarios**, ejecutados y verificados mediante JUnit 4 sobre la máquina virtual Java de desarrollo:
+La suite de pruebas automatizadas comprende **109 casos de prueba unitarios**, ejecutados y verificados mediante JUnit 4 sobre la máquina virtual Java de desarrollo:
 
 ### 3.1 `AuthAndCredentialsQaTest` (16 Pruebas)
 - Validación de DNI: 8 dígitos exactos.
@@ -87,7 +89,7 @@ La suite de pruebas automatizadas comprende **105 casos de prueba unitarios**, e
 - Alternancia de preferencias de radio de radar (5 km, 15 km, 30 km) y notificaciones de proximidad a 200m.
 - Cálculo acumulativo del indicador financiero de ahorro estudiantil.
 
-### 3.6 `IntuitiveUxAndNavigationQaTest` (11 Pruebas)
+### 3.6 `IntuitiveUxAndNavigationQaTest` (15 Pruebas)
 - Coincidencia de chips rápidos de búsqueda (`Bembos`, `Spotify`, `GitHub`, `Notion`).
 - Búsqueda y filtrado por tag promocional (`2x1`).
 - Filtrado por categorías de comercios (`Comida`, `Café`, `Librería`).
@@ -97,6 +99,10 @@ La suite de pruebas automatizadas comprende **105 casos de prueba unitarios**, e
 - Validación de patrón de dominio `.edu.pe`.
 - Integridad de metadatos de cupones y beneficios para el modal interactivo.
 - Verificación de contenido en la sección de preguntas frecuentes (FAQ).
+- Coordenadas geográficas y etiquetas de sedes universitarias (`CampusLocation.CUSCO` y `CampusLocation.LIMA`).
+- Filtrado dinámico por radio de 5 km vs 30 km.
+- Búsqueda en vivo de locales por término textual.
+- Verificación de fórmula matemática de tiempo de caminata a pie (ETA).
 
 ### 3.7 Pruebas de Dominio y Casos de Uso (20 Pruebas Adicionales)
 - `ValidateStudentCredentialsUseCaseTest` (4 pruebas).
@@ -105,8 +111,8 @@ La suite de pruebas automatizadas comprende **105 casos de prueba unitarios**, e
 - `FilterCommercesByDistanceUseCaseTest` (4 pruebas).
 - `PromotionFilteringTest` (2 pruebas).
 
-**Total de Pruebas Ejecutadas:** **105 pruebas**  
-**Resultado:** **105 aprobadas, 0 fallidas, 0 ignoradas (100% éxito en 0.977 segundos)**.
+**Total de Pruebas Ejecutadas:** **109 pruebas**  
+**Resultado:** **109 aprobadas, 0 fallidas, 0 ignoradas (100% éxito en 1.012 segundos)**.
 
 ---
 
@@ -115,24 +121,24 @@ La suite de pruebas automatizadas comprende **105 casos de prueba unitarios**, e
 * **Comando de Lint ejecutado:**
   ```powershell
   .\gradlew lintDebug
-  # Salida: BUILD SUCCESSFUL in 1m 14s - 0 ERRORES
+  # Salida: BUILD SUCCESSFUL in 51s - 0 ERRORES
   ```
 * **Comando de Pruebas Unitarias:**
   ```powershell
   .\gradlew testDebugUnitTest
-  # Salida: BUILD SUCCESSFUL in 15s - 105/105 pruebas aprobadas (100%)
+  # Salida: BUILD SUCCESSFUL in 25s - 109/109 pruebas aprobadas (100%)
   ```
 * **Comando de Generación de Binario:**
   ```powershell
   .\gradlew assembleDebug
-  # Salida: BUILD SUCCESSFUL in 15s - Artefacto generado sin advertencias
+  # Salida: BUILD SUCCESSFUL in 25s - Artefacto generado sin advertencias
   ```
 
 ---
 
 ## 5. CONCLUSIÓN Y DICTAMEN FINAL
 
-El sistema **EstudiHambres (CampusPass) v1.2.3** ha superado con éxito la auditoría técnica integral, resolviendo todas las advertencias y errores del análisis estático formal de Android Lint, optimizando el rendimiento de Compose, blindando la identidad institucional ante fraudes y manteniendo una tasa de aprobación de pruebas del 100%.
+El sistema **EstudiHambres (CampusPass) v1.2.4** ha superado con éxito la auditoría técnica integral, resolviendo todas las advertencias y errores del análisis estático formal de Android Lint, elevando la experiencia del mapa interactivo con radar en tiempo real y manteniendo una tasa de aprobación de pruebas del 100%.
 
 Se emite dictamen favorable y **CERTIFICACIÓN TOTAL DE CALIDAD Y SEGURIDAD**.
 

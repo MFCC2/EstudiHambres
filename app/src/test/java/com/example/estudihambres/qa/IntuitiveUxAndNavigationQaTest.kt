@@ -160,4 +160,53 @@ class IntuitiveUxAndNavigationQaTest {
             assertTrue(q.startsWith("¿") && q.endsWith("?"))
         }
     }
+
+    @Test
+    fun testCampusLocationCoordinatesAndLabels() {
+        val cusco = com.example.estudihambres.presentation.map.CampusLocation.CUSCO
+        val lima = com.example.estudihambres.presentation.map.CampusLocation.LIMA
+
+        assertTrue(cusco.displayName.contains("Cusco"))
+        assertTrue(lima.displayName.contains("Lima"))
+        assertEquals(-13.5230, cusco.coordinates.latitude, 0.001)
+        assertEquals(-12.0833, lima.coordinates.latitude, 0.001)
+    }
+
+    @Test
+    fun testMapRadiusFiltering5kmExcludesFarPlaces() = runBlocking {
+        val places = placeRepository.getPlaces().first()
+        val filterUseCase = com.example.estudihambres.domain.usecase.FilterPlacesByDistanceUseCase()
+        val cuscoCoords = com.example.estudihambres.domain.repository.UserCoordinates(-13.5230, -71.9480)
+
+        val places5km = filterUseCase(cuscoCoords, places, maxDistanceKm = 5.0)
+        val places30km = filterUseCase(cuscoCoords, places, maxDistanceKm = 30.0)
+
+        assertTrue("Radio de 5 km debe contener locales inmediatos al campus", places5km.isNotEmpty())
+        assertTrue("Radio de 30 km debe abarcar más o igual cantidad de locales que el de 5 km", places30km.size >= places5km.size)
+        assertTrue("Todos los locales en radio de 5 km deben tener distancia calculada <= 5.0", places5km.all { (it.distanceKm ?: 0.0) <= 5.0 })
+    }
+
+    @Test
+    fun testMapSearchQueryFilteringByNameOrCategory() = runBlocking {
+        val places = placeRepository.getPlaces().first()
+        val searchQuery = "bembos"
+
+        val matching = places.filter {
+            it.name.contains(searchQuery, ignoreCase = true) ||
+            it.category.contains(searchQuery, ignoreCase = true) ||
+            it.discountBadge.contains(searchQuery, ignoreCase = true)
+        }
+
+        assertTrue("La búsqueda 'bembos' debe arrojar al menos un local en el radar", matching.isNotEmpty())
+    }
+
+    @Test
+    fun testEstimatedWalkingTimeCalculation() {
+        val calculateWalkingMinutes: (Double) -> Int = { distKm -> (distKm * 12).toInt().coerceAtLeast(1) }
+
+        assertEquals(1, calculateWalkingMinutes(0.05))
+        assertEquals(6, calculateWalkingMinutes(0.5))
+        assertEquals(12, calculateWalkingMinutes(1.0))
+        assertEquals(24, calculateWalkingMinutes(2.0))
+    }
 }

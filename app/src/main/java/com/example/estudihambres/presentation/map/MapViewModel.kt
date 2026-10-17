@@ -16,7 +16,23 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Estado UI del mapa interactivo de beneficios y radar de 30 km (presentation/map).
+ * Centros universitarios principales para alternancia rápida del mapa.
+ */
+enum class CampusLocation(val displayName: String, val shortName: String, val coordinates: LatLng) {
+    CUSCO(
+        displayName = "Cusco (Campus Continental / UNSAAC)",
+        shortName = "🏛️ Cusco",
+        coordinates = LatLng(-13.5230, -71.9480)
+    ),
+    LIMA(
+        displayName = "Lima (Campus UNMSM / PUCP)",
+        shortName = "🏛️ Lima",
+        coordinates = LatLng(-12.0833, -77.0428)
+    )
+}
+
+/**
+ * Estado UI del mapa interactivo de beneficios y radar de hasta 30 km (presentation/map).
  */
 data class MapUiState(
     val userLocation: LatLng = LatLng(-13.5230, -71.9480), // Real Plaza Cusco / Av. de la Cultura por defecto
@@ -24,17 +40,21 @@ data class MapUiState(
     val hasLocationPermission: Boolean = false,
     val nearbyPlaces: List<Place> = emptyList(),
     val selectedPlace: Place? = null,
+    val selectedRadiusKm: Double = 30.0,
+    val selectedCampus: CampusLocation = CampusLocation.CUSCO,
+    val searchQuery: String = "",
+    val selectedCategory: String = "Todos",
     val isLoading: Boolean = false
 )
 
 /**
- * ViewModel para el mapa radar de 30 km (Agente 4: Geolocalización & Google Maps).
- * Controla permisos de GPS, ubicación del estudiante (o fallback a centros comerciales reales),
- * carga de locales y visualización de descuentos en el BottomSheet.
+ * ViewModel para el mapa radar interactivo (Agente 4: Geolocalización & Google Maps).
+ * Controla permisos de GPS, ubicación del estudiante, alternancia de campus, radio de radar,
+ * búsqueda en tiempo real, carga de locales y visualización de descuentos en el BottomSheet.
  *
  * @param placeRepository Repositorio de lugares y comercios afiliados.
  * @param locationRepository Repositorio para consultar GPS del dispositivo.
- * @param filterPlacesUseCase Caso de uso para filtrar dentro de 30 km con Haversine.
+ * @param filterPlacesUseCase Caso de uso para filtrar dentro del radio con Haversine.
  */
 class MapViewModel(
     private val placeRepository: PlaceRepository = MockPlaceRepository(),
@@ -67,6 +87,30 @@ class MapViewModel(
         _uiState.update { it.copy(selectedPlace = place) }
     }
 
+    fun setRadarRadius(radiusKm: Double) {
+        _uiState.update { it.copy(selectedRadiusKm = radiusKm) }
+        loadPlaces()
+    }
+
+    fun selectCampus(campus: CampusLocation) {
+        _uiState.update {
+            it.copy(
+                selectedCampus = campus,
+                userLocation = campus.coordinates,
+                isDefaultLocation = false
+            )
+        }
+        loadPlaces()
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
+
+    fun onCategoryChange(category: String) {
+        _uiState.update { it.copy(selectedCategory = category) }
+    }
+
     fun loadPlaces() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -75,7 +119,11 @@ class MapViewModel(
                     latitude = _uiState.value.userLocation.latitude,
                     longitude = _uiState.value.userLocation.longitude
                 )
-                val filtered = filterPlacesUseCase(userCoords, rawPlaces, maxDistanceKm = 30.0)
+                val filtered = filterPlacesUseCase(
+                    userLocation = userCoords,
+                    places = rawPlaces,
+                    maxDistanceKm = _uiState.value.selectedRadiusKm
+                )
 
                 _uiState.update {
                     it.copy(
