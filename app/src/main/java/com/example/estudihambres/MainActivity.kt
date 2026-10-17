@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import com.example.estudihambres.core.navigation.AppNavGraph
 import com.example.estudihambres.core.theme.CampusPassTheme
 import com.example.estudihambres.core.util.SessionManager

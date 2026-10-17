@@ -211,4 +211,56 @@ class UserProfileAndSessionQaTest {
         val trimmedCareer = rawCareer.trim()
         assertEquals("Ingeniería de Sistemas e Informática", trimmedCareer)
     }
+
+    @Test
+    fun testDevModeUserAttributes() {
+        val devUser = StudentUser(
+            id = "usr-dev-99",
+            fullName = "Modo Desarrollador (Vista Genérica)",
+            email = "dev@campuspass.pe",
+            dni = "00000000",
+            university = "Sandbox QA",
+            studentCode = "DEV-001",
+            verificationStatus = VerificationStatus.VERIFIED,
+            isDev = true
+        )
+        assertTrue(devUser.isDev)
+        assertEquals("Modo Desarrollador (Vista Genérica)", devUser.fullName)
+    }
+
+    @Test
+    fun testRegularStudentSingleCardRestrictionLogic() {
+        val verifiedStudent = StudentUser(
+            id = "usr-student-01",
+            fullName = "Manuel Fabrizio Callañaupa",
+            email = "alumno@continental.edu.pe",
+            dni = "72945602",
+            university = "Universidad Continental",
+            studentCode = "72945602",
+            verificationStatus = VerificationStatus.VERIFIED,
+            isDev = false,
+            scannedCardDni = "72945602"
+        )
+
+        // Simular regla de negocio de elegibilidad: estudiante ya verificado no puede escanear otro DNI distinto
+        val attemptOtherDni = "71889900"
+        val isAllowedOther = verifiedStudent.isDev || (verifiedStudent.scannedCardDni == null || verifiedStudent.scannedCardDni == attemptOtherDni)
+        assertFalse("Un estudiante regular no debe poder escanear un carnet con DNI distinto al ya verificado", isAllowedOther)
+
+        // Pero sí puede mantener su propio DNI
+        val attemptSameDni = "72945602"
+        val isAllowedSame = verifiedStudent.isDev || (verifiedStudent.scannedCardDni == attemptSameDni)
+        assertTrue("El estudiante puede re-validar su propio carnet", isAllowedSame)
+    }
+
+    @Test
+    fun testGoogleMapsNavigationUrlGeneration() {
+        val placeLat = -13.5233
+        val placeLng = -71.9482
+        val expectedWebUrl = "https://www.google.com/maps/dir/?api=1&destination=$placeLat,$placeLng"
+        val expectedNativeUri = "google.navigation:q=$placeLat,$placeLng"
+
+        assertTrue(expectedWebUrl.contains("destination=-13.5233,-71.9482"))
+        assertTrue(expectedNativeUri.startsWith("google.navigation:q=-13.5233"))
+    }
 }

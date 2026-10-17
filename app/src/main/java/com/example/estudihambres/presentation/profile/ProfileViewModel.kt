@@ -29,7 +29,9 @@ data class ProfileUiState(
     val notificationsEnabled: Boolean = true,
     val isSaving: Boolean = false,
     val saveSuccessMessage: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isDev: Boolean = false,
+    val scannedCardDni: String? = null
 )
 
 /**
@@ -51,6 +53,8 @@ class ProfileViewModel(
         if (user != null) {
             _uiState.update {
                 it.copy(
+                    isDev = user.isDev,
+                    scannedCardDni = user.scannedCardDni,
                     fullName = user.fullName,
                     email = user.email,
                     dni = user.dni,

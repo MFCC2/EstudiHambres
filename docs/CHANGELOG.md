@@ -372,3 +372,47 @@ Incremento de versión a `1.2.0` (`versionCode = 3`) con mejoras sustanciales en
    - Compilación completa sin advertencias: `./gradlew testDebugUnitTest assembleDebug` (Build Successful).
    - Verificación funcional y estética en emulador Android físico/virtual con capturas de pantalla de Login, Home y Perfil.
 
+---
+
+## [Corrección Crítica de Autenticación, Estabilización OCR, Carnet Único y Navegación Turn-by-Turn - v1.2.1] - 2026-10-17
+**Rama:** `develop`
+
+### Resumen de la Entrega
+Resolución integral de las fallas críticas reportadas en pruebas en dispositivo físico:
+1. **Validación Estricta de Autenticación y Credenciales (`AuthViewModel.kt`, `SessionManager.kt`, `MockAuthRepositoryImpl.kt`)**:
+   - Corrección del fallo de acceso que permitía ingresar con contraseñas incorrectas o correos inexistentes.
+   - Implementación de doble persistencia en `SessionManager`: almacén de cuentas registradas (`PREF_ACCOUNTS_NAME`) que sobrevive al cierre de sesión (`clearSession()`), y almacén de sesión activa (`PREF_SESSION_NAME`).
+   - Verificación estricta de contraseña y correo institucional en `AuthRepository.authenticate()` y `AuthRepository.register()`.
+   - Banner visual de error en rojo en `LoginScreen.kt` y `RegisterScreen.kt` notificando "Contraseña incorrecta" o "No existe ninguna cuenta registrada".
+   - Cuenta de prueba institucional pre-cargada: `alumno@continental.edu.pe` / Contraseña: `campus123` / DNI: `72945602`.
+
+2. **Diferenciación de Modo Desarrollador (Vista Genérica) vs. Estudiante Real (`StudentUser.kt`, `HomeScreen.kt`, `ProfileScreen.kt`)**:
+   - El botón "Bypass Dev" asigna explícitamente `isDev = true` con perfil genérico (`"Modo Desarrollador (Vista Genérica)"`).
+   - Presentación de tarjeta destacada `🛠️ MODO DESARROLLADOR (VISTA GENÉRICA)` en `HomeScreen.kt` y `ProfileScreen.kt` que detalla los permisos de QA para pruebas de laboratorio.
+   - Los estudiantes registrados visualizan su interfaz personalizada con su nombre completo, universidad, carrera, código y estado de verificación real.
+
+3. **Escáner Inteligente con Estabilización Multi-Frame y Rechazo Estricto (`ParseStudentCardOcrUseCase.kt`, `StudentVerificationScreen.kt`)**:
+   - Filtro de rechazo inmediato para boletas, facturas, comprobantes comerciales y farmacias (`BOLETA`, `FACTURA`, `PANADOL`, `RUC`, `FARMACIA`, `TOTAL S/`).
+   - Estabilización multi-frame en `EmbeddedCameraCardScanner`: la cámara ya no se activa precipitadamente con un solo frame. Requiere al menos 4 frames consecutivos verificados (~1.5 a 2 segundos continuos) con análisis sostenido.
+   - HUD dinámico con barra de progreso (`0% -> 25% -> 50% -> 75% -> 100%`) y mensajes en tiempo real:
+     - "Alinea el carnet oficial con sello SUNEDU en el recuadro..."
+     - "Sello institucional detectado (25%). Mantén firme..."
+     - "Universidad y código identificados (50%). Verificando..."
+     - "Validando sello oficial de SUNEDU (75%)..."
+     - "¡Carnet verificado correctamente! (100%)"
+     - En caso de apuntar a un recibo comercial: "Comprobante no válido. Requiere carnet con sello SUNEDU".
+
+4. **Regla de Negocio: Restricción de Carnet Único para Estudiantes (`SessionManager.kt`, `StudentVerificationViewModel.kt`)**:
+   - Un estudiante regular solo puede vincular un único carnet universitario que coincida con su DNI registrado. Se bloquea el escaneo de carnets ajenos o múltiples carnets.
+   - Si un estudiante ya verificado intenta escanear otro carnet, se muestra una alerta: "Tu cuenta ya cuenta con un carnet validado oficialmente. Solo tienes permitido registrar 1 carnet."
+   - El modo desarrollador (`isDev = true`) mantiene libertad ilimitada para re-escanear y realizar pruebas de integración de múltiples carnets.
+
+5. **Conexión Real con Locales Aliados y Navegación Turn-by-Turn en Google Maps (`MockPlaceRepository.kt`, `MapScreen.kt`)**:
+   - Incorporación de botón directo `"🗺️ Cómo llegar (Google Maps)"` tanto en las tarjetas de la lista de 30 km como en el `ModalBottomSheet` de detalle.
+   - Disparo de navegación nativa turn-by-turn con `Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$lat,$lng"))` con fallback a la web oficial de Google Maps si la aplicación no está instalada.
+   - Locales comerciales reales con coordenadas exactas en Cusco (Real Plaza Cusco, Av. de la Cultura, UNSAAC, Campus Continental) y Lima (UNMSM, PUCP, Av. Universitaria).
+
+6. **Aseguramiento de Calidad y Suite de 92 Pruebas QA**:
+   - Incorporación de 8 nuevas pruebas unitarias y de QA validando rechazo de contraseñas erróneas, cuentas inexistentes, duplicados, modo Dev, carnet único y URLs de navegación.
+   - Ejecución de `testDebugUnitTest` y `assembleDebug`: 92 pruebas ejecutadas con 100% de éxito (`BUILD SUCCESSFUL in 27s`).
+

@@ -127,38 +127,65 @@ class StudentVerificationViewModel(
 
     private fun handleOcrParsed(result: StudentCardOcrResult) {
         viewModelScope.launch {
-            val newStatus = if (result.isVerified) {
-                VerificationStatus.VERIFIED
-            } else {
-                VerificationStatus.REJECTED
-            }
-            authRepository.updateVerificationStatus(newStatus)
-
+            val session = com.example.estudihambres.core.util.SessionManager.getInstanceOrNull()
+            
             if (result.isVerified) {
-                val session = com.example.estudihambres.core.util.SessionManager.getInstanceOrNull()
+                // Validación estricta: los estudiantes regulares solo pueden escanear y vincular 1 único carnet propio
+                if (session != null) {
+                    val (isEligible, errorReason) = session.validateCardScanningEligibility(result.studentDni)
+                    if (!isEligible) {
+                        _uiState.update {
+                            it.copy(
+                                isProcessing = false,
+                                ocrResult = result,
+                                verificationStatus = VerificationStatus.REJECTED,
+                                errorMessage = errorReason ?: "Solo puedes vincular un único carnet universitario a tu cuenta."
+                            )
+                        }
+                        return@launch
+                    }
+                }
+
+                val newStatus = VerificationStatus.VERIFIED
+                authRepository.updateVerificationStatus(newStatus)
+
                 session?.let { mgr ->
+                    mgr.linkScannedCard(result.studentDni)
                     val user = mgr.getUserSession()
                     if (user != null) {
                         val updated = user.copy(
-                            fullName = result.studentName ?: user.fullName,
+                            fullName = if (!result.studentName.isNullOrBlank()) result.studentName else user.fullName,
                             dni = result.studentDni ?: user.dni,
                             studentCode = result.studentCode ?: user.studentCode,
                             university = result.universityName ?: user.university,
-                            verificationStatus = VerificationStatus.VERIFIED
+                            verificationStatus = VerificationStatus.VERIFIED,
+                            scannedCardDni = result.studentDni ?: user.dni
                         )
                         mgr.saveUserSession(updated)
                     } else {
                         mgr.updateVerificationStatus(VerificationStatus.VERIFIED)
                     }
                 }
-            }
 
-            _uiState.update {
-                it.copy(
-                    isProcessing = false,
-                    ocrResult = result,
-                    verificationStatus = newStatus
-                )
+                _uiState.update {
+                    it.copy(
+                        isProcessing = false,
+                        ocrResult = result,
+                        verificationStatus = newStatus,
+                        errorMessage = null
+                    )
+                }
+            } else {
+                val newStatus = VerificationStatus.REJECTED
+                authRepository.updateVerificationStatus(newStatus)
+                _uiState.update {
+                    it.copy(
+                        isProcessing = false,
+                        ocrResult = result,
+                        verificationStatus = newStatus,
+                        errorMessage = "El documento escaneado no contiene los sellos oficiales de SUNEDU o la vigencia requerida."
+                    )
+                }
             }
         }
     }
@@ -169,10 +196,26 @@ class StudentVerificationViewModel(
      */
     fun confirmManualVerification(onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
+            val session = com.example.estudihambres.core.util.SessionManager.getInstanceOrNull()
+            if (session != null) {
+                val (isEligible, errorReason) = session.validateCardScanningEligibility(null)
+                if (!isEligible) {
+                    _uiState.update {
+                        it.copy(
+                            isProcessing = false,
+                            errorMessage = errorReason ?: "No puedes vincular otro carnet universitario."
+                        )
+                    }
+                    return@launch
+                }
+                session.linkScannedCard(null)
+            }
+
             authRepository.updateVerificationStatus(VerificationStatus.VERIFIED)
             _uiState.update {
                 it.copy(
                     verificationStatus = VerificationStatus.VERIFIED,
+                    errorMessage = null,
                     ocrResult = it.ocrResult?.copy(isVerified = true) ?: StudentCardOcrResult(
                         isVerified = true,
                         hasSuneduKeyword = true,

@@ -4,8 +4,10 @@ import com.example.estudihambres.domain.model.StudentCardOcrResult
 import java.util.Locale
 
 /**
- * Caso de uso que analiza el texto extraído por Google ML Kit Text Recognition para verificar
- * la autenticidad de un carnet universitario e identificar los datos del estudiante de forma inteligente.
+ * Caso de uso riguroso que analiza el texto extraído por Google ML Kit Text Recognition para verificar
+ * la autenticidad del Carnet Universitario oficial expedido bajo la normativa de SUNEDU.
+ *
+ * Rechaza de forma estricta boletas de venta, comprobantes comerciales, textos aleatorios o tarjetas no estudiantiles.
  */
 class ParseStudentCardOcrUseCase {
 
@@ -13,18 +15,17 @@ class ParseStudentCardOcrUseCase {
     private val dniRegex = Regex("""\b\d{8}\b""")
 
     /**
-     * Procesa el texto plano extraído del carnet universitario y evalúa si califica como carnet válido.
-     * Extrae automáticamente nombres, DNI, carrera y universidad.
+     * Procesa el texto plano extraído del documento y evalúa si califica fehacientemente como carnet universitario oficial.
      *
-     * @param rawText Cadena de texto resultante del reconocimiento OCR.
-     * @return [StudentCardOcrResult] con los hallazgos y el veredicto de validación.
+     * @param rawText Cadena de texto resultante del reconocimiento óptico.
+     * @return [StudentCardOcrResult] con los hallazgos institucionales y el veredicto de validación.
      */
     operator fun invoke(rawText: String): StudentCardOcrResult {
         if (rawText.isBlank()) {
             return StudentCardOcrResult(isVerified = false, rawText = rawText)
         }
 
-        // Normalizar texto eliminando tildes y caracteres diacríticos para matching tolerante
+        // Normalizar texto eliminando tildes y diacríticos
         val normalized = rawText.uppercase(Locale.ROOT)
             .replace('Á', 'A')
             .replace('É', 'E')
@@ -33,38 +34,69 @@ class ParseStudentCardOcrUseCase {
             .replace('Ú', 'U')
             .replace('Ü', 'U')
 
-        val hasSunedu = normalized.contains("SUNEDU") ||
-                normalized.contains("SUPERINTENDENCIA") ||
-                normalized.contains("MINEDU") ||
-                normalized.contains("REPUBLICA") ||
-                normalized.contains("CARNET") ||
-                normalized.contains("CARNE") ||
-                normalized.contains("EDUCACION SUPERIOR")
+        // 1. Filtro de rechazo inmediato: Boletas, facturas, comprobantes comerciales o farmacias
+        val isCommercialReceipt = normalized.contains("BOLETA") ||
+                normalized.contains("FACTURA") ||
+                normalized.contains("SUBTOTAL") ||
+                normalized.contains("TOTAL S/") ||
+                normalized.contains("TOTAL S.") ||
+                normalized.contains("PANADOL") ||
+                normalized.contains("RUC:") ||
+                normalized.contains("RUC ") ||
+                normalized.contains("VOUCHER") ||
+                normalized.contains("FARMACIA") ||
+                normalized.contains("CAJERO") ||
+                normalized.contains("TICKET DE VENTA")
 
+        if (isCommercialReceipt) {
+            return StudentCardOcrResult(
+                isVerified = false,
+                hasSuneduKeyword = false,
+                hasUniversityKeyword = false,
+                rawText = rawText
+            )
+        }
+
+        // 2. Detección estricta de SUNEDU (solo siglas o nombre oficial de la superintendencia)
+        val hasSunedu = normalized.contains("SUNEDU") ||
+                normalized.contains("SUPERINTENDENCIA NACIONAL DE EDUCACION")
+
+        // 3. Detección de Carnet Universitario oficial
+        val hasCarnetKeyword = normalized.contains("CARNET UNIVERSITARIO") ||
+                normalized.contains("CARNE UNIVERSITARIO") ||
+                normalized.contains("CARNET ESTUDIANTIL") ||
+                normalized.contains("CARNE ESTUDIANTIL") ||
+                (normalized.contains("CARNET") && (normalized.contains("ESTUDIANTE") || normalized.contains("ESTUDIANTIL"))) ||
+                (normalized.contains("CARNE") && (normalized.contains("ESTUDIANTE") || normalized.contains("ESTUDIANTIL"))) ||
+                normalized.contains("CARNET DE ESTUDIANTE")
+
+        // 4. Detección de Universidad o Institución de Educación Superior
         val hasUniversity = normalized.contains("UNIVERSIDAD") ||
-                Regex("""\bUNIV\b""").containsMatchIn(normalized) ||
-                Regex("""\bUNIV\.""").containsMatchIn(normalized) ||
-                normalized.contains("FACULTAD") ||
                 normalized.contains("CONTINENTAL") ||
                 normalized.contains("SAN MARCOS") ||
                 normalized.contains("CATOLICA") ||
-                Regex("""\b(UNI|UNMSM|PUCP|UPC|UTP|UTEC|USMP|UCSM|UNSA)\b""").containsMatchIn(normalized) ||
-                normalized.contains("ESTUDIANTE") ||
-                normalized.contains("ALUMNO")
+                normalized.contains("SAN ANTONIO ABAD") ||
+                normalized.contains("SAN AGUSTIN") ||
+                normalized.contains("DECANO DE AMERICA") ||
+                Regex("""\b(UNI|UNMSM|PUCP|UPC|UTP|UTEC|USMP|UCSM|UNSA|UNSAAC)\b""").containsMatchIn(normalized)
 
         val hasStudentKeywords = normalized.contains("CODIGO") ||
+                normalized.contains("COD.") ||
+                normalized.contains("COD ") ||
                 normalized.contains("DNI") ||
                 normalized.contains("APELLIDO") ||
                 normalized.contains("NOMBRE") ||
+                normalized.contains("ESTUDIANTE") ||
+                normalized.contains("ALUMNO") ||
+                normalized.contains("FACULTAD") ||
                 normalized.contains("CARRERA") ||
-                normalized.contains("INGENIERIA") ||
-                normalized.contains("EXPIRA") ||
-                normalized.contains("VIGENCIA")
+                normalized.contains("VIGENCIA") ||
+                normalized.contains("VALIDO")
 
         val yearMatch = yearRegex.find(normalized)?.value
         val dniMatch = dniRegex.find(normalized)?.value
 
-        // Extracción de datos específicos del carnet
+        // Extracción de datos específicos
         var detectedApellidos: String? = null
         var detectedNombres: String? = null
         var detectedFaculty: String? = null
@@ -77,7 +109,7 @@ class ParseStudentCardOcrUseCase {
             val upper = line.uppercase(Locale.ROOT)
                 .replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
 
-            if (detectedUniversity == null && (upper.contains("UNIVERSIDAD") || upper.contains("CONTINENTAL"))) {
+            if (detectedUniversity == null && (upper.contains("UNIVERSIDAD") || upper.contains("CONTINENTAL") || upper.contains("UNSAAC"))) {
                 detectedUniversity = line
             }
 
@@ -123,15 +155,26 @@ class ParseStudentCardOcrUseCase {
             "Universidad Nacional Mayor de San Marcos"
         } else if (normalized.contains("CATOLICA") || normalized.contains("PUCP")) {
             "Pontificia Universidad Católica del Perú"
+        } else if (normalized.contains("SAN ANTONIO ABAD") || normalized.contains("UNSAAC")) {
+            "Universidad Nacional de San Antonio Abad del Cusco"
+        } else if (normalized.contains("SAN AGUSTIN") || normalized.contains("UNSA")) {
+            "Universidad Nacional de San Agustín"
         } else detectedUniversity?.let { toTitleCase(it) } ?: if (hasUniversity) {
             "Universidad Nacional / Privada"
         } else null
 
-        // Regla inteligente: Es verificado si detecta carnet oficial o universidad con código/año/estudiante
-        val isVerified = (hasSunedu && hasUniversity) ||
-                (hasUniversity && (dniMatch != null || yearMatch != null || hasStudentKeywords)) ||
-                (hasSunedu && (dniMatch != null || hasStudentKeywords)) ||
-                (normalized.contains("CARNE") && (hasUniversity || dniMatch != null))
+        // Evaluación rigurosa de vigencia: si se detecta un año, no puede ser anterior a 2024
+        val isYearValid = yearMatch?.toIntOrNull()?.let { it >= 2024 } ?: true
+
+        // Regla estricta: Se requiere obligatoriamente combinación auténtica de sellos
+        // 1. SUNEDU + UNIVERSIDAD + (Año/DNI/Código/Carnet)
+        // 2. O CARNET UNIVERSITARIO / ESTUDIANTIL + UNIVERSIDAD + (DNI/Código/Vigencia)
+        // 3. O UNIVERSIDAD + DNI/Código + Vigencia válida + atributos de estudiante
+        val isVerified = !isCommercialReceipt && isYearValid && (
+                (hasSunedu && hasUniversity && (hasCarnetKeyword || dniMatch != null || hasStudentKeywords)) ||
+                (hasCarnetKeyword && hasUniversity && (dniMatch != null || hasStudentKeywords || yearMatch != null)) ||
+                (hasUniversity && dniMatch != null && yearMatch != null && hasStudentKeywords)
+        )
 
         return StudentCardOcrResult(
             isVerified = isVerified,
@@ -141,7 +184,9 @@ class ParseStudentCardOcrUseCase {
             universityName = universityName,
             studentName = fullName,
             studentDni = dniMatch,
-            studentCode = dniMatch,
+            studentCode = dniMatch ?: if (normalized.contains("CÓDIGO:") || normalized.contains("CODIGO:")) {
+                normalized.substringAfter("CODIGO:").substringAfter("CÓDIGO:").trim().take(8)
+            } else null,
             career = detectedCareer,
             faculty = detectedFaculty,
             rawText = rawText

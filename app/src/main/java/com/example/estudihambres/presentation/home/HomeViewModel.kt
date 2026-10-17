@@ -35,6 +35,7 @@ data class HomeUiState(
     val popularPromotions: List<Promotion> = emptyList(),
     val nearbyPromotions: List<Promotion> = emptyList(),
     val digitalPromotions: List<Promotion> = emptyList(),
+    val isDev: Boolean = false,
     val isLoading: Boolean = false
 )
 
@@ -62,11 +63,13 @@ class HomeViewModel(
     private fun loadData() {
         viewModelScope.launch {
             authRepository.getCurrentUser().collect { user ->
+                val isDevMode = user?.isDev ?: false
                 _uiState.update {
                     it.copy(
-                        studentName = user?.fullName?.ifBlank { "Estudiante Universitario" } ?: "Estudiante Universitario",
-                        university = user?.university?.ifBlank { "Universidad Continental" } ?: "Universidad Continental",
-                        career = if (!user?.studentCode.isNullOrBlank()) "${user.university} · Cód. ${user.studentCode}" else "Ingeniería de Software · Ciclo 2025-I",
+                        isDev = isDevMode,
+                        studentName = if (isDevMode) "Modo Desarrollador (Vista Genérica)" else (user?.fullName?.ifBlank { "Estudiante Universitario" } ?: "Estudiante Universitario"),
+                        university = if (isDevMode) "Entorno Sandbox / Testing" else (user?.university?.ifBlank { "Universidad Continental" } ?: "Universidad Continental"),
+                        career = if (isDevMode) "Pruebas de Integración y Validación OCR" else if (!user?.studentCode.isNullOrBlank()) "${user.university} · Cód. ${user.studentCode}" else "Ingeniería de Software · Ciclo 2025-I",
                         verificationStatus = user?.verificationStatus ?: VerificationStatus.PENDING_VERIFICATION
                     )
                 }

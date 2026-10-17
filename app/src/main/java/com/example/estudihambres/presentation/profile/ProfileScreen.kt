@@ -159,6 +159,65 @@ fun ProfileScreen(
                 onAvatarClick = onNavigateToVerification
             )
 
+            // Indicador de Modo Desarrollador o Carnet Único Vinculado
+            if (state.isDev) {
+                Surface(
+                    shape = CampusShapes.small,
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "🛠️", style = MaterialTheme.typography.bodyLarge)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "MODO DESARROLLADOR (VISTA GENÉRICA)",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Sesión de testing de laboratorio. Permite escanear ilimitadamente múltiples carnets para pruebas.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+            } else if (state.scannedCardDni != null) {
+                Surface(
+                    shape = CampusShapes.small,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CreditCard,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Carnet Único Vinculado: DNI ${state.scannedCardDni}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "Asignado de forma exclusiva a tu cuenta de estudiante.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
             // Feedback Toast / Banner
             state.saveSuccessMessage?.let { msg ->
                 Surface(
@@ -363,6 +422,14 @@ fun ProfileScreen(
                 }
             }
 
+            val reScanButtonText = if (state.isDev) {
+                "🛠️ Escanear Carnet de Prueba (Modo Dev)"
+            } else if (state.scannedCardDni != null) {
+                "Re-escanear mi Carnet (DNI: ${state.scannedCardDni})"
+            } else {
+                "Validar mi Carnet Universitario"
+            }
+
             OutlinedButton(
                 onClick = onNavigateToVerification,
                 shape = CampusShapes.small,
@@ -370,7 +437,7 @@ fun ProfileScreen(
             ) {
                 Icon(Icons.Default.QrCodeScanner, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Re-escanear Carnet Universitario", fontWeight = FontWeight.SemiBold)
+                Text(reScanButtonText, fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(modifier = Modifier.height(16.dp))

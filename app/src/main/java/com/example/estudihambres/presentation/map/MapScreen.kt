@@ -488,14 +488,41 @@ private fun PlaceListItemCard(
             }
 
             Spacer(modifier = Modifier.height(10.dp))
-            Button(
-                onClick = onClick,
-                shape = CampusShapes.small,
-                modifier = Modifier.fillMaxWidth()
+            val context = LocalContext.current
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Ver Descuento / Canjear")
+                androidx.compose.material3.OutlinedButton(
+                    onClick = {
+                        try {
+                            val navUri = Uri.parse("google.navigation:q=${place.latitude},${place.longitude}")
+                            val navIntent = Intent(Intent.ACTION_VIEW, navUri).apply {
+                                setPackage("com.google.android.apps.maps")
+                            }
+                            context.startActivity(navIntent)
+                        } catch (_: Exception) {
+                            val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}")
+                            context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                        }
+                    },
+                    shape = CampusShapes.small,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Cómo llegar", style = MaterialTheme.typography.labelSmall)
+                }
+
+                Button(
+                    onClick = onClick,
+                    shape = CampusShapes.small,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.LocalOffer, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Ver Descuento", style = MaterialTheme.typography.labelSmall)
+                }
             }
         }
     }
@@ -587,35 +614,62 @@ private fun PlaceDiscountDetailContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         val context = LocalContext.current
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Button(
                 onClick = {
                     try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(place.url))
-                        context.startActivity(intent)
-                    } catch (_: Exception) {}
+                        val navUri = Uri.parse("google.navigation:q=${place.latitude},${place.longitude}")
+                        val navIntent = Intent(Intent.ACTION_VIEW, navUri).apply {
+                            setPackage("com.google.android.apps.maps")
+                        }
+                        context.startActivity(navIntent)
+                    } catch (_: Exception) {
+                        val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}")
+                        context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                    }
                 },
                 shape = CampusShapes.small,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Ir al beneficio")
+                Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("🗺️ Cómo llegar (Google Maps)")
             }
 
-            Button(
-                onClick = onDismiss,
-                shape = CampusShapes.small,
-                modifier = Modifier.weight(1f)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Canjear Cupón")
+                androidx.compose.material3.OutlinedButton(
+                    onClick = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(place.url))
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    },
+                    shape = CampusShapes.small,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Sitio Oficial")
+                }
+
+                Button(
+                    onClick = onDismiss,
+                    shape = CampusShapes.small,
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.LocalOffer, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Canjear Cupón")
+                }
             }
         }
         Spacer(modifier = Modifier.height(24.dp))

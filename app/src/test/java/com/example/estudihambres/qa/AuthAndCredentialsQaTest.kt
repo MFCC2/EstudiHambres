@@ -122,4 +122,64 @@ class AuthAndCredentialsQaTest {
         assertFalse(useCase.validatePassword("12345").isValid)
         assertFalse(useCase.validatePassword("").isValid)
     }
+
+    @Test
+    fun testAuthenticationFailsWithWrongPassword() = kotlinx.coroutines.runBlocking {
+        val repo = com.example.estudihambres.data.repository.MockAuthRepositoryImpl(sessionManager = null)
+        val result = repo.authenticate("alumno@continental.edu.pe", "wrongPassword99")
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("Contraseña incorrecta") == true)
+    }
+
+    @Test
+    fun testAuthenticationFailsWithUnregisteredAccount() = kotlinx.coroutines.runBlocking {
+        val repo = com.example.estudihambres.data.repository.MockAuthRepositoryImpl(sessionManager = null)
+        val result = repo.authenticate("noexiste@continental.edu.pe", "campus123")
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("No existe ninguna cuenta") == true)
+    }
+
+    @Test
+    fun testAuthenticationSucceedsWithCorrectCredentials() = kotlinx.coroutines.runBlocking {
+        val repo = com.example.estudihambres.data.repository.MockAuthRepositoryImpl(sessionManager = null)
+        val result = repo.authenticate("alumno@continental.edu.pe", "campus123")
+        assertTrue(result.isSuccess)
+        assertEquals("alumno@continental.edu.pe", result.getOrNull()?.email)
+    }
+
+    @Test
+    fun testRegistrationAndSubsequentLogin() = kotlinx.coroutines.runBlocking {
+        val repo = com.example.estudihambres.data.repository.MockAuthRepositoryImpl(sessionManager = null)
+        val newUser = com.example.estudihambres.domain.model.StudentUser(
+            id = "usr-new-qa",
+            fullName = "Estudiante QA",
+            email = "qa@uni.edu.pe",
+            dni = "78451296",
+            university = "UNI",
+            studentCode = "78451296",
+            verificationStatus = com.example.estudihambres.domain.model.VerificationStatus.PENDING_VERIFICATION
+        )
+        val regResult = repo.register(newUser, "claveSegura2026")
+        assertTrue(regResult.isSuccess)
+
+        val loginResult = repo.authenticate("qa@uni.edu.pe", "claveSegura2026")
+        assertTrue(loginResult.isSuccess)
+        assertEquals("Estudiante QA", loginResult.getOrNull()?.fullName)
+    }
+
+    @Test
+    fun testRegistrationRejectsDuplicateEmail() = kotlinx.coroutines.runBlocking {
+        val repo = com.example.estudihambres.data.repository.MockAuthRepositoryImpl(sessionManager = null)
+        val duplicateUser = com.example.estudihambres.domain.model.StudentUser(
+            id = "usr-dup",
+            fullName = "Duplicado",
+            email = "alumno@continental.edu.pe",
+            dni = "72945602",
+            university = "Universidad Continental",
+            studentCode = "72945602",
+            verificationStatus = com.example.estudihambres.domain.model.VerificationStatus.PENDING_VERIFICATION
+        )
+        val regResult = repo.register(duplicateUser, "password123")
+        assertTrue(regResult.isFailure)
+    }
 }

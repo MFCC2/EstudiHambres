@@ -75,13 +75,16 @@ class AuthViewModel(
     // --- Manejadores de Login ---
 
     fun onLoginEmailChange(value: String) {
-        _loginState.update { it.copy(email = value, emailError = null) }
+        _loginState.update { it.copy(email = value, emailError = null, errorMessage = null) }
     }
 
     fun onLoginPasswordChange(value: String) {
-        _loginState.update { it.copy(password = value, passwordError = null) }
+        _loginState.update { it.copy(password = value, passwordError = null, errorMessage = null) }
     }
 
+    /**
+     * Inicia sesión validando formato, existencia de la cuenta y correspondencia de contraseña.
+     */
     fun login(onSuccess: () -> Unit) {
         val email = _loginState.value.email.trim()
         val password = _loginState.value.password
@@ -101,19 +104,21 @@ class AuthViewModel(
 
         viewModelScope.launch {
             _loginState.update { it.copy(isLoading = true, errorMessage = null) }
-            val loggedUser = StudentUser(
-                id = "usr-${System.currentTimeMillis()}",
-                fullName = "Estudiante Universitario",
-                email = email,
-                dni = "72945602",
-                university = "Universidad Continental",
-                studentCode = email.substringBefore("@"),
-                verificationStatus = VerificationStatus.PENDING_VERIFICATION
-            )
-            authRepository.saveSession(loggedUser)
-            _currentUser.value = loggedUser
-            onSuccess()
-            _loginState.update { it.copy(isLoading = false) }
+            val result = authRepository.authenticate(email, password)
+            if (result.isSuccess) {
+                _currentUser.value = result.getOrNull()
+                _loginState.update { it.copy(isLoading = false, errorMessage = null) }
+                onSuccess()
+            } else {
+                val errorMsg = result.exceptionOrNull()?.message
+                    ?: "Credenciales inválidas. Por favor verifica tu contraseña."
+                _loginState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = errorMsg
+                    )
+                }
+            }
         }
     }
 
@@ -121,27 +126,29 @@ class AuthViewModel(
 
     fun onRegisterDniChange(value: String) {
         if (value.length <= 8 && value.all { it.isDigit() }) {
-            _registerState.update { it.copy(dni = value, dniError = null) }
+            _registerState.update { it.copy(dni = value, dniError = null, errorMessage = null) }
         }
     }
 
     fun onRegisterStudentCodeChange(value: String) {
-        _registerState.update { it.copy(studentCode = value, studentCodeError = null) }
+        _registerState.update { it.copy(studentCode = value, studentCodeError = null, errorMessage = null) }
     }
 
-    // Sin .trim() en tiempo de escritura para permitir escribir espacios libremente
     fun onRegisterUniversityChange(value: String) {
-        _registerState.update { it.copy(university = value, universityError = null) }
+        _registerState.update { it.copy(university = value, universityError = null, errorMessage = null) }
     }
 
     fun onRegisterEmailChange(value: String) {
-        _registerState.update { it.copy(email = value, emailError = null) }
+        _registerState.update { it.copy(email = value, emailError = null, errorMessage = null) }
     }
 
     fun onRegisterPasswordChange(value: String) {
-        _registerState.update { it.copy(password = value, passwordError = null) }
+        _registerState.update { it.copy(password = value, passwordError = null, errorMessage = null) }
     }
 
+    /**
+     * Registra al nuevo estudiante guardando su contraseña en el almacén persistente.
+     */
     fun register(onSuccess: () -> Unit) {
         val state = _registerState.value
         val cleanDni = state.dni.trim()
@@ -178,32 +185,47 @@ class AuthViewModel(
                 dni = cleanDni,
                 university = cleanUni,
                 studentCode = cleanCode,
-                verificationStatus = VerificationStatus.PENDING_VERIFICATION
+                verificationStatus = VerificationStatus.PENDING_VERIFICATION,
+                career = "Ingeniería de Sistemas",
+                isDev = false
             )
-            authRepository.saveSession(newUser)
-            _currentUser.value = newUser
-            onSuccess()
-            _registerState.update { it.copy(isLoading = false) }
+
+            val result = authRepository.register(newUser, cleanPass)
+            if (result.isSuccess) {
+                _currentUser.value = result.getOrNull()
+                _registerState.update { it.copy(isLoading = false, errorMessage = null) }
+                onSuccess()
+            } else {
+                val errorMsg = result.exceptionOrNull()?.message ?: "Error al registrar la cuenta."
+                _registerState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = errorMsg
+                    )
+                }
+            }
         }
     }
 
     /**
-     * Acceso directo para pruebas locales y desarrollo rápido (Bypass).
-     * Configura el usuario en PENDING_VERIFICATION y persiste la sesión.
+     * Acceso directo para pruebas locales y desarrollo rápido (Bypass Dev).
+     * Configura el usuario explícitamente como [isDev = true] en una interfaz genérica de pruebas.
      */
     fun bypass(onSuccess: () -> Unit) {
         viewModelScope.launch {
-            val demoUser = StudentUser(
-                id = "usr-demo",
-                fullName = "Estudiante Universitario",
-                email = "alumno@continental.edu.pe",
-                dni = "72945602",
-                university = "Universidad Continental",
-                studentCode = "72945602",
-                verificationStatus = VerificationStatus.PENDING_VERIFICATION
+            val devUser = StudentUser(
+                id = "usr-dev-mode",
+                fullName = "Modo Desarrollador (Vista Genérica)",
+                email = "dev@campuspass.pe",
+                dni = "00000000",
+                university = "CampusPass Sandbox (Dev)",
+                studentCode = "DEV-999",
+                verificationStatus = VerificationStatus.PENDING_VERIFICATION,
+                career = "Ingeniería de Software / QA",
+                isDev = true
             )
-            authRepository.saveSession(demoUser)
-            _currentUser.value = demoUser
+            authRepository.saveSession(devUser)
+            _currentUser.value = devUser
             onSuccess()
         }
     }

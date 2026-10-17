@@ -245,6 +245,21 @@ fun RegisterScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                if (state.errorMessage != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        shape = CampusShapes.small,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "⚠️ ${state.errorMessage}",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(6.dp))
                 Button(
                     onClick = { viewModel.register(onRegisterSuccess) },

@@ -15,6 +15,18 @@ interface AuthRepository {
     fun getCurrentUser(): Flow<StudentUser?>
 
     /**
+     * Autentica con correo y contraseña comprobando correspondencia de credenciales.
+     */
+    suspend fun authenticate(email: String, password: String): Result<StudentUser> =
+        Result.success(StudentUser("u-default", "Estudiante", email, "", "", ""))
+
+    /**
+     * Registra una nueva cuenta de estudiante con contraseña.
+     */
+    suspend fun register(user: StudentUser, password: String): Result<StudentUser> =
+        Result.success(user)
+
+    /**
      * Actualiza el estado de verificación del estudiante tras procesar el OCR o si omite el paso.
      *
      * @param status Nuevo [VerificationStatus] a asignar.

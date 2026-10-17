@@ -131,6 +131,22 @@ fun LoginScreen(
                     shape = CampusShapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                if (state.errorMessage != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        shape = CampusShapes.small,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "⚠️ ${state.errorMessage}",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
+
                 Button(
                     onClick = { viewModel.login(onLoginSuccess) },
                     enabled = !state.isLoading,

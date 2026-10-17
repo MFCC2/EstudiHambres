@@ -123,6 +123,13 @@ fun HomeScreen(
             contentPadding = PaddingValues(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Banner de Modo Desarrollador (Vista Genérica)
+            if (state.isDev) {
+                item {
+                    DevModeNoticeCard()
+                }
+            }
+
             // 1. Saludo y perfil universitario
             item {
                 StudentGreetingHeader(
@@ -994,6 +1001,37 @@ private fun DetailedPromotionCard(
                     Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                 }
             }
+        }
+    }
+}
+
+/**
+ * Tarjeta informativa destacada visible únicamente cuando se ingresa con el Bypass de Desarrollador.
+ */
+@Composable
+fun DevModeNoticeCard() {
+    Card(
+        shape = CampusShapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "🛠️", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "MODO DESARROLLADOR (VISTA GENÉRICA)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Sesión de testing de laboratorio activa. En este modo puedes realizar escaneos ilimitados y comprobar la arquitectura sin vincular una cuenta estudiantil personal.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.9f)
+            )
         }
     }
 }

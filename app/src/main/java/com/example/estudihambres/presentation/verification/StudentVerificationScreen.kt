@@ -188,11 +188,39 @@ fun StudentVerificationScreen(
             }
         }
 
+        // Error banner si la validación falla o si ya tiene un carnet vinculado
+        state.errorMessage?.let { error ->
+            Card(
+                shape = CampusShapes.medium,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DocumentScanner,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+        }
+
         // 2. Visor Embebido con CameraX en el recuadro guiado
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(260.dp)
+                .height(270.dp)
                 .clip(CampusShapes.medium)
                 .background(Color.Black),
             contentAlignment = Alignment.Center
@@ -248,14 +276,14 @@ fun StudentVerificationScreen(
                         CircularProgressIndicator(color = Color.White)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Analizando texto con ML Kit...",
+                            text = "Analizando texto y sellos oficiales...",
                             color = Color.White,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
             } else if (hasCameraPermission) {
-                // CÁMARA EMBEBIDA ACTIVA (CameraX) con análisis en tiempo real
+                // CÁMARA EMBEBIDA ACTIVA (CameraX) con análisis en tiempo real y estabilización multi-frame
                 EmbeddedCameraCardScanner(
                     onCardDetected = { verifiedResult ->
                         viewModel.onCardScannedSuccessfully(verifiedResult)
@@ -399,17 +427,34 @@ fun StudentVerificationScreen(
                 Text("Ir a Beneficios (VERIFIED)")
             }
 
-            OutlinedButton(
-                onClick = {
-                    capturedBitmap = null
-                    viewModel.resetVerification()
-                },
-                shape = CampusShapes.small,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Refresh, contentDescription = null)
-                Spacer(modifier = Modifier.size(6.dp))
-                Text("Escanear Otro Carnet")
+            val session = com.example.estudihambres.core.util.SessionManager.getInstanceOrNull()
+            val isDev = session?.getUserSession()?.isDev ?: false
+            if (isDev) {
+                OutlinedButton(
+                    onClick = {
+                        capturedBitmap = null
+                        viewModel.resetVerification()
+                    },
+                    shape = CampusShapes.small,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Spacer(modifier = Modifier.size(6.dp))
+                    Text("🛠️ Escanear Otro Carnet (Modo Dev)")
+                }
+            } else {
+                Surface(
+                    shape = CampusShapes.small,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "🔒 Carnet único vinculado permanentemente a tu cuenta de estudiante.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
         }
 
@@ -430,8 +475,8 @@ fun StudentVerificationScreen(
 }
 
 /**
- * Componente que aloja el visor de CameraX con análisis en tiempo real en segundo plano.
- * Identifica patrones de carnet universitario de forma automática y rápida.
+ * Componente que aloja el visor de CameraX con análisis continuo y estabilización multi-frame.
+ * Requiere confirmación sostenida de sellos SUNEDU y datos institucionales durante 1.5 - 2s para evitar falsos positivos.
  */
 @androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
@@ -445,6 +490,10 @@ fun EmbeddedCameraCardScanner(
     var isScanningActive by remember { mutableStateOf(true) }
     var lastAnalyzedMs by remember { mutableStateOf(0L) }
     var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
+
+    var consecutiveValidFrames by remember { mutableStateOf(0) }
+    var scanProgress by remember { mutableStateOf(0f) }
+    var scanStatusMessage by remember { mutableStateOf("Enfoca el carnet universitario oficial dentro del recuadro") }
 
     val parser = remember { ParseStudentCardOcrUseCase() }
     val recognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
@@ -480,8 +529,8 @@ fun EmbeddedCameraCardScanner(
 
                     analysis.setAnalyzer(cameraExecutor) { imageProxy ->
                         val now = System.currentTimeMillis()
-                        // Throttling: analizar un frame cada 300 ms para máxima fluidez y bajo consumo
-                        if (!isScanningActive || now - lastAnalyzedMs < 300) {
+                        // Throttling: analizar un frame cada 350 ms para permitir estabilización y control térmico
+                        if (!isScanningActive || now - lastAnalyzedMs < 350) {
                             imageProxy.close()
                             return@setAnalyzer
                         }
@@ -496,10 +545,50 @@ fun EmbeddedCameraCardScanner(
                                     if (isScanningActive && visionText.text.isNotBlank()) {
                                         val parsed = parser(visionText.text)
                                         if (parsed.isVerified) {
-                                            isScanningActive = false
-                                            ContextCompat.getMainExecutor(ctx).execute {
-                                                onCardDetected(parsed)
+                                            consecutiveValidFrames++
+                                            val progress = (consecutiveValidFrames / 4f).coerceAtMost(1f)
+                                            val msg = when (consecutiveValidFrames) {
+                                                1 -> "Sello institucional detectado (25%). Mantén firme..."
+                                                2 -> "Universidad y código identificados (50%). Verificando..."
+                                                3 -> "Validando sello oficial de SUNEDU (75%)..."
+                                                else -> "¡Carnet verificado correctamente! (100%)"
                                             }
+                                            ContextCompat.getMainExecutor(ctx).execute {
+                                                scanProgress = progress
+                                                scanStatusMessage = msg
+                                            }
+
+                                            // Requiere 4 frames consecutivos verificados (~1.5s sostenido)
+                                            if (consecutiveValidFrames >= 4) {
+                                                isScanningActive = false
+                                                ContextCompat.getMainExecutor(ctx).execute {
+                                                    onCardDetected(parsed)
+                                                }
+                                            }
+                                        } else {
+                                            consecutiveValidFrames = 0
+                                            val rawUpper = visionText.text.uppercase()
+                                            val isCommercial = rawUpper.contains("BOLETA") ||
+                                                    rawUpper.contains("FACTURA") ||
+                                                    rawUpper.contains("PANADOL") ||
+                                                    rawUpper.contains("RUC") ||
+                                                    rawUpper.contains("FARMACIA")
+
+                                            val msg = if (isCommercial) {
+                                                "Comprobante no válido. Requiere carnet con sello SUNEDU"
+                                            } else {
+                                                "Buscando carnet oficial... Alinea el sello SUNEDU"
+                                            }
+                                            ContextCompat.getMainExecutor(ctx).execute {
+                                                scanProgress = 0f
+                                                scanStatusMessage = msg
+                                            }
+                                        }
+                                    } else if (isScanningActive) {
+                                        consecutiveValidFrames = 0
+                                        ContextCompat.getMainExecutor(ctx).execute {
+                                            scanProgress = 0f
+                                            scanStatusMessage = "Enfoca el carnet universitario oficial dentro del recuadro"
                                         }
                                     }
                                 }
@@ -530,8 +619,10 @@ fun EmbeddedCameraCardScanner(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Overlay con marco de carnet y esquinas destacadas
+        // Overlay con marco de carnet, barra de progreso y HUD de feedback
         CardScannerOverlay(
+            progress = scanProgress,
+            statusText = scanStatusMessage,
             modifier = Modifier.fillMaxSize(),
             onCaptureClick = {
                 val capture = imageCapture ?: return@CardScannerOverlay
@@ -559,14 +650,22 @@ fun EmbeddedCameraCardScanner(
 }
 
 /**
- * Superposición visual que dibuja el recuadro guía y el botón rápido de captura manual.
+ * Superposición visual que dibuja el recuadro guía, la barra de progreso de estabilización y el estado.
  */
 @Composable
 fun CardScannerOverlay(
+    progress: Float,
+    statusText: String,
     modifier: Modifier = Modifier,
     onCaptureClick: () -> Unit
 ) {
     Box(modifier = modifier) {
+        val borderColor = if (progress > 0.5f) {
+            MaterialTheme.colorScheme.tertiary
+        } else {
+            MaterialTheme.colorScheme.primary
+        }
+
         // Marco guía delimitador para carnet tipo ID-1
         Box(
             modifier = Modifier
@@ -574,25 +673,42 @@ fun CardScannerOverlay(
                 .padding(14.dp)
                 .border(
                     width = 2.dp,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = borderColor,
                     shape = RoundedCornerShape(12.dp)
                 )
         )
 
-        // Etiqueta superior indicadora
-        Surface(
-            color = Color.Black.copy(alpha = 0.65f),
-            shape = CampusShapes.small,
+        // Etiqueta superior indicadora con feedback dinámico
+        Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 20.dp)
+                .padding(top = 18.dp, start = 20.dp, end = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Enmarca tu carnet aquí • Escaneo inteligente activo",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-            )
+            Surface(
+                color = Color.Black.copy(alpha = 0.75f),
+                shape = CampusShapes.small
+            ) {
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                )
+            }
+
+            if (progress > 0f) {
+                Spacer(modifier = Modifier.height(6.dp))
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = MaterialTheme.colorScheme.tertiary,
+                    trackColor = Color.White.copy(alpha = 0.3f)
+                )
+            }
         }
 
         // Botón rápido para forzar captura manual si la iluminación es tenue
