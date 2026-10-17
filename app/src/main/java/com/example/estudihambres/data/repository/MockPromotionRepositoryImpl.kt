@@ -15,7 +15,7 @@ class MockPromotionRepositoryImpl : PromotionRepository {
         Promotion(
             id = "p-01",
             title = "Combo Universitario 2x1",
-            description = "Hamburguesa clásica + papas medianas + gaseosa. Segunda hamburguesa gratis mostrando tu carnet.",
+            description = "Hamburguesa clásica a la parrilla + papas medianas + gaseosa. Segunda hamburguesa clásica gratis presentando tu carnet universitario en caja o web.",
             category = "Comida",
             discountTag = "2x1",
             partnerName = "Bembos",
@@ -23,17 +23,17 @@ class MockPromotionRepositoryImpl : PromotionRepository {
             isFeatured = true,
             url = "https://www.bembos.com.pe/promociones",
             distanceText = "150m · 2 min",
-            originalPrice = "S/ 21.90",
-            discountedPrice = "S/ 12.90"
+            originalPrice = "S/ 29.80",
+            discountedPrice = "S/ 14.90"
         ),
         Promotion(
             id = "p-02",
             title = "Spotify Premium para Estudiantes",
-            description = "Música sin anuncios, descargas offline y plan individual con 50% de descuento verificado.",
+            description = "Música sin anuncios, descargas offline y plan individual con 50% de descuento verificado por SheerID (S/ 10.45/mes) + 1 mes de prueba gratis.",
             category = "Herramientas digitales",
             discountTag = "50% DCTO",
             partnerName = "Spotify",
-            estimatedSavingsSoles = 12.00,
+            estimatedSavingsSoles = 10.45,
             isFeatured = true,
             url = "https://www.spotify.com/pe-es/student/",
             distanceText = "Digital · Sin límites",
@@ -43,21 +43,21 @@ class MockPromotionRepositoryImpl : PromotionRepository {
         Promotion(
             id = "p-03",
             title = "YouTube Premium Plan Estudiante",
-            description = "YouTube y YouTube Music sin cortes comerciales en tu smartphone y laptop durante todo el semestre.",
+            description = "YouTube y YouTube Music sin anuncios, en segundo plano y con descargas offline con descuento oficial verificado por SheerID.",
             category = "Herramientas digitales",
             discountTag = "40% DCTO",
             partnerName = "YouTube",
-            estimatedSavingsSoles = 14.50,
+            estimatedSavingsSoles = 10.00,
             isFeatured = true,
             url = "https://www.youtube.com/premium/student",
             distanceText = "Digital · Todo el año",
             originalPrice = "S/ 23.90",
-            discountedPrice = "S/ 14.30/mes"
+            discountedPrice = "S/ 13.90/mes"
         ),
         Promotion(
             id = "p-04",
             title = "Notion Education Plus Pack",
-            description = "Almacenamiento ilimitado, historial de versiones de 30 días y workspaces de IA gratis para apuntes y tesis.",
+            description = "Plan Plus completo 100% gratis con tu correo institucional (.edu.pe): páginas ilimitadas, historial de 30 días, workspaces de IA y subida ilimitada de apuntes y tesis.",
             category = "Herramientas digitales",
             discountTag = "100% GRATIS",
             partnerName = "Notion",
@@ -71,7 +71,7 @@ class MockPromotionRepositoryImpl : PromotionRepository {
         Promotion(
             id = "p-05",
             title = "GitHub Student Developer Pack",
-            description = "Acceso gratis a GitHub Copilot, dominios gratis de Namecheap, créditos en la nube y terminales Pro.",
+            description = "Acceso gratis a GitHub Copilot, GitHub Pro, dominios gratuitos en Namecheap, créditos en AWS Educate/Azure y acceso a herramientas DevOps profesionales.",
             category = "Herramientas digitales",
             discountTag = "100% GRATIS",
             partnerName = "GitHub & Copilot",
@@ -85,10 +85,10 @@ class MockPromotionRepositoryImpl : PromotionRepository {
         Promotion(
             id = "p-06",
             title = "Figma for Education",
-            description = "Cuentas profesionales completas para prototipado interactivo de interfaces UI/UX y pizarras FigJam.",
+            description = "Plan Figma Professional 100% gratis para prototipado UI/UX interactivo, sistemas de diseño colaborativo y pizarras FigJam para universitarios.",
             category = "Herramientas digitales",
             discountTag = "100% GRATIS",
-            partnerName = "Figma Design",
+            partnerName = "Figma",
             estimatedSavingsSoles = 60.00,
             isFeatured = true,
             url = "https://www.figma.com/education/",
@@ -99,7 +99,7 @@ class MockPromotionRepositoryImpl : PromotionRepository {
         Promotion(
             id = "p-07",
             title = "2x1 en Frappuccinos Universitarios",
-            description = "Válido de lunes a viernes en bebidas seleccionadas presentando carnet universitario activo.",
+            description = "2x1 en Frappuccinos seleccionados y café del día de lunes a jueves en tamaño Alto presentando carnet universitario activo.",
             category = "Comida",
             discountTag = "2x1 PROMO",
             partnerName = "Starbucks Coffee",
@@ -107,41 +107,41 @@ class MockPromotionRepositoryImpl : PromotionRepository {
             isFeatured = true,
             url = "https://www.starbucks.pe",
             distanceText = "200m · 3 min",
-            originalPrice = "S/ 32.00",
-            discountedPrice = "S/ 16.00"
+            originalPrice = "S/ 33.00",
+            discountedPrice = "S/ 16.50"
         ),
         Promotion(
             id = "p-08",
             title = "Porciones Papa John's Pizza",
-            description = "Porciones dobles familiares de Pepperoni o Suprema para almuerzos entre clases.",
+            description = "2x1 en pizzas medianas y familiares Pepperoni o Americana para almuerzos y grupos de estudio presentando carnet.",
             category = "Comida",
             discountTag = "2x1 SLICE",
             partnerName = "Papa John's",
-            estimatedSavingsSoles = 9.00,
+            estimatedSavingsSoles = 28.00,
             isFeatured = false,
             url = "https://www.papajohns.com.pe",
             distanceText = "350m · 5 min",
-            originalPrice = "S/ 18.00",
-            discountedPrice = "S/ 9.90"
+            originalPrice = "S/ 56.00",
+            discountedPrice = "S/ 28.00"
         ),
         Promotion(
             id = "p-09",
             title = "Medio Pasaje Universitario",
-            description = "Tarifa oficial reducida del 50% con carnet universitario vigente en todas las troncales y rutas urbanas.",
+            description = "Tarifa reducida oficial del 50% con carnet universitario SUNEDU vigente en transporte público, Metropolitano (S/ 1.60), Línea 1 (S/ 0.75) y Corredores.",
             category = "Transporte",
             discountTag = "50% DTO",
             partnerName = "Transporte Urbano",
             estimatedSavingsSoles = 25.00,
             isFeatured = false,
-            url = "https://www.gob.pe/atu",
+            url = "https://portal.atu.gob.pe",
             distanceText = "En todas las rutas",
-            originalPrice = "S/ 2.50",
-            discountedPrice = "S/ 1.20"
+            originalPrice = "S/ 3.20",
+            discountedPrice = "S/ 1.60"
         ),
         Promotion(
             id = "p-10",
             title = "Cineplanet 2x1 Universitario",
-            description = "2x1 en entradas 2D regulares de lunes a viernes en boletería física y web mostrando carnet universitario o Sunedu vigente.",
+            description = "2x1 en entradas 2D regulares de lunes a viernes en boletería física y web acreditando carnet universitario o carnet SUNEDU activo.",
             category = "Entretenimiento",
             discountTag = "2x1 ENTRADAS",
             partnerName = "Cineplanet",
@@ -155,7 +155,7 @@ class MockPromotionRepositoryImpl : PromotionRepository {
         Promotion(
             id = "p-11",
             title = "Apple Education Store: Mac & iPad",
-            description = "Precios educativos preferenciales para estudiantes universitarios en MacBook Air, MacBook Pro y iPad, con Apple Music a S/ 9.90.",
+            description = "Precios educativos oficiales para estudiantes universitarios peruanos en MacBook Air, MacBook Pro, iPad Air y suscripción Apple Music a S/ 9.90/mes con Apple TV+ gratis.",
             category = "Herramientas digitales",
             discountTag = "DCTO EDU",
             partnerName = "Apple Education",
@@ -169,7 +169,7 @@ class MockPromotionRepositoryImpl : PromotionRepository {
         Promotion(
             id = "p-12",
             title = "JetBrains All Products Student Pack",
-            description = "Suscripción gratuita completa para estudiantes universitarios a IntelliJ IDEA Ultimate, PyCharm Pro, WebStorm, CLion y DataGrip con correo .edu.pe.",
+            description = "Licencia profesional gratuita completa a IntelliJ IDEA Ultimate, PyCharm Pro, WebStorm, CLion, DataGrip y PhpStorm con correo institucional .edu.pe.",
             category = "Herramientas digitales",
             discountTag = "100% GRATIS",
             partnerName = "JetBrains",
@@ -183,7 +183,7 @@ class MockPromotionRepositoryImpl : PromotionRepository {
         Promotion(
             id = "p-13",
             title = "Microsoft 365 Educación & 1TB OneDrive",
-            description = "Word, Excel, PowerPoint, OneNote, Teams y 1TB de almacenamiento en la nube OneDrive gratis con tu correo institucional universitario.",
+            description = "Word, Excel, PowerPoint, OneNote, Teams y 1TB de almacenamiento en la nube OneDrive 100% gratuito con correo institucional universitario.",
             category = "Herramientas digitales",
             discountTag = "100% GRATIS",
             partnerName = "Microsoft Education",
@@ -197,7 +197,7 @@ class MockPromotionRepositoryImpl : PromotionRepository {
         Promotion(
             id = "p-14",
             title = "Mega Box Estudiantil KFC",
-            description = "2 piezas de pollo crujiente + papas medianas + puré + ensalada regular y gaseosa presentando carnet de estudiante en mostrador.",
+            description = "2 piezas de pollo crujiente + papas regulares + puré + ensalada regular y gaseosa personal por S/ 14.90 presentando carnet de estudiante en mostrador.",
             category = "Comida",
             discountTag = "PROMO S/ 14.90",
             partnerName = "KFC Perú",
@@ -225,7 +225,7 @@ class MockPromotionRepositoryImpl : PromotionRepository {
         Promotion(
             id = "p-16",
             title = "Tarifa Universitaria Cinemark",
-            description = "Entrada 2D general a tarifa reducida de lunes a jueves en todos los cines Cinemark de Lima y provincias presentando carnet.",
+            description = "Entradas 2D a tarifa reducida especial de lunes a jueves en todos los complejos Cinemark de Lima y provincias presentando carnet universitario.",
             category = "Entretenimiento",
             discountTag = "TARIFA EDU",
             partnerName = "Cinemark Perú",
@@ -235,6 +235,62 @@ class MockPromotionRepositoryImpl : PromotionRepository {
             distanceText = "1.2 km · 15 min",
             originalPrice = "S/ 24.00",
             discountedPrice = "S/ 14.00"
+        ),
+        Promotion(
+            id = "p-17",
+            title = "Canva Pro para Estudiantes",
+            description = "Suite de diseño gráfico profesional con herramientas premium de IA, eliminación de fondos y miles de plantillas para presentaciones y tesis gratis.",
+            category = "Herramientas digitales",
+            discountTag = "100% GRATIS",
+            partnerName = "Canva Education",
+            estimatedSavingsSoles = 120.00,
+            isFeatured = true,
+            url = "https://www.canva.com/es_419/educacion/",
+            distanceText = "Digital · Sin límites",
+            originalPrice = "$119/año",
+            discountedPrice = "100% GRATIS"
+        ),
+        Promotion(
+            id = "p-18",
+            title = "Autodesk Education: AutoCAD & Revit",
+            description = "Licencia educativa de 1 año renovable para AutoCAD, Revit, Civil 3D, Maya y 3ds Max para estudiantes de ingeniería y arquitectura acreditados.",
+            category = "Herramientas digitales",
+            discountTag = "100% GRATIS",
+            partnerName = "Autodesk",
+            estimatedSavingsSoles = 450.00,
+            isFeatured = false,
+            url = "https://www.autodesk.com/education/students",
+            distanceText = "Licencia de 1 Año",
+            originalPrice = "$1,865/año",
+            discountedPrice = "100% GRATIS"
+        ),
+        Promotion(
+            id = "p-19",
+            title = "Pizza Hut: 2x1 en Pizzas Medianas",
+            description = "2x1 en pizzas medianas tradicionales Pan Pizza (Americana o Pepperoni) para grupos de estudio universitarios de lunes a jueves.",
+            category = "Comida",
+            discountTag = "2x1 PIZZA",
+            partnerName = "Pizza Hut",
+            estimatedSavingsSoles = 36.90,
+            isFeatured = false,
+            url = "https://www.pizzahut.com.pe",
+            distanceText = "300m · 4 min",
+            originalPrice = "S/ 73.80",
+            discountedPrice = "S/ 36.90"
+        ),
+        Promotion(
+            id = "p-20",
+            title = "Boleto Turístico y Museos: 50% DCTO",
+            description = "Tarifa reducida del 50% en museos nacionales, monumentos arqueológicos y Boleto Turístico del Cusco (S/ 40 vs S/ 70 general) con carnet universitario vigente.",
+            category = "Educación",
+            discountTag = "50% OFICIAL",
+            partnerName = "Ministerio de Cultura",
+            estimatedSavingsSoles = 35.00,
+            isFeatured = false,
+            url = "https://tuboleto.cultura.pe",
+            distanceText = "Cusco & Nacional",
+            originalPrice = "S/ 70.00",
+            discountedPrice = "S/ 35.00"
         )
     )
 

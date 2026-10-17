@@ -14,48 +14,48 @@ class MockCommerceRepositoryImpl : CommerceRepository {
     private val sampleCommerces = listOf(
         Commerce(
             id = "c1",
-            name = "El Rincón Universitario",
-            description = "Menú estudiantil casero, opciones vegetarianas y jugos naturales.",
-            category = "Menú Ejecutivo",
-            discountDescription = "20% de descuento mostrando CampusPass",
+            name = "Bembos Real Plaza / Campus",
+            description = "Hamburguesas a la parrilla, combos estudiantiles y papas crocantes con carnet.",
+            category = "Comida Rápida",
+            discountDescription = "Combo Universitario a S/ 14.90 mostrando carnet activo",
             latitude = -12.0833,
             longitude = -77.0428,
-            address = "Av. Universitaria 1234"
+            address = "Av. Universitaria 1420 (Cerca a Campus)"
         ),
         Commerce(
             id = "c2",
-            name = "Burger Campus",
-            description = "Hamburguesas artesanales, papas rústicas y combos para grupos de estudio.",
-            category = "Comida Rápida",
-            discountDescription = "Combo Estudiante: 25% off en burgers dobles",
+            name = "Starbucks Coffee",
+            description = "Café de especialidad, wifi de alta velocidad, frappuccinos y espacios de estudio.",
+            category = "Cafetería & Cowork",
+            discountDescription = "2x1 en Frappuccinos tamaño Alto de lunes a jueves",
             latitude = -12.0870,
             longitude = -77.0490,
-            address = "Calle Los Estudiantes 456"
+            address = "Av. Universitaria 1801, San Miguel"
         ),
         Commerce(
             id = "c3",
-            name = "Café & Tesis",
-            description = "Espacio de coworking con café de especialidad, wifi veloz y repostería.",
-            category = "Cafetería",
-            discountDescription = "Café americano gratis con consumo mínimo de S/ 15",
+            name = "Cineplanet Multicines",
+            description = "Salas de cine 2D/3D con cartelera de estreno y confitería universitaria.",
+            category = "Entretenimiento",
+            discountDescription = "2x1 en entradas 2D regulares de lunes a viernes con carnet",
             latitude = -12.0910,
             longitude = -77.0380,
-            address = "Jr. Las Letras 789"
+            address = "Centro Comercial Plaza San Miguel / Real Plaza"
         ),
         Commerce(
             id = "c4",
-            name = "Pizzería La Previa",
-            description = "Pizzas medianas y familiares ideales para reuniones y celebraciones de exámenes.",
+            name = "Pizza Hut",
+            description = "Pizzas Pan Pizza, combos personales y familiares ideales para grupos de estudio.",
             category = "Pizzería",
-            discountDescription = "2x1 en pizzas familiares de lunes a jueves",
+            discountDescription = "2x1 en pizzas medianas tradicionales de lunes a jueves",
             latitude = -12.0790,
             longitude = -77.0510,
-            address = "Av. Colonial 980"
+            address = "Av. La Marina 2050 / Av. Colonial"
         ),
         Commerce(
             id = "c5",
-            name = "Comercio Foráneo Lejano",
-            description = "Comercio fuera del radio de 30 km para verificar pruebas de filtro.",
+            name = "Comercio Foráneo Huachipa (Control 30km)",
+            description = "Comercio fuera del radio de 30 km para verificar pruebas de filtro esférico.",
             category = "Varios",
             discountDescription = "10% off",
             latitude = -11.5000,
