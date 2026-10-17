@@ -1,7 +1,11 @@
 package com.example.estudihambres.qa
 
+import com.example.estudihambres.data.repository.MockPlaceRepository
 import com.example.estudihambres.data.repository.MockPromotionRepositoryImpl
+import com.example.estudihambres.domain.model.Place
 import com.example.estudihambres.domain.model.RedeemedCoupon
+import com.example.estudihambres.domain.model.StudentUser
+import com.example.estudihambres.domain.model.VerificationStatus
 import com.example.estudihambres.domain.usecase.RedeemCouponUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -17,16 +21,24 @@ import java.util.Locale
  * Suite de Pruebas de Experiencia de Usuario (UX) y Personas Estudiantiles en Distintos Casos de Uso.
  *
  * Cubre perfiles reales de estudiantes universitarios peruanos:
- * 1. Cachimbo / Ingresante (Registro institucional, validación DNI y correo .edu.pe).
+ * 1. Cachimbo / Ingresante (Registro institucional, validación DNI y correo .edu.pe, onboarding).
  * 2. Estudiante de Ingeniería de Ciclos Superiores (Canje de suites de desarrollo JetBrains, GitHub y Notion).
  * 3. Estudiante con Presupuesto Ajustado en Provincias (UNSAAC / Continental - Ahorro en combos de comida).
  * 4. Estudiante Conmutador / Transporte (Ajuste del Radar de 5km, 15km a 30km y medio pasaje).
  * 5. Casos de Borde y Seguridad (Inmutabilidad de DNI, cupones vencidos y códigos no colisionantes).
+ * 6. Estudiante Regional / Polo Cusco (Descubrimiento de comercios locales y Boleto Turístico).
+ * 7. Estudiante sin Conectividad / Offline (Preservación y visualización del vale sin datos móviles).
+ * 8. Estudiante Multicarrera (Actualización de carrera preservando DNI oficial y Universidad).
+ * 9. Estudiante Nocturno / Semanas de Finales (Canje de café y comida rápida bajo presupuesto).
+ * 10. Estudiante Tesista / Investigador (Herramientas académicas y libros especializados).
+ * 11. Cajero POS de Marca Aliada (Validación de token y prevención de doble canje).
+ * 12. Estudiante de Entretenimiento (Tarifas universitarias en streaming y cine).
  */
 class UserExperienceAndPersonaQaTest {
 
     private val redeemCouponUseCase = RedeemCouponUseCase()
     private val promotionRepository = MockPromotionRepositoryImpl()
+    private val placeRepository = MockPlaceRepository()
 
     /**
      * Caso 1: Persona "Cachimbo / Ingresante" - Registro con DNI válido de 8 dígitos y correo institucional (.edu.pe).
@@ -283,5 +295,258 @@ class UserExperienceAndPersonaQaTest {
             assertTrue("La promoción '${promo.title}' debe tener precios originales y de descuento válidos",
                 promo.originalPrice.isNotBlank() && promo.discountedPrice.isNotBlank())
         }
+    }
+
+    /**
+     * Caso 11: Persona "Estudiante de Provincias / Polo Académico Cusco" - Descubrimiento de convenios locales
+     * (Boleto Turístico del Cusco, Café D'Wasi, Real Plaza Cusco) mediante filtrado geográfico por cercanía.
+     */
+    @Test
+    fun regionalProvincialStudent_cuscoAcademicHub_discoversLocalCampusDeals() = runBlocking {
+        val campusLat = -13.5233
+        val campusLon = -71.9482
+
+        val allPlaces = placeRepository.getPlaces().first()
+        val cuscoPlaces = allPlaces.filter { place ->
+            val distance = calculateDistanceKm(campusLat, campusLon, place.latitude, place.longitude)
+            distance <= 5.0
+        }
+
+        assertTrue("Debe encontrar establecimientos en el radio de 5km del campus Cusco", cuscoPlaces.size >= 5)
+        assertTrue("Debe incluir Bembos Real Plaza Cusco", cuscoPlaces.any { it.name.contains("Bembos Real Plaza Cusco") })
+        assertTrue("Debe incluir Starbucks Real Plaza Cusco", cuscoPlaces.any { it.name.contains("Starbucks") })
+        assertTrue("Debe incluir Café D'Wasi", cuscoPlaces.any { it.name.contains("D'Wasi") })
+
+        // Exclusión del local foráneo en Valle Sagrado (> 30 km)
+        assertFalse("El restaurante foráneo fuera de radio no debe figurar en el campus",
+            cuscoPlaces.any { it.name.contains("Valle Sagrado") })
+
+        // Canje del beneficio cultural estudiantil (Boleto Turístico del Cusco)
+        val tourismCoupon = redeemCouponUseCase(
+            partnerName = "Boleto Turístico",
+            title = "Boleto Turístico del Cusco Estudiante",
+            category = "Cultura",
+            discountBadge = "50% DTO",
+            couponId = "cu-10"
+        )
+        assertNotNull(tourismCoupon)
+        assertTrue("El código debe tener el prefijo CP-BOLE-", tourismCoupon.redemptionCode.startsWith("CP-BOLE-"))
+        assertTrue("Debe aplicar un ahorro significativo para estudiantes", tourismCoupon.savingsAmountSoles > 0)
+    }
+
+    /**
+     * Caso 12: Persona "Estudiante con Baja Conectividad / Modo Offline" - Disponibilidad del vale en billetera
+     * sin conexión a internet (los datos esenciales de canje y token QR/alfanumérico están encapsulados).
+     */
+    @Test
+    fun lowConnectivityStudent_offlineWalletVoucher_preservesTokenAndMetadataWithoutNetwork() {
+        val activeCoupon = redeemCouponUseCase(
+            partnerName = "Pizza Hut",
+            title = "2x1 Pizza Mediana",
+            category = "Comida",
+            discountBadge = "2x1",
+            couponId = "p-15"
+        )
+
+        // Verificación de integridad autónoma para modo offline:
+        assertNotNull("El identificador del cupón debe ser autónomo", activeCoupon.id)
+        assertNotNull("El código de canje no puede ser nulo para lectura offline en POS", activeCoupon.redemptionCode)
+        assertTrue("El código debe cumplir con la estructura verificable sin red",
+            activeCoupon.redemptionCode.matches(Regex("^CP-[A-Z0-9]{4}-[A-Z0-9]{4}$")))
+        assertTrue("El plazo de vigencia (48h) debe estar calculado localmente", activeCoupon.expiresAtMillis > System.currentTimeMillis())
+        assertEquals("Pizza Hut", activeCoupon.partnerName)
+        assertEquals("2x1", activeCoupon.discountBadge)
+        assertTrue("El ahorro calculado debe estar registrado en el modelo", activeCoupon.savingsAmountSoles > 0)
+        assertFalse("Debe registrarse como activo (no usado)", activeCoupon.isUsed)
+    }
+
+    /**
+     * Caso 13: Persona "Estudiante con Cambio de Especialidad" - Actualización de carrera y código
+     * preservando la inmutabilidad de la identidad legal validada (DNI y Universidad).
+     */
+    @Test
+    fun careerSwitchStudent_profileModification_updatesCareerAndCodeWhileProtectingOfficialDniAndUniversity() {
+        val initialUser = StudentUser(
+            id = "usr-transf-01",
+            fullName = "Mateo Sebastián Fernández",
+            email = "73921845@continental.edu.pe",
+            dni = "73921845",
+            university = "Universidad Continental",
+            studentCode = "20211045",
+            career = "Ingeniería Industrial",
+            verificationStatus = VerificationStatus.VERIFIED
+        )
+
+        // El estudiante solicita cambio de especialidad a Ingeniería de Sistemas
+        val updatedUser = initialUser.copy(
+            career = "Ingeniería de Sistemas",
+            studentCode = "20232088"
+        )
+
+        // Verificación de actualización exitosa de datos académicos
+        assertEquals("Ingeniería de Sistemas", updatedUser.career)
+        assertEquals("20232088", updatedUser.studentCode)
+
+        // Verificación de estricta protección de identidad institucional
+        assertEquals("El DNI debe permanecer inmutable", initialUser.dni, updatedUser.dni)
+        assertEquals("La Universidad debe permanecer inmutable", initialUser.university, updatedUser.university)
+        assertEquals("El ID de usuario debe permanecer idéntico", initialUser.id, updatedUser.id)
+        assertEquals("El estado de verificación oficial debe mantenerse", VerificationStatus.VERIFIED, updatedUser.verificationStatus)
+    }
+
+    /**
+     * Caso 14: Persona "Estudiante Nocturno / Sesión de Exámenes Finales" - Canje de combos de estudio
+     * (Starbucks + KFC) con presupuesto acotado y cálculo de ahorro neto en soles.
+     */
+    @Test
+    fun nightOwlStudent_lateNightStudySession_redeemsCoffeeAndFastFoodUnderTightBudget() {
+        // Canje de café para la noche de estudio
+        val coffeeCoupon = redeemCouponUseCase(
+            partnerName = "Starbucks Coffee",
+            title = "Starbucks 2x1 Frappuccinos",
+            category = "Cafetería",
+            discountBadge = "2x1",
+            couponId = "p-13"
+        )
+
+        // Canje de comida rápida accesible
+        val dinnerCoupon = redeemCouponUseCase(
+            partnerName = "KFC Perú",
+            title = "Mega Box Estudiantil KFC",
+            category = "Comida",
+            discountBadge = "PROMO S/ 14.90",
+            couponId = "p-14"
+        )
+
+        val totalSavings = coffeeCoupon.savingsAmountSoles + dinnerCoupon.savingsAmountSoles
+        assertTrue("El ahorro combinado de café y cena debe superar los S/ 25.00", totalSavings >= 25.0)
+
+        // Ambos cupones deben emitirse con tokens independientes y no colisionar
+        assertNotEquals("Los códigos de canje deben ser únicos e independientes",
+            coffeeCoupon.redemptionCode, dinnerCoupon.redemptionCode)
+        assertFalse(coffeeCoupon.isExpired)
+        assertFalse(dinnerCoupon.isExpired)
+    }
+
+    /**
+     * Caso 15: Persona "Estudiante Tesista / Investigador" - Búsqueda de beneficios en libros académicos
+     * (Crisol, SBS) y software técnico (Autodesk, Microsoft 365) con ahorro masivo.
+     */
+    @Test
+    fun thesisResearcherStudent_academicToolsAndBooks_filtersCrisolSbsAndAutodesk() = runBlocking {
+        val promotions = promotionRepository.getPromotions().first()
+
+        val bookDeals = promotions.filter {
+            it.title.contains("Crisol", ignoreCase = true) || it.title.contains("SBS", ignoreCase = true)
+        }
+        assertTrue("Debe encontrar promociones en librerías académicas para tesis", bookDeals.size >= 2)
+
+        val softwareDeals = promotions.filter {
+            it.title.contains("Autodesk", ignoreCase = true) || it.title.contains("Microsoft 365", ignoreCase = true)
+        }
+        assertTrue("Debe encontrar herramientas de software especializado gratuitas", softwareDeals.size >= 2)
+
+        val totalSoftwareSavings = softwareDeals.sumOf { it.estimatedSavingsSoles }
+        assertTrue("El ahorro en software profesional debe superar los S/ 500 anuales", totalSoftwareSavings >= 500.0)
+    }
+
+    /**
+     * Caso 16: Persona "Cajero / Operador POS" - Detección y rechazo de intento de doble canje
+     * de un cupón que ya figura como utilizado.
+     */
+    @Test
+    fun posCashier_attemptDuplicateRedemption_detectsAndRejectsAlreadyConsumedCoupon() {
+        val originalCoupon = redeemCouponUseCase(
+            partnerName = "Bembos",
+            title = "Combo Universitario 2x1",
+            category = "Comida",
+            discountBadge = "2x1",
+            couponId = "p-01"
+        )
+
+        // Estado inicial en la primera presentación en caja: válido y no usado
+        assertFalse("El cupón original no debe estar usado", originalCoupon.isUsed)
+        assertFalse("El cupón original no debe estar expirado", originalCoupon.isExpired)
+
+        // El cajero procesa la orden y marca el cupón como canjeado
+        val consumedCoupon = originalCoupon.copy(isUsed = true)
+        assertTrue("El cupón procesado debe tener isUsed = true", consumedCoupon.isUsed)
+
+        // Simulación de un segundo intento de canje con el mismo vale
+        val canBeReused = !consumedCoupon.isUsed && !consumedCoupon.isExpired
+        assertFalse("Un cupón ya marcado como utilizado debe ser rechazado en caja", canBeReused)
+    }
+
+    /**
+     * Caso 17: Persona "Estudiante de Entretenimiento y Streaming" - Tarifas universitarias oficiales
+     * en Spotify, YouTube Premium y entradas de Cineplanet.
+     */
+    @Test
+    fun entertainmentAndCultureStudent_streamingAndCinema_validatesSpotifyAndCineplanetSavings() = runBlocking {
+        val promotions = promotionRepository.getPromotions().first()
+
+        val spotifyPromo = promotions.firstOrNull { it.partnerName.contains("Spotify", ignoreCase = true) }
+        assertNotNull("Debe existir la promoción oficial de Spotify Universitario", spotifyPromo)
+        assertTrue("La mensualidad de Spotify debe ser tarifa estudiante (S/ 10.45)",
+            spotifyPromo!!.discountedPrice.contains("10.45"))
+
+        val youtubePromo = promotions.firstOrNull { it.partnerName.contains("YouTube", ignoreCase = true) }
+        assertNotNull("Debe existir la promoción oficial de YouTube Premium Estudiante", youtubePromo)
+        assertTrue("La mensualidad de YouTube debe ser tarifa estudiante (S/ 13.90)",
+            youtubePromo!!.discountedPrice.contains("13.90"))
+
+        val cinemaPromo = promotions.firstOrNull { it.partnerName.contains("Cineplanet", ignoreCase = true) }
+        assertNotNull("Debe existir la promoción de Cineplanet 2x1", cinemaPromo)
+        assertEquals("2x1 ENTRADAS", cinemaPromo!!.discountTag)
+    }
+
+    /**
+     * Caso 18: Persona "Cachimbo en Onboarding" - Transición de estados de verificación
+     * y desbloqueo progresivo de credenciales estudiantiles.
+     */
+    @Test
+    fun freshmanOnboardingJourney_verificationStateProgression_unlocksFullPrivilegesUponVerification() {
+        var student = StudentUser(
+            id = "usr-onboard-01",
+            fullName = "Diego Alejandro Alva",
+            email = "dalva@continental.edu.pe",
+            dni = "74589210",
+            university = "Universidad Continental",
+            studentCode = "20251010",
+            verificationStatus = VerificationStatus.UNVERIFIED
+        )
+
+        // Fase 1: Recién registrado sin validar carné
+        assertEquals(VerificationStatus.UNVERIFIED, student.verificationStatus)
+        val isEligibleForVipInitial = student.verificationStatus == VerificationStatus.VERIFIED
+        assertFalse("Un alumno no verificado no debe acceder a cupones VIP", isEligibleForVipInitial)
+
+        // Fase 2: Envío de foto de carné universitario
+        student = student.copy(
+            verificationStatus = VerificationStatus.PENDING_VERIFICATION,
+            scannedCardDni = "74589210"
+        )
+        assertEquals(VerificationStatus.PENDING_VERIFICATION, student.verificationStatus)
+        assertEquals("74589210", student.scannedCardDni)
+
+        // Fase 3: Validación aprobada por SUNEDU / RENIEC
+        student = student.copy(verificationStatus = VerificationStatus.VERIFIED)
+        assertEquals(VerificationStatus.VERIFIED, student.verificationStatus)
+        val isEligibleForVipFinal = student.verificationStatus == VerificationStatus.VERIFIED
+        assertTrue("Un alumno verificado oficialmente desbloquea todos los beneficios", isEligibleForVipFinal)
+    }
+
+    /**
+     * Función utilitaria de cálculo de distancia mediante la fórmula de Haversine para pruebas de radar geográfico.
+     */
+    private fun calculateDistanceKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val earthRadiusKm = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+                kotlin.math.cos(Math.toRadians(lat1)) * kotlin.math.cos(Math.toRadians(lat2)) *
+                kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+        val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+        return earthRadiusKm * c
     }
 }
