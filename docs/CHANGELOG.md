@@ -521,3 +521,82 @@ Mejora integral del sistema de mapas y radar geográfico de convenios universita
 7. **Ampliación de Suite QA a 109 Pruebas Unitarias Automatizadas**:
    - 4 nuevas pruebas en `IntuitiveUxAndNavigationQaTest.kt` validando coordenadas de sedes, filtrado estricto a 5 km, búsqueda textual y fórmula de ETA de caminata.
    - 109 pruebas ejecutadas con 100% de éxito y cero advertencias de compilación.
+
+---
+
+## [Funcionalidad Integral de Canje de Cupones, Tokens Oficiales y Ahorro Persistente v1.2.6] - 2026-10-17
+**Rama:** `develop` / `main`
+
+### Resumen de la Entrega
+Respuesta directa al requerimiento de operatividad y funcionalidad real del usuario ("quiero que sea funcional"):
+1. **Flujo Completo y Funcional de Canje de Cupones (`RedeemCouponUseCase`, `SessionManager`)**:
+   - Creación de la entidad de dominio `RedeemedCoupon` con identificador único, título, comercio aliado, categoría, insignia de descuento, token alfanumérico oficial, cálculo de ahorro en Soles (PEN) y ventana de expiración de 48 horas.
+   - Implementación de `RedeemCouponUseCase` con algoritmo generador de códigos con formato `CP-[PREFIJO_ALIADO]-[TOKEN_HEX]` (ej. `CP-BEMB-8492`, `CP-STAR-9214`, `CP-SPOT-7102`) y cálculo de ahorro dinámico.
+   - Persistencia local desacoplada en `SessionManager` respaldando en tiempo real en `sessionPrefs` y sincronizando con las cuentas de usuarios en `accountPrefs`.
+
+2. **Comprobante Digital Oficial con Código de Barras (`RedemptionVoucherDialog`)**:
+   - Diálogo modal interactivo con estética de boleto/voucher institucional universitario.
+   - Código token legible en tipografía monospace con botón de copiado al portapapeles en 1 solo tap (`ClipboardManager`) con feedback inmediato.
+   - Renderizado en tiempo real de código de barras Code-128 con patrones de barras variables en `Canvas` de Compose.
+   - Resumen del incremento exacto de ahorro (`+S/ 16.50 sumados a tu ahorro universitario`) e instrucciones claras de presentación física o virtual.
+
+3. **Canje Directo desde el Radar Geográfico (`MapScreen.kt`)**:
+   - El botón "Canjear Cupón" en el `PlaceDiscountDetailContent` ejecuta la redención inmediata para el comercio físico seleccionado, almacena el cupón en la billetera del estudiante y despliega su comprobante digital interactivo.
+
+4. **Canje Directo desde el Catálogo del Dashboard (`HomeScreen.kt`)**:
+   - Botón primario destacado "🎟️ Canjear Cupón y Generar Token" en el `PromotionDetailSheet`.
+   - Al redimir una promoción, se genera el vale, se suma a la cuenta y se actualiza reactivamente la tarjeta de ahorro acumulado del dashboard en tiempo real (`viewModel.refreshSavings()`).
+
+5. **Billetera de Cupones Canjeados en el Perfil (`ProfileScreen.kt`, `ProfileViewModel.kt`)**:
+   - Nueva sección "Mis Cupones y Vales Canjeados 🎟️" integrada en el perfil universitario del estudiante.
+   - Muestra tarjetas de cupones activos con categoría, aliado, código de validación, ahorro obtenido y estado de vigencia.
+   - Permite tocar cualquier cupón para reabrir su comprobante digital y código de barras en cualquier momento para pagar en caja.
+   - Estado vacío ilustrativo que orienta al estudiante si aún no ha canjeado cupones.
+
+6. **Ampliación de Suite QA a 119 Pruebas Unitarias Automatizadas (`FunctionalRedemptionAndSavingsQaTest.kt`)**:
+   - 10 nuevas pruebas unitarias cubriendo generación de tokens, fórmulas de porcentaje, beneficios 2x1, productos gratuitos, precios fijos, formato de fechas, vigencia de 48h, unicidad de 50 tokens consecutivos y sanitización de nombres de comercios.
+   - Total: 119 pruebas unitarias ejecutadas con 100% de aprobación (`BUILD SUCCESSFUL in 19s`), 0 errores y 0 advertencias.
+
+---
+
+## [Optimización de Registro con Insets de Teclado, Promociones 100% Reales, Estética Visual y Suite QA de Personas v1.2.7] - 2026-10-17
+**Rama:** `develop` / `main`
+
+### Resumen de la Entrega
+Atención y resolución exhaustiva a las 4 peticiones del usuario:
+1. **Solución a Superposición del Teclado e Interrupción en Registro (`RegisterScreen.kt`, `LoginScreen.kt`)**:
+   - Corrección del scroll y márgenes virtuales aplicando `Modifier.imePadding()` en los contenedores raíz de autenticación.
+   - Reemplazo de alineación centrada rígida por `Arrangement.Top` con espaciado vertical ergonómico y `rememberScrollState()`.
+   - Inclusión de un generoso espaciador inferior (`Spacer(modifier = Modifier.height(140.dp))`) que permite al estudiante desplazar fluidamente la pantalla hacia abajo con el teclado activo, ingresando su contraseña y confirmando el registro sin obstrucciones.
+
+2. **Catálogo de Promociones 100% Reales y Verificadas (`MockPromotionRepositoryImpl.kt`, `HomeViewModel.kt`)**:
+   - Incorporación de convenios y beneficios estudiantiles reales del mercado peruano e internacional:
+     - **Cineplanet Universitario 2x1**: 2x1 en entradas 2D regulares mostrando carnet universitario o Sunedu vigente (`https://www.cineplanet.com.pe/promociones`).
+     - **Apple Education Store: Mac & iPad**: Precios educativos preferenciales en MacBook Air, Pro y iPad, más Apple Music a S/ 9.90 (`https://www.apple.com/pe/shop/education-pricing`).
+     - **JetBrains All Products Student Pack**: Suscripción gratuita 100% para estudiantes a IntelliJ IDEA Ultimate, PyCharm Pro, WebStorm, CLion y DataGrip con correo .edu.pe (`https://www.jetbrains.com/community/education/#students`).
+     - **Microsoft 365 Educación & 1TB OneDrive**: Word, Excel, PowerPoint y 1TB de almacenamiento en la nube sin costo (`https://www.microsoft.com/es-pe/education/products/office`).
+     - **Mega Box Estudiantil KFC**: Combo de 2 piezas, papas, puré, ensalada y gaseosa a S/ 14.90 con carnet (`https://www.kfc.com.pe/promociones`).
+     - **Librerías SBS**: 15% de descuento en libros académicos, técnicos e idiomas (`https://www.sbs.com.pe`).
+     - **Cinemark Tarifa Universitaria 2D**: Entrada a precio rebajado de lunes a jueves (`https://www.cinemark-peru.com`).
+     - **Medio Pasaje Universitario ATU**: Tarifa reducida a S/ 1.20 en todas las troncales y rutas (`https://www.gob.pe/atu`).
+   - Actualización de categorías en `HomeUiState` agregando `🎬 Ocio & Cine` y `📚 Educación` para filtrado temático en 1 tap.
+
+3. **Mejoras Integrales en el Apartado Visual & UI/UX (`HomeScreen.kt`, `ProfileScreen.kt`)**:
+   - `SavingsHighlightCard`: Rediseño con degradado esmeralda/teal fintech (`Brush.horizontalGradient`), borde con resplandor sutil, contenedor glassmorphic con icono de alcancía dorado, tipografía de alta jerarquía y chip "+ CampusPass Ahorro".
+   - `StudentGreetingHeader`: Borde primario sutil, elevación suave y composición refinada de saludo con carnet oficial.
+   - `ProfileHeaderCard`: Aspecto de Carnet Universitario Digital con franja institucional "REPÚBLICA DEL PERÚ · CARNET DIGITAL", doble anillo perimetral en la foto de perfil y distintivo "Estudiante Verificado".
+   - `RedeemedCouponCardItem`: Acabado visual de ticket/voucher con micro-borde, contenedor monospace para el código de canje `CP-XXXX-YYYY` y visualización clara del ahorro en Soles.
+
+4. **Suite de Pruebas de Usuario y Personas Estudiantiles (`UserExperienceAndPersonaQaTest.kt`)**:
+   - 10 nuevos casos de prueba automatizados cubriendo perfiles reales:
+     - Ingresante/Cachimbo: Validación estricta de DNI de 8 dígitos y correo institucional `.edu.pe`.
+     - Ingresante/Cachimbo: Rechazo de DNI menor a 8 dígitos, no numérico y correos comerciales `@gmail.com`.
+     - Senior de Ingeniería: Canje de suites de desarrollo (JetBrains, GitHub Pack) con tokens únicos y no colisionantes.
+     - Estudiante en Presupuesto: Canje de combos de comida (Bembos, KFC) y acumulación precisa en la billetera.
+     - Estudiante Conmutador: Selección de radios de radar de 5km, 15km y 30km y medio pasaje de transporte.
+     - Regla de Seguridad: Inmutabilidad de DNI y Universidad ante intentos de alteración.
+     - Transición en Punto de Venta: Marcado de cupones como utilizados en caja.
+     - Ciclo de Vida: Expiración garantizada tras 48 horas de vigencia.
+     - Búsqueda Reactiva: Localización precisa de marcas reales (Cineplanet, Apple, KFC, JetBrains).
+     - Auditoría de Catálogo: Garantía de URLs HTTPS válidas y precios de ahorro mayores a cero.
+   - **Total de pruebas unitarias:** **129 pruebas unitarias aprobadas al 100%** en 15 suites de testing, 0 advertencias y 0 errores en compilación y Android Lint.
