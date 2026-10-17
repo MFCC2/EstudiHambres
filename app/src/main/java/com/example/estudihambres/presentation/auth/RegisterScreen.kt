@@ -45,14 +45,24 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.imeNestedScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +73,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.estudihambres.core.theme.CampusShapes
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Listado oficial de sugerencias universitarias peruanas para autocompletado en el registro.
@@ -110,7 +122,7 @@ private val popularUniversityChips = listOf(
  * @param onNavigateToLogin Navegación de retorno al login.
  * @param modifier Modificador Compose.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun RegisterScreen(
     viewModel: AuthViewModel,
@@ -123,6 +135,28 @@ fun RegisterScreen(
     var passwordVisible by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+    val isImeVisible = WindowInsets.isImeVisible
+    val passwordBringIntoViewRequester = remember { BringIntoViewRequester() }
+    val emailBringIntoViewRequester = remember { BringIntoViewRequester() }
+    var isPasswordFocused by remember { mutableStateOf(false) }
+    var isEmailFocused by remember { mutableStateOf(false) }
+
+    // Auto-desplazamiento inteligente al enfocar la contraseña o al abrirse el teclado
+    LaunchedEffect(isImeVisible, isPasswordFocused) {
+        if (isImeVisible && isPasswordFocused) {
+            delay(150)
+            passwordBringIntoViewRequester.bringIntoView()
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
+
+    LaunchedEffect(isImeVisible, isEmailFocused) {
+        if (isImeVisible && isEmailFocused) {
+            delay(150)
+            emailBringIntoViewRequester.bringIntoView()
+        }
+    }
 
     Column(
         modifier = modifier
@@ -137,6 +171,7 @@ fun RegisterScreen(
                 )
             )
             .imePadding()
+            .imeNestedScroll()
             .verticalScroll(scrollState)
             .padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.Top,
@@ -350,7 +385,18 @@ fun RegisterScreen(
                         imeAction = ImeAction.Next
                     ),
                     shape = CampusShapes.small,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .bringIntoViewRequester(emailBringIntoViewRequester)
+                        .onFocusChanged { focusState ->
+                            isEmailFocused = focusState.isFocused
+                            if (focusState.isFocused) {
+                                coroutineScope.launch {
+                                    delay(150)
+                                    emailBringIntoViewRequester.bringIntoView()
+                                }
+                            }
+                        }
                 )
 
                 // Campo Contraseña con botón de visibilidad interactivo
@@ -381,7 +427,19 @@ fun RegisterScreen(
                         onDone = { viewModel.register(onRegisterSuccess) }
                     ),
                     shape = CampusShapes.small,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .bringIntoViewRequester(passwordBringIntoViewRequester)
+                        .onFocusChanged { focusState ->
+                            isPasswordFocused = focusState.isFocused
+                            if (focusState.isFocused) {
+                                coroutineScope.launch {
+                                    delay(150)
+                                    passwordBringIntoViewRequester.bringIntoView()
+                                    scrollState.animateScrollTo(scrollState.maxValue)
+                                }
+                            }
+                        }
                 )
 
                 if (state.errorMessage != null) {
@@ -430,7 +488,9 @@ fun RegisterScreen(
             }
         }
 
-        // Espaciador de despeje para permitir desplazamiento cómodo al abrir el teclado virtual
-        Spacer(modifier = Modifier.height(140.dp))
+        // Espaciador de despeje dinámico: se amplía con el teclado abierto (340.dp)
+        // para permitir al estudiante bajar la pantalla cómodamente y escribir su contraseña sin obstrucción
+        val bottomClearance = if (isImeVisible) 340.dp else 120.dp
+        Spacer(modifier = Modifier.height(bottomClearance))
     }
 }
