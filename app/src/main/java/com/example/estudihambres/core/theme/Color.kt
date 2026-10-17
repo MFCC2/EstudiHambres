@@ -43,3 +43,82 @@ val CampusGradientPrimary = Brush.horizontalGradient(listOf(Color(0xFF3344EE), C
 val CampusGradientEmerald = Brush.horizontalGradient(listOf(Color(0xFF0D6838), Color(0xFF107C41), Color(0xFF00695C)))
 val CampusGradientSunset = Brush.horizontalGradient(listOf(Color(0xFFFF6D00), Color(0xFFFF8F00)))
 val CampusGradientPurple = Brush.horizontalGradient(listOf(Color(0xFF7C3AED), Color(0xFF4F46E5)))
+val CampusGradientWallet = Brush.linearGradient(listOf(Color(0xFF0B6623), Color(0xFF0F8A5F), Color(0xFF1A5276)))
+val CampusGradientGold = Brush.horizontalGradient(listOf(Color(0xFFFFD54F), Color(0xFFFFB300), Color(0xFFFF8F00)))
+
+// Colores de marcas aliadas oficiales peruanas e internacionales
+val BrandSpotify = Color(0xFF1DB954)
+val BrandKFC = Color(0xFFE4002B)
+val BrandStarbucks = Color(0xFF00704A)
+val BrandBembos = Color(0xFF002F6C)
+val BrandBembosRed = Color(0xFFDA291C)
+val BrandCineplanet = Color(0xFF005CB9)
+val BrandCinemark = Color(0xFFD6181F)
+val BrandApple = Color(0xFF1D1D1F)
+val BrandGitHub = Color(0xFF24292F)
+val BrandJetBrains = Color(0xFF8B5CF6)
+val BrandNotion = Color(0xFF2D3748)
+val BrandFigma = Color(0xFFF24E1E)
+val BrandMicrosoft = Color(0xFF00A4EF)
+val BrandPapaJohns = Color(0xFF006A4E)
+val BrandCrisol = Color(0xFF00843D)
+val BrandAtu = Color(0xFF0033A0)
+val BrandCanva = Color(0xFF00C4CC)
+val BrandAutodesk = Color(0xFF0696D7)
+
+/**
+ * Obtiene el color de acento característico para una marca o comercio aliado.
+ */
+fun getBrandColor(partnerName: String): Color {
+    val lower = partnerName.lowercase()
+    return when {
+        lower.contains("spotify") -> BrandSpotify
+        lower.contains("kfc") -> BrandKFC
+        lower.contains("starbucks") -> BrandStarbucks
+        lower.contains("bembos") -> BrandBembosRed
+        lower.contains("cineplanet") -> BrandCineplanet
+        lower.contains("cinemark") -> BrandCinemark
+        lower.contains("apple") -> BrandApple
+        lower.contains("jetbrains") -> BrandJetBrains
+        lower.contains("github") -> BrandGitHub
+        lower.contains("notion") -> BrandNotion
+        lower.contains("figma") -> BrandFigma
+        lower.contains("microsoft") -> BrandMicrosoft
+        lower.contains("papa john") -> BrandPapaJohns
+        lower.contains("crisol") -> BrandCrisol
+        lower.contains("canva") -> BrandCanva
+        lower.contains("autodesk") -> BrandAutodesk
+        lower.contains("atu") || lower.contains("transporte") -> BrandAtu
+        lower.contains("cultura") || lower.contains("boleto") -> CampusTagCulture
+        else -> CampusPrimary
+    }
+}
+
+/**
+ * Obtiene el monograma o iniciales para mostrar en la insignia del comercio aliado.
+ */
+fun getBrandMonogram(partnerName: String): String {
+    val lower = partnerName.lowercase()
+    return when {
+        lower.contains("bembos") -> "B"
+        lower.contains("starbucks") -> "☕"
+        lower.contains("kfc") -> "KFC"
+        lower.contains("cineplanet") -> "CP"
+        lower.contains("cinemark") -> "CM"
+        lower.contains("spotify") -> "🎵"
+        lower.contains("apple") -> ""
+        lower.contains("jetbrains") -> "JB"
+        lower.contains("github") -> "GH"
+        lower.contains("notion") -> "N"
+        lower.contains("figma") -> "Fg"
+        lower.contains("microsoft") -> "M"
+        lower.contains("papa john") -> "PJ"
+        lower.contains("crisol") -> "📚"
+        lower.contains("sbs") -> "SBS"
+        lower.contains("canva") -> "Cv"
+        lower.contains("autodesk") -> "AD"
+        lower.contains("cultura") || lower.contains("boleto") -> "🏛️"
+        lower.contains("transporte") || lower.contains("atu") -> "🚌"
+        else -> partnerName.take(2).uppercase()
+    }
+}
