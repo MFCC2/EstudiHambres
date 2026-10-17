@@ -29,8 +29,8 @@ import com.example.estudihambres.core.theme.CampusShapes
  */
 @Composable
 fun OcrScanScreen(
-    onSkipClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSkipClick: () -> Unit = {}
 ) {
     Box(
         modifier = modifier
