@@ -52,6 +52,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.estudihambres.core.theme.CampusShapes
+import com.example.estudihambres.core.theme.getBrandColor
+import com.example.estudihambres.core.theme.getBrandMonogram
 import com.example.estudihambres.domain.model.RedeemedCoupon
 
 /**
@@ -108,50 +110,57 @@ fun RedemptionVoucherDialog(
             }
         },
         title = {
+            val brandColor = getBrandColor(coupon.partnerName)
+            val brandMonogram = getBrandMonogram(coupon.partnerName)
+
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(54.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF00C853).copy(alpha = 0.15f)),
+                        .background(brandColor.copy(alpha = 0.14f))
+                        .border(1.5.dp, brandColor, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = Color(0xFF00C853),
-                        modifier = Modifier.size(32.dp)
+                    Text(
+                        text = brandMonogram,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = brandColor
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = "¡Cupón Canjeado con Éxito! 🎉",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = coupon.partnerName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
+                    text = coupon.partnerName.uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = brandColor,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.6.sp
                 )
             }
         },
         text = {
+            val brandColor = getBrandColor(coupon.partnerName)
+
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Tarjeta estilo Voucher / Boleto universitario
                 Card(
-                    shape = CampusShapes.medium,
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, brandColor.copy(alpha = 0.30f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -163,14 +172,14 @@ fun RedemptionVoucherDialog(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFFF6D00)
+                            color = brandColor
                         ) {
                             Text(
                                 text = coupon.discountBadge,
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.ExtraBold,
                                 color = Color.White,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                             )
                         }
 
@@ -185,9 +194,9 @@ fun RedemptionVoucherDialog(
 
                         // Código oficial en monospace con borde refinado
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.04f),
-                            border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+                            shape = RoundedCornerShape(12.dp),
+                            color = brandColor.copy(alpha = 0.05f),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, brandColor.copy(alpha = 0.35f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -199,7 +208,7 @@ fun RedemptionVoucherDialog(
                             ) {
                                 Column {
                                     Text(
-                                        text = "CÓDIGO DE VALIDACIÓN:",
+                                        text = "CÓDIGO OFICIAL:",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontSize = 10.sp,
@@ -211,28 +220,28 @@ fun RedemptionVoucherDialog(
                                         fontFamily = FontFamily.Monospace,
                                         fontWeight = FontWeight.ExtraBold,
                                         letterSpacing = 1.5.sp,
-                                        color = MaterialTheme.colorScheme.primary
+                                        color = brandColor
                                     )
                                 }
 
                                 OutlinedButton(
                                     onClick = copyToClipboard,
                                     shape = RoundedCornerShape(8.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isCopied) Color(0xFF00C853) else MaterialTheme.colorScheme.primary),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isCopied) Color(0xFF00C853) else brandColor),
                                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                                 ) {
                                     Icon(
                                         imageVector = if (isCopied) Icons.Default.Done else Icons.Default.ContentCopy,
                                         contentDescription = "Copiar",
                                         modifier = Modifier.size(14.dp),
-                                        tint = if (isCopied) Color(0xFF00C853) else MaterialTheme.colorScheme.primary
+                                        tint = if (isCopied) Color(0xFF00C853) else brandColor
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = if (isCopied) "Copiado" else "Copiar",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isCopied) Color(0xFF00C853) else MaterialTheme.colorScheme.primary
+                                        color = if (isCopied) Color(0xFF00C853) else brandColor
                                     )
                                 }
                             }
