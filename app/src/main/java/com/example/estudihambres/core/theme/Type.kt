@@ -7,10 +7,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * Escala tipográfica refinada de CampusPass (Material 3).
+ * Escala tipográfica refinada de EstudiHambres (Material 3).
  * Diseñada para máxima legibilidad, jerarquía visual y estética moderna.
  */
-val CampusTypography = Typography(
+val EstudiHambresTypography = Typography(
     headlineLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.ExtraBold,
@@ -95,3 +95,5 @@ val CampusTypography = Typography(
         letterSpacing = 0.5.sp
     )
 )
+
+val CampusTypography = EstudiHambresTypography

@@ -41,7 +41,7 @@ data class HomeUiState(
 )
 
 /**
- * ViewModel del Dashboard de CampusPass (Agente 2: UI/UX & Agente 1: Arquitectura).
+ * ViewModel del Dashboard de EstudiHambres (Agente 2: UI/UX & Agente 1: Arquitectura).
  * Maneja el catálogo de promociones, búsqueda reactiva, carruseles temáticos y cálculo de ahorros.
  *
  * @param promotionRepository Repositorio de promociones y cupones.

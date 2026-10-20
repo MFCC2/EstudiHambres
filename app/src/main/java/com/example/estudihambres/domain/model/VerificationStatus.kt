@@ -1,7 +1,7 @@
 package com.example.estudihambres.domain.model
 
 /**
- * Representa el estado de verificación estudiantil dentro de CampusPass.
+ * Representa el estado de verificación estudiantil dentro de EstudiHambres.
  *
  * De acuerdo a las reglas del negocio:
  * - [VERIFIED]: Carnet o credencial validado correctamente mediante OCR/proceso.

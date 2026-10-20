@@ -14,8 +14,8 @@ data class PlaceLocal(
     val longitude: Double,
     val rating: Double,
     val discountBadge: String = "DESCUENTO",
-    val discountDescription: String = "Beneficio exclusivo mostrando CampusPass",
-    val url: String = "https://campuspass.pe"
+    val discountDescription: String = "Beneficio exclusivo mostrando EstudiHambres",
+    val url: String = "https://estudihambres.pe"
 ) {
     /**
      * Convierte el modelo local a la entidad de dominio [Place].

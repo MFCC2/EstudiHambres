@@ -1,7 +1,7 @@
 package com.example.estudihambres.domain.model
 
 /**
- * Entidad de dominio que representa a un estudiante registrado en CampusPass.
+ * Entidad de dominio que representa a un estudiante registrado en EstudiHambres.
  *
  * @property id Identificador único del usuario en el sistema.
  * @property fullName Nombre completo del estudiante.

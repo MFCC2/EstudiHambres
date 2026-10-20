@@ -188,7 +188,7 @@ class UserExperienceAndPersonaQaTest {
         val attemptedModifiedDni = "99999999"
         val attemptedModifiedUniversity = "Universidad Falsa"
 
-        // En la arquitectura de CampusPass, el perfil mantiene los valores originales protegidos
+        // En la arquitectura de EstudiHambres, el perfil mantiene los valores originales protegidos
         val finalDni = originalDni // Campo readOnly
         val finalUniversity = originalUniversity // Campo readOnly
 

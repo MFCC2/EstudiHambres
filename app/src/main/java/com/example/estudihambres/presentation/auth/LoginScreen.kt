@@ -75,7 +75,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Pantalla de inicio de sesión de CampusPass (presentation/auth).
+ * Pantalla de inicio de sesión de EstudiHambres (presentation/auth).
  * Diseñada para máxima intuitividad: incluye alternancia de visibilidad de contraseña,
  * sugerencias contextuales, atajos de teclado y acceso directo de desarrollo.
  *
@@ -151,7 +151,7 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
                 ) {
                     Text(
-                        text = "CAMPUSPASS · BENEFICIOS UNIVERSITARIOS 🎓",
+                        text = "ESTUDIHAMBRES · BENEFICIOS UNIVERSITARIOS 🎓",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
@@ -181,7 +181,7 @@ fun LoginScreen(
                 }
 
                 Text(
-                    text = "CampusPass 🎓",
+                    text = "EstudiHambres 🎓",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary

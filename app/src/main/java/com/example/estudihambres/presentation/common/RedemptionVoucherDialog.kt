@@ -74,7 +74,7 @@ fun RedemptionVoucherDialog(
     val copyToClipboard: () -> Unit = {
         try {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("Código de Canje CampusPass", coupon.redemptionCode)
+            val clip = ClipData.newPlainText("Código de Canje EstudiHambres", coupon.redemptionCode)
             clipboard.setPrimaryClip(clip)
             isCopied = true
             Toast.makeText(context, "Código copiado: ${coupon.redemptionCode}", Toast.LENGTH_SHORT).show()

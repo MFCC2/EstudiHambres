@@ -21,7 +21,7 @@ data class Promotion(
     val partnerName: String,
     val estimatedSavingsSoles: Double,
     val isFeatured: Boolean = false,
-    val url: String = "https://campuspass.pe",
+    val url: String = "https://estudihambres.pe",
     val distanceText: String = "",
     val originalPrice: String = "",
     val discountedPrice: String = ""

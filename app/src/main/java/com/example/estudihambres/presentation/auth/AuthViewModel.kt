@@ -216,9 +216,9 @@ class AuthViewModel(
             val devUser = StudentUser(
                 id = "usr-dev-mode",
                 fullName = "Modo Desarrollador (Vista Genérica)",
-                email = "dev@campuspass.pe",
+                email = "dev@estudihambres.pe",
                 dni = "00000000",
-                university = "CampusPass Sandbox (Dev)",
+                university = "EstudiHambres Sandbox (Dev)",
                 studentCode = "DEV-999",
                 verificationStatus = VerificationStatus.PENDING_VERIFICATION,
                 career = "Ingeniería de Software / QA",

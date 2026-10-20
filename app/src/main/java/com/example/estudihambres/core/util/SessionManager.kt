@@ -8,7 +8,7 @@ import com.example.estudihambres.domain.model.VerificationStatus
 import com.example.estudihambres.domain.usecase.RedeemCouponUseCase
 
 /**
- * Gestor de persistencia local y autenticación para CampusPass (EstudiHambres).
+ * Gestor de persistencia local y autenticación para EstudiHambres.
  *
  * Administra dos almacenes locales desacoplados:
  * 1. [sessionPrefs]: Controla la sesión actualmente activa en el dispositivo.
@@ -22,8 +22,8 @@ class SessionManager(context: Context) {
     private val accountPrefs: SharedPreferences = context.getSharedPreferences(PREF_ACCOUNTS_NAME, Context.MODE_PRIVATE)
 
     companion object {
-        private const val PREF_SESSION_NAME = "campuspass_session_prefs"
-        private const val PREF_ACCOUNTS_NAME = "campuspass_registered_accounts"
+        private const val PREF_SESSION_NAME = "estudihambres_session_prefs"
+        private const val PREF_ACCOUNTS_NAME = "estudihambres_registered_accounts"
 
         private const val KEY_IS_LOGGED_IN = "key_is_logged_in"
         private const val KEY_USER_ID = "key_user_id"

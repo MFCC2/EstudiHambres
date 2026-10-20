@@ -1,7 +1,7 @@
 package com.example.estudihambres.core.util
 
 /**
- * Constantes transversales de la aplicación CampusPass.
+ * Constantes transversales de la aplicación EstudiHambres.
  */
 object Constants {
     /**

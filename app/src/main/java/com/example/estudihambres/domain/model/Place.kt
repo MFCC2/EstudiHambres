@@ -23,7 +23,7 @@ data class Place(
     val longitude: Double,
     val rating: Double = 4.5,
     val discountBadge: String = "PROMO",
-    val discountDescription: String = "Descuento especial con carnet universitario CampusPass",
+    val discountDescription: String = "Descuento especial con carnet universitario EstudiHambres",
     val distanceKm: Double? = null,
-    val url: String = "https://campuspass.pe"
+    val url: String = "https://estudihambres.pe"
 )

@@ -7,11 +7,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.example.estudihambres.core.navigation.AppNavGraph
-import com.example.estudihambres.core.theme.CampusPassTheme
+import com.example.estudihambres.core.theme.EstudiHambresTheme
 import com.example.estudihambres.core.util.SessionManager
 
 /**
- * Actividad principal de CampusPass (EstudiHambres).
+ * Actividad principal de EstudiHambres.
  *
  * Configura el entorno Edge-to-Edge y monta el grafo de navegación alojado en core/navigation
  * utilizando el tema corporativo de core/theme.
@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
         SessionManager.getInstance(applicationContext)
         enableEdgeToEdge()
         setContent {
-            CampusPassTheme {
+            EstudiHambresTheme {
                 AppNavGraph()
             }
         }

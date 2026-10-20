@@ -1,4 +1,4 @@
-# CHANGELOG - CampusPass (EstudiHambres)
+# CHANGELOG - EstudiHambres
 
 Registro cronológico de modificaciones, agentes intervinientes y cambios arquitectónicos del proyecto de acuerdo con `PROJECT_RULES.md`.
 
@@ -17,7 +17,7 @@ Configuración inicial del proyecto integrando dependencias oficiales para Jetpa
   - `core/` (Navegación, Tema y Utilidades):
     - `core/navigation/Screen.kt`: Rutas de navegación (`Home`, `Map`, `Auth`, `Verification`).
     - `core/navigation/AppNavGraph.kt`: Scaffold central con `NavigationBar` y `NavHost`.
-    - `core/theme/Color.kt`, `core/theme/Shape.kt`, `core/theme/Type.kt`, `core/theme/Theme.kt`: Identidad corporativa de CampusPass (#3344EE, #00C853, #FF6D00) y esquinas de 16.dp.
+    - `core/theme/Color.kt`, `core/theme/Shape.kt`, `core/theme/Type.kt`, `core/theme/Theme.kt`: Identidad corporativa de EstudiHambres (#3344EE, #00C853, #FF6D00) y esquinas de 16.dp.
     - `core/util/Constants.kt`: Constantes de distancia (radio 30 km, radio terrestre).
     - `core/util/Resource.kt`: Envoltorio genérico de estados asíncronos (`Success`, `Error`, `Loading`).
   - `domain/` (Modelos de Entidad y Contratos):
@@ -51,7 +51,7 @@ Configuración inicial del proyecto integrando dependencias oficiales para Jetpa
   - Implementación estricta de `RoundedCornerShape(16.dp)` para todas las tarjetas (`Card`).
   - Paleta de colores oficial: Primario Azul/Índigo `#3344EE`, Éxito `#00C853`, Naranja `#FF6D00`.
   - Componentes nativos de Material 3 (`Scaffold`, `NavigationBar`, `NavigationBarItem`, `Card`, `OutlinedTextField`).
-  - `MainActivity.kt` adaptado para Edge-to-Edge y montaje de `CampusPassTheme` con `AppNavGraph`.
+  - `MainActivity.kt` adaptado para Edge-to-Edge y montaje de `EstudiHambresTheme` con `AppNavGraph`.
 
 #### Agente 3: Auth & OCR y Agente 4: Geolocalización
 - **Dependencias en `gradle/libs.versions.toml`**:
@@ -582,7 +582,7 @@ Atención y resolución exhaustiva a las 4 peticiones del usuario:
    - Actualización de categorías en `HomeUiState` agregando `🎬 Ocio & Cine` y `📚 Educación` para filtrado temático en 1 tap.
 
 3. **Mejoras Integrales en el Apartado Visual & UI/UX (`HomeScreen.kt`, `ProfileScreen.kt`)**:
-   - `SavingsHighlightCard`: Rediseño con degradado esmeralda/teal fintech (`Brush.horizontalGradient`), borde con resplandor sutil, contenedor glassmorphic con icono de alcancía dorado, tipografía de alta jerarquía y chip "+ CampusPass Ahorro".
+   - `SavingsHighlightCard`: Rediseño con degradado esmeralda/teal fintech (`Brush.horizontalGradient`), borde con resplandor sutil, contenedor glassmorphic con icono de alcancía dorado, tipografía de alta jerarquía y chip "+ EstudiHambres Ahorro".
    - `StudentGreetingHeader`: Borde primario sutil, elevación suave y composición refinada de saludo con carnet oficial.
    - `ProfileHeaderCard`: Aspecto de Carnet Universitario Digital con franja institucional "REPÚBLICA DEL PERÚ · CARNET DIGITAL", doble anillo perimetral en la foto de perfil y distintivo "Estudiante Verificado".
    - `RedeemedCouponCardItem`: Acabado visual de ticket/voucher con micro-borde, contenedor monospace para el código de canje `CP-XXXX-YYYY` y visualización clara del ahorro en Soles.

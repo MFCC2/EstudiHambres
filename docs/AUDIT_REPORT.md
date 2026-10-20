@@ -1,6 +1,6 @@
 # INFORME DE AUDITORÍA TÉCNICA, SEGURIDAD, LINT Y CALIDAD (QA)
 
-**Proyecto:** EstudiHambres (CampusPass)  
+**Proyecto:** EstudiHambres  
 **Versión Auditada:** 1.2.7 (Build 8)  
 **Fecha de Auditoría:** 17 de Octubre de 2026  
 **Entorno de Ejecución:** Android API 24+ (Target API 35) / Kotlin 2.0 / Jetpack Compose / Clean Architecture  
@@ -11,7 +11,7 @@
 
 ## 1. RESUMEN EJECUTIVO
 
-Se ha ejecutado una auditoría exhaustiva y multidimensional sobre el código fuente, la arquitectura, la seguridad lógica, el rendimiento en Compose, la funcionalidad real de canje de cupones, el catálogo de promociones 100% reales, la ergonomía de insets de teclado virtual y el aseguramiento de la calidad (QA) del sistema **EstudiHambres (CampusPass)**. El análisis incluyó la ejecución formal de **Android Lint** (`./gradlew lintDebug`), verificación de **129 pruebas unitarias** (`./gradlew testDebugUnitTest`) y ensamble de release debug (`./gradlew assembleDebug`).
+Se ha ejecutado una auditoría exhaustiva y multidimensional sobre el código fuente, la arquitectura, la seguridad lógica, el rendimiento en Compose, la funcionalidad real de canje de cupones, el catálogo de promociones 100% reales, la ergonomía de insets de teclado virtual y el aseguramiento de la calidad (QA) del sistema **EstudiHambres**. El análisis incluyó la ejecución formal de **Android Lint** (`./gradlew lintDebug`), verificación de **129 pruebas unitarias** (`./gradlew testDebugUnitTest`) y ensamble de release debug (`./gradlew assembleDebug`).
 
 ### Principales Dimensiones Auditadas
 1. **Ergonomía de Teclado y Scroll en Registro:** Eliminación de superposición del teclado en `RegisterScreen.kt` y `LoginScreen.kt` mediante `Modifier.imePadding()`, alineación `Arrangement.Top` y espaciador inferior de 140.dp para visualización cómoda de la contraseña y botón de confirmación.
@@ -144,7 +144,7 @@ La suite de pruebas automatizadas comprende **109 casos de prueba unitarios**, e
 
 ## 5. CONCLUSIÓN Y DICTAMEN FINAL
 
-El sistema **EstudiHambres (CampusPass) v1.2.7** ha superado con éxito la auditoría técnica integral, resolviendo todas las advertencias y errores del análisis estático formal de Android Lint, dotando de ergonomía total al registro frente al teclado virtual, enriqueciendo el catálogo con convenios estudiantiles 100% reales, modernizando la jerarquía visual de la aplicación y verificando la experiencia de usuario con una suite de personas estudiantiles con una tasa de aprobación del 100%.
+El sistema **EstudiHambres v1.2.7** ha superado con éxito la auditoría técnica integral, resolviendo todas las advertencias y errores del análisis estático formal de Android Lint, dotando de ergonomía total al registro frente al teclado virtual, enriqueciendo el catálogo con convenios estudiantiles 100% reales, modernizando la jerarquía visual de la aplicación y verificando la experiencia de usuario con una suite de personas estudiantiles con una tasa de aprobación del 100%.
 
 Se emite dictamen favorable y **CERTIFICACIÓN TOTAL DE CALIDAD, OPERATIVIDAD Y SEGURIDAD**.
 

@@ -14,6 +14,7 @@ import androidx.core.view.WindowCompat
 private val DarkColorScheme = darkColorScheme(
     primary = CampusPrimary,
     onPrimary = CampusOnPrimaryDark,
+    primaryContainer = CampusPrimaryVariant,
     secondary = CampusSecondary,
     onSecondary = CampusOnSecondaryDark,
     tertiary = CampusSuccess,
@@ -26,6 +27,7 @@ private val DarkColorScheme = darkColorScheme(
 private val LightColorScheme = lightColorScheme(
     primary = CampusPrimary,
     onPrimary = CampusOnPrimaryLight,
+    primaryContainer = CampusPrimaryVariant,
     secondary = CampusSecondary,
     onSecondary = CampusOnSecondaryLight,
     tertiary = CampusSuccess,
@@ -36,10 +38,10 @@ private val LightColorScheme = lightColorScheme(
 )
 
 /**
- * Tema principal de CampusPass en core/theme configurado con Material 3.
+ * Tema principal de EstudiHambres en core/theme configurado con Material 3.
  */
 @Composable
-fun CampusPassTheme(
+fun EstudiHambresTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {

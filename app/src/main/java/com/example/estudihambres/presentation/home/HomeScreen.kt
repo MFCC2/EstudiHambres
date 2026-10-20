@@ -104,7 +104,7 @@ import com.example.estudihambres.presentation.common.RedemptionVoucherDialog
 import java.io.File
 
 /**
- * Dashboard principal de CampusPass (presentation/home).
+ * Dashboard principal de EstudiHambres (presentation/home).
  * Totalmente intuitivo: incluye búsqueda con chips de sugerencia rápida, banner interactivo
  * de validación de carnet, modal con instrucciones de canje y diálogo de confirmación de logout.
  *
@@ -471,7 +471,7 @@ fun HomeScreen(
 }
 
 /**
- * TopAppBar que incluye el avatar, la marca de CampusPass y diálogo seguro de confirmación al cerrar sesión.
+ * TopAppBar que incluye el avatar, la marca de EstudiHambres y diálogo seguro de confirmación al cerrar sesión.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -555,7 +555,7 @@ private fun TopAppBarDashboard(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "CampusPass 🎓",
+                        text = "EstudiHambres 🎓",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -704,7 +704,7 @@ private fun StudentGreetingHeader(
 }
 
 /**
- * Indicador visual del estado del carnet según las reglas de CampusPass.
+ * Indicador visual del estado del carnet según las reglas de EstudiHambres.
  */
 @Composable
 private fun VerificationBadge(status: VerificationStatus) {

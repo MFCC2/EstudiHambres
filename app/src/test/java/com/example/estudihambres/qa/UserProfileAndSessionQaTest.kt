@@ -217,7 +217,7 @@ class UserProfileAndSessionQaTest {
         val devUser = StudentUser(
             id = "usr-dev-99",
             fullName = "Modo Desarrollador (Vista Genérica)",
-            email = "dev@campuspass.pe",
+            email = "dev@estudihambres.pe",
             dni = "00000000",
             university = "Sandbox QA",
             studentCode = "DEV-001",
