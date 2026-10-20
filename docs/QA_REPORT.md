@@ -1,4 +1,4 @@
-# Informe de Aseguramiento de Calidad (QA Report) - CampusPass (EstudiHambres)
+# Informe de Aseguramiento de Calidad (QA Report) - EstudiHambres
 
 **Versión del Sistema:** 1.2.7 (Build 8)  
 **Fecha:** 17 de Octubre de 2026  
@@ -10,7 +10,7 @@
 
 ## 1. Resumen Ejecutivo
 
-Se completó la batería exhaustiva de aseguramiento de calidad (QA) sobre el sistema **EstudiHambres (CampusPass)** tras las mejoras de ergonomía de teclado (insets `imePadding`), ampliación de catálogo a promociones 100% reales, modernización visual y suite integral de pruebas con diversas personas estudiantiles.
+Se completó la batería exhaustiva de aseguramiento de calidad (QA) sobre el sistema **EstudiHambres** tras las mejoras de ergonomía de teclado (insets `imePadding`), ampliación de catálogo a promociones 100% reales, modernización visual y suite integral de pruebas con diversas personas estudiantiles.
 
 | Métrica | Valor Auditado | Estado |
 |---|---|:---:|

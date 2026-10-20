@@ -7,7 +7,7 @@ package com.example.estudihambres.domain.model
  * @property name Nombre comercial del establecimiento.
  * @property description Breve descripción del negocio o tipo de comida/servicio.
  * @property category Categoría (por ejemplo: Comida rápida, Menú del día, Cafetería, Fotocopias).
- * @property discountDescription Detalle del beneficio o descuento para estudiantes con CampusPass.
+ * @property discountDescription Detalle del beneficio o descuento para estudiantes con EstudiHambres.
  * @property latitude Coordenada de latitud para geolocalización.
  * @property longitude Coordenada de longitud para geolocalización.
  * @property address Dirección física del local.

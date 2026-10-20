@@ -1,7 +1,7 @@
 package com.example.estudihambres.core.navigation
 
 /**
- * Rutas de navegación principales de CampusPass centralizadas en core/navigation.
+ * Rutas de navegación principales de EstudiHambres centralizadas en core/navigation.
  *
  * @property route Identificador de la ruta para Compose Navigation.
  * @property title Etiqueta legible para la interfaz de usuario.

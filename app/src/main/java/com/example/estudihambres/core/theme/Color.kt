@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 /**
- * Paleta de colores oficial y extendida de CampusPass según PROJECT_RULES.md:
+ * Paleta de colores oficial y extendida de EstudiHambres según PROJECT_RULES.md:
  * - Primario Azul/Índigo: #3344EE
  * - Verde éxito: #00C853
  * - Naranja acento: #FF6D00

@@ -1,4 +1,4 @@
-# Arquitectura del Sistema - CampusPass (EstudiHambres)
+# Arquitectura del Sistema - EstudiHambres
 
 Documento arquitectónico basado en Clean Architecture y Jetpack Compose según las especificaciones de `PROJECT_RULES.md`.
 
@@ -18,7 +18,7 @@ flowchart TD
 
     subgraph CoreLayer["Core Layer (Cross-Cutting)"]
         NAV["navigation/ (Screen, AppNavGraph)"]
-        THEME["theme/ (CampusPassTheme, Color, CampusShapes, Type)"]
+        THEME["theme/ (EstudiHambresTheme, Color, CampusShapes, Type)"]
         UTIL["util/ (Constants, Resource, SessionManager)"]
     end
 
@@ -66,7 +66,7 @@ com.example.estudihambres/
 │   │   ├── Color.kt                      # Paleta oficial: #3344EE, #00C853, #FF6D00
 │   │   ├── Shape.kt                      # CampusShapes (16.dp estricto en tarjetas)
 │   │   ├── Type.kt                       # Material 3 Typography y jerarquías
-│   │   └── Theme.kt                      # CampusPassTheme
+│   │   └── Theme.kt                      # EstudiHambresTheme
 │   └── util/
 │       ├── Constants.kt                  # Radio máximo 30 km, radio terrestre
 │       ├── Resource.kt                   # Envoltorio de estados asíncronos (Success, Error, Loading)

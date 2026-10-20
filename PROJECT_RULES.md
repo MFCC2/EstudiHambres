@@ -1,4 +1,4 @@
-# AGENTES Y REGLAS DE DESARROLLO - CAMPUSPASS
+# AGENTES Y REGLAS DE DESARROLLO - ESTUDIHAMBRES
 
 ## Regla General de Documentación (Agente Documentador)
 
@@ -20,7 +20,7 @@ Todo cambio, nueva pantalla, función o dependencia agregada DEBE documentarse a
 
 ### Agente 2: UI/UX & Compose Specialist
 
-- Replica fielmente el diseño de CampusPass:
+- Replica fielmente el diseño de EstudiHambres:
   - Tarjetas redondeadas (`RoundedCornerShape(16.dp)`).
   - Tipografías limpias y componentes Material 3 (`Scaffold`, `NavigationBar`, `Card`).
   - Paleta de colores: Primario Azul/Índigo (#3344EE), Verde éxito (#00C853), Naranja (#FF6D00).
