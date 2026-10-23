@@ -914,17 +914,23 @@ private fun PlaceListItemCard(
                         }
                     },
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.weight(1f)
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.weight(1f).height(44.dp)
                 ) {
                     Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Cómo llegar", style = MaterialTheme.typography.labelSmall)
+                    Text("Cómo llegar", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
 
                 Button(
                     onClick = onClick,
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.weight(1f)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.weight(1f).height(44.dp)
                 ) {
                     Icon(Icons.Default.LocalOffer, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
@@ -1127,22 +1133,27 @@ private fun PlaceDiscountDetailContent(
                         } catch (_: Exception) {}
                     },
                     shape = CampusShapes.small,
-                    modifier = Modifier.weight(1f)
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.weight(1f).height(48.dp)
                 ) {
                     Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Sitio Oficial")
+                    Text("Sitio Oficial", fontWeight = FontWeight.Bold)
                 }
 
                 Button(
                     onClick = { onRedeemCoupon(place) },
                     shape = CampusShapes.small,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                    modifier = Modifier.weight(1f)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.weight(1f).height(48.dp)
                 ) {
                     Icon(Icons.Default.LocalOffer, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Canjear Cupón")
+                    Text("Canjear Cupón", fontWeight = FontWeight.Bold)
                 }
             }
         }

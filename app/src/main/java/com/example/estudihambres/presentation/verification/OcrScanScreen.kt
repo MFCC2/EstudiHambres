@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.estudihambres.core.theme.CampusShapes
 
@@ -73,12 +74,13 @@ fun OcrScanScreen(
                 OutlinedButton(
                     onClick = onSkipClick,
                     shape = CampusShapes.small,
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.secondary
+                        contentColor = MaterialTheme.colorScheme.primary
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
-                    Text("Omitir por ahora (PENDING_VERIFICATION)")
+                    Text("Omitir por ahora (PENDING_VERIFICATION)", fontWeight = FontWeight.SemiBold)
                 }
             }
         }

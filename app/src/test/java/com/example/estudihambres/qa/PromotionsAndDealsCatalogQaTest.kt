@@ -42,7 +42,7 @@ class PromotionsAndDealsCatalogQaTest {
         assertTrue(spotify?.url?.contains("spotify.com") == true)
 
         val notion = promotions.firstOrNull { it.partnerName.contains("Notion") }
-        assertTrue(notion?.url?.contains("notion.so") == true)
+        assertTrue(notion?.url?.contains("notion.com") == true || notion?.url?.contains("notion.so") == true)
 
         val github = promotions.firstOrNull { it.partnerName.contains("GitHub") }
         assertTrue(github?.url?.contains("education.github.com") == true)

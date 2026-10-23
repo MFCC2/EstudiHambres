@@ -22,12 +22,12 @@ enum class CampusLocation(val displayName: String, val shortName: String, val co
     CUSCO(
         displayName = "Cusco (Campus Continental / Real Plaza)",
         shortName = "🏛️ Cusco",
-        coordinates = LatLng(-13.5234, -71.9446)
+        coordinates = LatLng(-13.52336, -71.94415)
     ),
     LIMA(
         displayName = "Lima (Campus PUCP / Plaza San Miguel)",
         shortName = "🏛️ Lima",
-        coordinates = LatLng(-12.0833, -77.0514)
+        coordinates = LatLng(-12.07725, -77.08022)
     )
 }
 
@@ -35,7 +35,7 @@ enum class CampusLocation(val displayName: String, val shortName: String, val co
  * Estado UI del mapa interactivo de beneficios y radar de hasta 30 km (presentation/map).
  */
 data class MapUiState(
-    val userLocation: LatLng = LatLng(-13.5230, -71.9446), // Real Plaza Cusco / Av. de la Cultura por defecto
+    val userLocation: LatLng = LatLng(-13.52336, -71.94415), // Real Plaza Cusco / Av. de la Cultura por defecto
     val isDefaultLocation: Boolean = true,
     val hasLocationPermission: Boolean = false,
     val nearbyPlaces: List<Place> = emptyList(),

@@ -602,7 +602,9 @@ private fun RewardRedemptionDialog(
                         isCopied = true
                     },
                     shape = CampusShapes.small,
-                    modifier = Modifier.fillMaxWidth()
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.fillMaxWidth().height(46.dp)
                 ) {
                     Icon(
                         imageVector = if (isCopied) Icons.Default.Check else Icons.Default.ContentCopy,
