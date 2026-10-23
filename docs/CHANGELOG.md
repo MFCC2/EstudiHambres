@@ -728,3 +728,32 @@ Auditoría exhaustiva del sistema, análisis y remediación completa de vulnerab
      - Simulación integral de la jornada del estudiante: registro -> bienvenida de puntos -> navegación segura -> canje comercial -> canje de premio -> rechazo por balance insuficiente.
    - Total del proyecto: **164 pruebas unitarias aprobadas al 100%** en 19 suites de prueba.
    - Empaquetado exitoso del APK debug (`BUILD SUCCESSFUL in 6s`).
+
+
+## [Optimización de Flujo de Registro, Cámara Nativa, Eliminación de Demo y Alerta de Carnet v1.4.1] - 2026-10-23
+**Rama:** `develop` / `main`
+
+### Resumen de la Entrega
+Refactorización de la experiencia de usuario en el onboarding de registro estudiantil atendiendo requerimientos directos de usabilidad y fidelidad a producción:
+
+1. **Escáner Directo con Cámara Nativa en Registro (`RegisterScreen.kt`)**:
+   - Se eliminó la opción "Subir Foto" de galería.
+   - Ahora el botón principal ejecuta directamente la cámara del dispositivo ("Escanear Carnet con Cámara") mediante `TakePicturePreview` y análisis OCR instantáneo con ML Kit.
+   - **Ocultamiento de Formulario Previo:** En modo "Escanear Carnet", los campos de llenado manual NO se muestran en pantalla mientras el carnet no haya sido escaneado. Una vez escaneado y reconocido por SUNEDU, aparecen únicamente los campos para confirmar credenciales (correo institucional y contraseña).
+
+2. **Aviso Obligatorio al Crear Cuenta con Ingreso Manual**:
+   - Si el estudiante opta por "Ingreso Manual" sin escanear su carnet, al presionar "Crear Cuenta y Continuar" se despliega un diálogo de advertencia informando que su cuenta quedará en estado `PENDIENTE DE VERIFICACIÓN` y que deberá escanear su carnet posteriormente para acceder a los beneficios, cupones y los +500 StudiPuntos de bienvenida.
+   - El diálogo ofrece dos acciones: "Escanear Carnet Ahora" (conmuta al escáner de cámara de inmediato) o "Continuar de todos modos".
+
+3. **Eliminación Total de Elementos y Textos "Demo" para Producción**:
+   - Eliminado el botón "Carnet Demo" de `RegisterScreen.kt`.
+   - Eliminado el botón "Demo" de `StudentVerificationScreen.kt`.
+   - Eliminado el botón de bypass "Acceso Rápido Demo" de `LoginScreen.kt`.
+   - Limpieza de nombres de métodos (`onScanReceipt()` en `RewardsViewModel`).
+
+4. **Navegación Condicional Inteligente Post-Registro (`AppNavGraph.kt`)**:
+   - Si el usuario se registró habiendo escaneado su carnet (estado `VERIFIED`), accede directamente al Dashboard (`Screen.Home`).
+   - Si se registró manualmente (`PENDING_VERIFICATION`), se le dirige a la pantalla de verificación de carnet (`Screen.Verification`).
+
+5. **Suite QA Ampliada a 166 Pruebas Unitarias Aprobadas (100%)**:
+   - Nuevos tests automatizados en `AuthAndCredentialsQaTest.kt` validando la asignación de estados `PENDING_VERIFICATION` vs `VERIFIED` según el método de registro.

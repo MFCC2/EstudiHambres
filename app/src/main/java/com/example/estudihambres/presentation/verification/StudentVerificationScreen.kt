@@ -449,17 +449,7 @@ fun StudentVerificationScreen(
                     Text("Ingreso Manual", style = MaterialTheme.typography.labelSmall)
                 }
 
-                OutlinedButton(
-                    onClick = { viewModel.simulateCardScan() },
-                    shape = CampusShapes.small,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Demo", style = MaterialTheme.typography.labelSmall)
-                }
+
             }
         }
 

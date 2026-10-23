@@ -182,4 +182,43 @@ class AuthAndCredentialsQaTest {
         val regResult = repo.register(duplicateUser, "password123")
         assertTrue(regResult.isFailure)
     }
+
+    @Test
+    fun testManualRegistrationYieldsPendingStatusRequiringCardScan() = kotlinx.coroutines.runBlocking {
+        val repo = com.example.estudihambres.data.repository.MockAuthRepositoryImpl(sessionManager = null)
+        val manualUser = com.example.estudihambres.domain.model.StudentUser(
+            id = "usr-manual-01",
+            fullName = "Estudiante Sin Carnet En Mano",
+            email = "sin.carnet@pucp.edu.pe",
+            dni = "71549922",
+            university = "PUCP",
+            studentCode = "20231902",
+            verificationStatus = com.example.estudihambres.domain.model.VerificationStatus.PENDING_VERIFICATION
+        )
+        val regResult = repo.register(manualUser, "password123")
+        assertTrue(regResult.isSuccess)
+        val created = regResult.getOrNull()
+        assertEquals(com.example.estudihambres.domain.model.VerificationStatus.PENDING_VERIFICATION, created?.verificationStatus)
+        assertEquals(null, created?.scannedCardDni)
+    }
+
+    @Test
+    fun testScannedCarnetRegistrationYieldsVerifiedStatus() = kotlinx.coroutines.runBlocking {
+        val repo = com.example.estudihambres.data.repository.MockAuthRepositoryImpl(sessionManager = null)
+        val verifiedUser = com.example.estudihambres.domain.model.StudentUser(
+            id = "usr-scanned-01",
+            fullName = "Estudiante Carnet SUNEDU",
+            email = "carnet.valido@continental.edu.pe",
+            dni = "73849501",
+            university = "Universidad Continental",
+            studentCode = "73849501",
+            verificationStatus = com.example.estudihambres.domain.model.VerificationStatus.VERIFIED,
+            scannedCardDni = "73849501"
+        )
+        val regResult = repo.register(verifiedUser, "password123")
+        assertTrue(regResult.isSuccess)
+        val created = regResult.getOrNull()
+        assertEquals(com.example.estudihambres.domain.model.VerificationStatus.VERIFIED, created?.verificationStatus)
+        assertEquals("73849501", created?.scannedCardDni)
+    }
 }

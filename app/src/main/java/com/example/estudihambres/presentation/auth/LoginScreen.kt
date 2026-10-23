@@ -310,24 +310,7 @@ fun LoginScreen(
                     }
                 }
 
-                // Botón Acceso Rápido Demo / Bypass Dev
-                OutlinedButton(
-                    onClick = { viewModel.bypass(onBypassClick) },
-                    shape = CampusShapes.small,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                ) {
-                    Text(
-                        text = "⚡ Acceso Rápido Demo (Bypass)",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically
