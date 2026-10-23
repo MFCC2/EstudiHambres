@@ -6,6 +6,8 @@ import android.content.Intent
 import android.net.Uri
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.webkit.WebResourceRequest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -559,6 +561,15 @@ fun MapScreen(
  * Radar interactivo OpenStreetMap basado en Leaflet.js con círculo dinámico de radar,
  * pines con categorización cromática y popups interactivos.
  */
+private fun sanitizeForJson(input: String): String {
+    return input.replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("<", "\\u003C")
+        .replace(">", "\\u003E")
+        .replace("&", "\\u0026")
+        .replace("'", "\\u0027")
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun InteractiveOsmRadarMap(
@@ -576,7 +587,11 @@ fun InteractiveOsmRadarMap(
                 p.category.contains("Librería", ignoreCase = true) -> "#0284C7"
                 else -> "#7C3AED"
             }
-            """{"id":"${p.id}","name":"${p.name.replace("\"", "\\\"")}","badge":"${p.discountBadge.replace("\"", "\\\"")}","lat":${p.latitude},"lng":${p.longitude},"category":"${p.category.replace("\"", "\\\"")}","color":"$colorHex"}"""
+            val safeId = sanitizeForJson(p.id)
+            val safeName = sanitizeForJson(p.name)
+            val safeBadge = sanitizeForJson(p.discountBadge)
+            val safeCategory = sanitizeForJson(p.category)
+            """{"id":"$safeId","name":"$safeName","badge":"$safeBadge","lat":${p.latitude},"lng":${p.longitude},"category":"$safeCategory","color":"$colorHex"}"""
         }
         "[${items.joinToString(",")}]"
     }
@@ -638,6 +653,16 @@ fun InteractiveOsmRadarMap(
                         .bindPopup("<b>📍 Tú estás aquí</b><br>Campus Universitario");
 
                     // Pines cromáticos de comercios
+                    function escapeHtml(str) {
+                        if (!str) return '';
+                        return String(str)
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;')
+                            .replace(/'/g, '&#39;');
+                    }
+
                     var places = $placesJson;
                     places.forEach(function(p) {
                         var pIcon = L.divIcon({
@@ -647,14 +672,13 @@ fun InteractiveOsmRadarMap(
                             iconAnchor: [9, 9]
                         });
                         var marker = L.marker([p.lat, p.lng], { icon: pIcon }).addTo(map);
-                        marker.bindPopup(
-                            "<div style='min-width:140px;text-align:center;'>" +
-                            "<b style='font-size:13px;'>" + p.name + "</b><br>" +
-                            "<span style='color:#E65100;font-weight:bold;font-size:12px;'>" + p.badge + "</span><br>" +
-                            "<span style='color:#666;font-size:11px;'>" + p.category + "</span><br>" +
-                            "<button onclick='window.Android.onSelectPlace(\"" + p.id + "\")' style='margin-top:8px;background:#3344EE;color:white;border:none;padding:5px 12px;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer;width:100%;'>Ver Beneficio</button>" +
-                            "</div>"
-                        );
+                        var popupContent = "<div style='min-width:140px;text-align:center;'>" +
+                            "<b style='font-size:13px;'>" + escapeHtml(p.name) + "</b><br>" +
+                            "<span style='color:#E65100;font-weight:bold;font-size:12px;'>" + escapeHtml(p.badge) + "</span><br>" +
+                            "<span style='color:#666;font-size:11px;'>" + escapeHtml(p.category) + "</span><br>" +
+                            "<button onclick='window.Android.onSelectPlace(\"" + escapeHtml(p.id) + "\")' style='margin-top:8px;background:#3344EE;color:white;border:none;padding:5px 12px;border-radius:6px;font-weight:bold;font-size:11px;cursor:pointer;width:100%;'>Ver Beneficio</button>" +
+                            "</div>";
+                        marker.bindPopup(popupContent);
                         marker.on('click', function() {
                             if (window.Android && window.Android.onSelectPlace) {
                                 window.Android.onSelectPlace(p.id);
@@ -678,6 +702,21 @@ fun InteractiveOsmRadarMap(
                 settings.domStorageEnabled = true
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
+                // Fortificación de seguridad en el WebView
+                settings.allowFileAccess = false
+                settings.allowContentAccess = false
+                settings.setGeolocationEnabled(false)
+
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): Boolean {
+                        val url = request?.url?.toString() ?: return true
+                        // Permitir únicamente tiles y scripts de OpenStreetMap y Leaflet CDN oficial
+                        return !(url.startsWith("https://openstreetmap.org") || url.startsWith("https://unpkg.com"))
+                    }
+                }
                 addJavascriptInterface(object {
                     @JavascriptInterface
                     fun onSelectPlace(placeId: String) {
@@ -1077,8 +1116,14 @@ private fun PlaceDiscountDetailContent(
                 OutlinedButton(
                     onClick = {
                         try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(place.url))
-                            context.startActivity(intent)
+                            val uri = Uri.parse(place.url.trim())
+                            val scheme = uri.scheme?.lowercase()
+                            if (scheme == "https" || scheme == "http") {
+                                val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                                    addCategory(Intent.CATEGORY_BROWSABLE)
+                                }
+                                context.startActivity(intent)
+                            }
                         } catch (_: Exception) {}
                     },
                     shape = CampusShapes.small,

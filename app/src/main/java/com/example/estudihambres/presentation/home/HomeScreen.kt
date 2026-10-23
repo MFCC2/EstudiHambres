@@ -130,12 +130,20 @@ fun HomeScreen(
     var selectedPromoForDetail by remember { mutableStateOf<Promotion?>(null) }
     var redeemedCouponForDialog by remember { mutableStateOf<RedeemedCoupon?>(null) }
 
-    val openUrl: (String) -> Unit = { url ->
+    val openUrl: (String) -> Unit = { rawUrl ->
         try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            context.startActivity(intent)
+            val cleanUrl = rawUrl.trim()
+            val uri = Uri.parse(cleanUrl)
+            val scheme = uri.scheme?.lowercase()
+            // Validación estricta de seguridad: únicamente permitir esquemas web seguros HTTPS y HTTP
+            if (scheme == "https" || scheme == "http") {
+                val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                    addCategory(Intent.CATEGORY_BROWSABLE)
+                }
+                context.startActivity(intent)
+            }
         } catch (_: Exception) {
-            // Manejo preventivo si no hay navegador disponible
+            // Manejo preventivo ante ausencia de navegador o URI inválida
         }
     }
 
@@ -747,25 +755,15 @@ private fun VerificationBadge(status: VerificationStatus) {
 @Composable
 private fun SavingsHighlightCard(accumulatedSavings: Double) {
     Card(
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                brush = Brush.horizontalGradient(
-                    listOf(
-                        Color(0xFF81C784).copy(alpha = 0.6f),
-                        Color(0xFF64B5F6).copy(alpha = 0.6f)
-                    )
-                ),
-                shape = RoundedCornerShape(20.dp)
-            )
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth()
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(brush = CampusGradientWallet)
                 .padding(18.dp)
         ) {
             Row(
@@ -776,13 +774,13 @@ private fun SavingsHighlightCard(accumulatedSavings: Double) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(54.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White.copy(alpha = 0.18f))
-                            .border(1.dp, Color.White.copy(alpha = 0.40f), RoundedCornerShape(16.dp)),
+                            .size(50.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "🪙", fontSize = 28.sp)
+                        Text(text = "🪙", fontSize = 26.sp)
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Column {
@@ -790,7 +788,7 @@ private fun SavingsHighlightCard(accumulatedSavings: Double) {
                             Text(
                                 text = "TU AHORRO UNIVERSITARIO",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.90f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.ExtraBold,
                                 letterSpacing = 0.8.sp
                             )
@@ -801,17 +799,18 @@ private fun SavingsHighlightCard(accumulatedSavings: Double) {
                                 text = "S/ ${"%.2f".format(accumulatedSavings)}",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = Color.White.copy(alpha = 0.24f)
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                             ) {
                                 Text(
                                     text = "Billetera Activa",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                                 )
@@ -821,16 +820,16 @@ private fun SavingsHighlightCard(accumulatedSavings: Double) {
                 }
 
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.White.copy(alpha = 0.22f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.45f))
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Text(
                         text = "Activo ›",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                     )
                 }
             }
@@ -901,12 +900,7 @@ private fun FeaturedPromoCard(
     val brandColor = getBrandColor(promotion.partnerName)
     val brandMonogram = getBrandMonogram(promotion.partnerName)
 
-    val bannerGradient = when {
-        promotion.category.contains("Tech", ignoreCase = true) -> CampusGradientEmerald
-        promotion.category.contains("Comida", ignoreCase = true) -> CampusGradientSunset
-        promotion.category.contains("Cine", ignoreCase = true) -> CampusGradientPurple
-        else -> CampusGradientPrimary
-    }
+    val bannerBackground = MaterialTheme.colorScheme.surfaceVariant
 
     val categoryEmoji = when {
         promotion.category.contains("Comida", ignoreCase = true) || promotion.partnerName.contains("Bembos", ignoreCase = true) || promotion.partnerName.contains("KFC", ignoreCase = true) -> "🍔"
@@ -917,10 +911,10 @@ private fun FeaturedPromoCard(
     }
 
     Card(
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        border = BorderStroke(1.dp, brandColor.copy(alpha = 0.22f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .width(270.dp)
             .clickable { onCardClick() }
@@ -931,7 +925,7 @@ private fun FeaturedPromoCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(124.dp)
-                    .background(bannerGradient)
+                    .background(bannerBackground)
                     .padding(12.dp)
             ) {
                 // Fila superior: Badge de Descuento + Categoría
@@ -942,7 +936,7 @@ private fun FeaturedPromoCard(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.error,
+                        color = MaterialTheme.colorScheme.secondary,
                         shadowElevation = 2.dp
                     ) {
                         Text(
@@ -1089,7 +1083,7 @@ private fun NearbyPromoCard(
     val brandMonogram = getBrandMonogram(promotion.partnerName)
 
     Card(
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         border = BorderStroke(1.dp, brandColor.copy(alpha = 0.20f)),
@@ -1233,7 +1227,7 @@ private fun DigitalBenefitCard(
     val brandMonogram = getBrandMonogram(promotion.partnerName)
 
     Card(
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         border = BorderStroke(1.dp, brandColor.copy(alpha = 0.30f)),
@@ -1368,7 +1362,7 @@ private fun DetailedPromotionCard(
     val brandMonogram = getBrandMonogram(promotion.partnerName)
 
     Card(
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
         border = BorderStroke(1.dp, brandColor.copy(alpha = 0.20f)),

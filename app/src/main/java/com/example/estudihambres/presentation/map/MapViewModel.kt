@@ -20,14 +20,14 @@ import kotlinx.coroutines.launch
  */
 enum class CampusLocation(val displayName: String, val shortName: String, val coordinates: LatLng) {
     CUSCO(
-        displayName = "Cusco (Campus Continental / UNSAAC)",
+        displayName = "Cusco (Campus Continental / Real Plaza)",
         shortName = "🏛️ Cusco",
-        coordinates = LatLng(-13.5230, -71.9480)
+        coordinates = LatLng(-13.5234, -71.9446)
     ),
     LIMA(
-        displayName = "Lima (Campus UNMSM / PUCP)",
+        displayName = "Lima (Campus PUCP / Plaza San Miguel)",
         shortName = "🏛️ Lima",
-        coordinates = LatLng(-12.0833, -77.0428)
+        coordinates = LatLng(-12.0833, -77.0514)
     )
 }
 
@@ -35,7 +35,7 @@ enum class CampusLocation(val displayName: String, val shortName: String, val co
  * Estado UI del mapa interactivo de beneficios y radar de hasta 30 km (presentation/map).
  */
 data class MapUiState(
-    val userLocation: LatLng = LatLng(-13.5230, -71.9480), // Real Plaza Cusco / Av. de la Cultura por defecto
+    val userLocation: LatLng = LatLng(-13.5230, -71.9446), // Real Plaza Cusco / Av. de la Cultura por defecto
     val isDefaultLocation: Boolean = true,
     val hasLocationPermission: Boolean = false,
     val nearbyPlaces: List<Place> = emptyList(),

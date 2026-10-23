@@ -3,6 +3,7 @@ package com.example.estudihambres.presentation.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.estudihambres.data.repository.MockAuthRepositoryImpl
+import com.example.estudihambres.domain.model.StudentCardOcrResult
 import com.example.estudihambres.domain.model.StudentUser
 import com.example.estudihambres.domain.model.VerificationStatus
 import com.example.estudihambres.domain.repository.AuthRepository
@@ -26,12 +27,25 @@ data class LoginUiState(
 )
 
 /**
+ * Modo de registro estudiantil.
+ */
+enum class RegistrationMode {
+    SCANNER, // Escaneo directo con cámara o galería (Recomendado)
+    MANUAL   // Ingreso manual si no cuenta con carnet a la mano
+}
+
+/**
  * Estado UI para el formulario de registro de estudiante.
  */
 data class RegisterUiState(
+    val fullName: String = "",
     val dni: String = "",
     val studentCode: String = "",
     val university: String = "",
+    val faculty: String = "",
+    val career: String = "",
+    val validityYear: String = "2026",
+    val studentStatus: String = "Estudiante Regular (Vigente)",
     val email: String = "",
     val password: String = "",
     val dniError: String? = null,
@@ -40,12 +54,15 @@ data class RegisterUiState(
     val emailError: String? = null,
     val passwordError: String? = null,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val registrationMode: RegistrationMode = RegistrationMode.SCANNER,
+    val isCardScanned: Boolean = false,
+    val scannedCardResult: StudentCardOcrResult? = null
 )
 
 /**
  * ViewModel encargado de la lógica de autenticación, validación estricta de credenciales
- * estudiantiles y soporte de bypass para pruebas locales (Agente 3: Auth).
+ * estudiantiles y flujo dual de registro (Escaneo directo de carnet o ingreso manual) (Agente 3).
  *
  * @param authRepository Repositorio para persistencia y estado del estudiante.
  * @param validator Caso de uso para validación de formato de credenciales.
@@ -124,9 +141,18 @@ class AuthViewModel(
 
     // --- Manejadores de Registro ---
 
+    fun setRegistrationMode(mode: RegistrationMode) {
+        _registerState.update { it.copy(registrationMode = mode, errorMessage = null) }
+    }
+
+    fun onRegisterFullNameChange(value: String) {
+        _registerState.update { it.copy(fullName = value, errorMessage = null) }
+    }
+
     fun onRegisterDniChange(value: String) {
         if (value.length <= 8 && value.all { it.isDigit() }) {
-            _registerState.update { it.copy(dni = value, dniError = null, errorMessage = null) }
+            val error = if (value.length == 8) null else null
+            _registerState.update { it.copy(dni = value, dniError = error, errorMessage = null) }
         }
     }
 
@@ -138,6 +164,14 @@ class AuthViewModel(
         _registerState.update { it.copy(university = value, universityError = null, errorMessage = null) }
     }
 
+    fun onRegisterFacultyChange(value: String) {
+        _registerState.update { it.copy(faculty = value, errorMessage = null) }
+    }
+
+    fun onRegisterCareerChange(value: String) {
+        _registerState.update { it.copy(career = value, errorMessage = null) }
+    }
+
     fun onRegisterEmailChange(value: String) {
         _registerState.update { it.copy(email = value, emailError = null, errorMessage = null) }
     }
@@ -147,7 +181,34 @@ class AuthViewModel(
     }
 
     /**
-     * Registra al nuevo estudiante guardando su contraseña en el almacén persistente.
+     * Aplica los datos reconocidos automáticamente tras escanear el carnet oficial con OCR.
+     * Esto evita que el estudiante cometa errores al escribir su DNI o código manualmente.
+     */
+    fun onCarnetScannedInRegister(result: StudentCardOcrResult) {
+        _registerState.update {
+            it.copy(
+                isCardScanned = true,
+                scannedCardResult = result,
+                dni = result.studentDni ?: it.dni,
+                studentCode = result.studentCode ?: it.studentCode,
+                university = result.universityName ?: it.university,
+                fullName = result.studentName ?: it.fullName,
+                faculty = result.faculty ?: it.faculty,
+                career = result.career ?: it.career,
+                validityYear = result.validityYearDetected ?: it.validityYear,
+                studentStatus = result.studentStatus,
+                dniError = null,
+                studentCodeError = null,
+                universityError = null,
+                errorMessage = null
+            )
+        }
+    }
+
+    /**
+     * Registra al nuevo estudiante guardando su perfil y credenciales.
+     * Si escaneó su carnet previamente, la cuenta queda automáticamente VERIFIED con +500 StudiPuntos.
+     * Si ingresó datos manualmente, queda en PENDING_VERIFICATION para escanearlo más adelante.
      */
     fun register(onSuccess: () -> Unit) {
         val state = _registerState.value
@@ -156,11 +217,14 @@ class AuthViewModel(
         val cleanUni = state.university.trim()
         val cleanEmail = state.email.trim()
         val cleanPass = state.password
+        val cleanName = state.fullName.trim()
+        val cleanCareer = state.career.trim()
+        val cleanFaculty = state.faculty.trim()
 
         val dniVal = validator.validateDni(cleanDni)
         val emailVal = validator.validateUniversityEmail(cleanEmail)
         val passVal = validator.validatePassword(cleanPass)
-        val isCodeValid = cleanCode.isNotBlank()
+        val isCodeValid = cleanCode.isNotBlank() || state.isCardScanned
         val isUniValid = cleanUni.isNotBlank()
 
         if (!dniVal.isValid || !isCodeValid || !isUniValid || !emailVal.isValid || !passVal.isValid) {
@@ -178,16 +242,26 @@ class AuthViewModel(
 
         viewModelScope.launch {
             _registerState.update { it.copy(isLoading = true, errorMessage = null) }
+            val verificationStatus = if (state.isCardScanned && state.scannedCardResult?.isVerified == true) {
+                VerificationStatus.VERIFIED
+            } else {
+                VerificationStatus.PENDING_VERIFICATION
+            }
+
             val newUser = StudentUser(
                 id = "usr-${System.currentTimeMillis()}",
-                fullName = "Estudiante $cleanUni",
+                fullName = cleanName.ifBlank { "Estudiante $cleanUni" },
                 email = cleanEmail,
                 dni = cleanDni,
                 university = cleanUni,
-                studentCode = cleanCode,
-                verificationStatus = VerificationStatus.PENDING_VERIFICATION,
-                career = "Ingeniería de Sistemas",
-                isDev = false
+                studentCode = cleanCode.ifBlank { cleanDni },
+                verificationStatus = verificationStatus,
+                career = cleanCareer.ifBlank { "Ingeniería de Sistemas" },
+                isDev = false,
+                scannedCardDni = if (state.isCardScanned) cleanDni else null,
+                faculty = cleanFaculty.ifBlank { "Facultad Universitaria" },
+                validityYear = state.validityYear,
+                studentStatus = state.studentStatus
             )
 
             val result = authRepository.register(newUser, cleanPass)
@@ -209,7 +283,6 @@ class AuthViewModel(
 
     /**
      * Acceso directo para pruebas locales y desarrollo rápido (Bypass Dev).
-     * Configura el usuario explícitamente como [isDev = true] en una interfaz genérica de pruebas.
      */
     fun bypass(onSuccess: () -> Unit) {
         viewModelScope.launch {

@@ -3,9 +3,11 @@ package com.example.estudihambres.core.util
 import android.content.Context
 import android.content.SharedPreferences
 import com.example.estudihambres.domain.model.RedeemedCoupon
+import com.example.estudihambres.domain.model.RedeemedReward
 import com.example.estudihambres.domain.model.StudentUser
 import com.example.estudihambres.domain.model.VerificationStatus
 import com.example.estudihambres.domain.usecase.RedeemCouponUseCase
+import java.security.MessageDigest
 
 /**
  * Gestor de persistencia local y autenticación para EstudiHambres.
@@ -43,6 +45,8 @@ class SessionManager(context: Context) {
 
         private const val KEY_ACCUMULATED_SAVINGS = "key_accumulated_savings"
         private const val KEY_REDEEMED_COUPONS = "key_redeemed_coupons"
+        private const val KEY_STUDI_PUNTOS = "key_studi_puntos"
+        private const val KEY_REDEEMED_REWARDS = "key_redeemed_rewards"
 
         @Volatile
         private var instance: SessionManager? = null
@@ -57,6 +61,15 @@ class SessionManager(context: Context) {
         }
 
         fun getInstanceOrNull(): SessionManager? = instance
+
+        /**
+         * Genera un hash criptográfico SHA-256 para almacenamiento seguro de contraseñas.
+         */
+        fun hashPassword(password: String): String {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val hashBytes = digest.digest(password.toByteArray(Charsets.UTF_8))
+            return hashBytes.joinToString("") { "%02x".format(it) }
+        }
     }
 
     init {
@@ -107,6 +120,7 @@ class SessionManager(context: Context) {
      * Registra una nueva cuenta estudiantil con su contraseña.
      * Retorna error si el correo ya se encuentra registrado.
      */
+    @Synchronized
     fun registerAccount(user: StudentUser, password: String): Result<StudentUser> {
         val normalizedEmail = user.email.trim().lowercase()
 
@@ -126,6 +140,11 @@ class SessionManager(context: Context) {
     /**
      * Autentica credenciales comprobando existencia de la cuenta y correspondencia exacta de contraseña.
      */
+    /**
+     * Autentica credenciales comprobando existencia de la cuenta y correspondencia de contraseña con hash SHA-256.
+     * Ofrece compatibilidad regresiva transparente para cuentas previas en texto plano migrándolas automáticamente.
+     */
+    @Synchronized
     fun authenticate(emailInput: String, passwordInput: String): Result<StudentUser> {
         val normalizedEmail = emailInput.trim().lowercase()
 
@@ -136,10 +155,17 @@ class SessionManager(context: Context) {
         }
 
         val storedPassword = accountPrefs.getString("pwd_$normalizedEmail", null)
-        if (storedPassword == null || storedPassword != passwordInput) {
+        val hashedInput = hashPassword(passwordInput)
+        val isMatch = storedPassword != null && (storedPassword == hashedInput || storedPassword == passwordInput)
+        if (!isMatch) {
             return Result.failure(
                 IllegalArgumentException("Contraseña incorrecta. Por favor verifica tus credenciales e intenta nuevamente.")
             )
+        }
+
+        // Migración transparente si la contraseña residía en texto claro histórico
+        if (storedPassword == passwordInput && storedPassword != hashedInput) {
+            accountPrefs.edit().putString("pwd_$normalizedEmail", hashedInput).apply()
         }
 
         val user = getAccountByEmail(normalizedEmail)
@@ -162,8 +188,13 @@ class SessionManager(context: Context) {
 
     private fun saveAccountInternal(user: StudentUser, password: String) {
         val normalizedEmail = user.email.trim().lowercase()
+        val passwordToStore = if (password.length == 64 && password.all { it.isDigit() || it in 'a'..'f' }) {
+            password
+        } else {
+            hashPassword(password)
+        }
         accountPrefs.edit()
-            .putString("pwd_$normalizedEmail", password)
+            .putString("pwd_$normalizedEmail", passwordToStore)
             .putString("id_$normalizedEmail", user.id)
             .putString("name_$normalizedEmail", user.fullName)
             .putString("dni_$normalizedEmail", user.dni)
@@ -360,11 +391,21 @@ class SessionManager(context: Context) {
     fun linkScannedCard(scannedDni: String?) {
         val user = getUserSession() ?: return
         val dniToLink = if (!scannedDni.isNullOrBlank()) scannedDni else user.dni
+        val oldDni = user.dni
         val updated = user.copy(
+            dni = dniToLink,
             verificationStatus = VerificationStatus.VERIFIED,
             scannedCardDni = dniToLink
         )
         saveUserSession(updated)
+
+        if (oldDni.isNotBlank() && oldDni != dniToLink) {
+            accountPrefs.edit()
+                .remove("dni_to_email_$oldDni")
+                .putString("dni_to_email_$dniToLink", user.email.trim().lowercase())
+                .putString("dni_${user.email.trim().lowercase()}", dniToLink)
+                .apply()
+        }
     }
 
     /**
@@ -391,15 +432,6 @@ class SessionManager(context: Context) {
                 )
             }
         }
-
-        // Estudiante regular escaneando carnet de otra persona
-        if (scannedDni != null && user.dni.isNotBlank() && scannedDni != user.dni) {
-            return Pair(
-                false,
-                "El DNI del carnet escaneado ($scannedDni) no coincide con el DNI de tu cuenta registrada (${user.dni}). Por seguridad, solo puedes verificar tu propio carnet universitario."
-            )
-        }
-
         return Pair(true, null)
     }
 
@@ -475,6 +507,7 @@ class SessionManager(context: Context) {
     /**
      * Canjea un nuevo cupón generando un token único, persistiendo en sesión y sumando al ahorro acumulado.
      */
+    @Synchronized
     fun redeemCoupon(
         title: String,
         partnerName: String,
@@ -499,6 +532,7 @@ class SessionManager(context: Context) {
     /**
      * Marca un cupón existente como utilizado en caja.
      */
+    @Synchronized
     fun markCouponAsUsed(couponCode: String): Boolean {
         val currentCoupons = getRedeemedCoupons().toMutableList()
         val index = currentCoupons.indexOfFirst { it.redemptionCode.equals(couponCode, ignoreCase = true) }
@@ -612,9 +646,108 @@ class SessionManager(context: Context) {
     }
 
     /**
+     * Saldo actual de StudiPuntos en la billetera de recompensas.
+     */
+    fun getStudiPuntos(): Int {
+        return sessionPrefs.getInt(KEY_STUDI_PUNTOS, 2450)
+    }
+
+    /**
+     * Actualiza el saldo de StudiPuntos.
+     */
+    @Synchronized
+    fun setStudiPuntos(points: Int) {
+        sessionPrefs.edit().putInt(KEY_STUDI_PUNTOS, points).apply()
+        val user = getUserSession()
+        if (user != null && !user.isDev && isEmailRegistered(user.email)) {
+            val normalized = user.email.trim().lowercase()
+            accountPrefs.edit().putInt("points_$normalized", points).apply()
+        }
+    }
+
+    /**
+     * Añade StudiPuntos (ej. bono por registrar boleta +80 o bienvenida +500).
+     */
+    @Synchronized
+    fun addStudiPuntos(delta: Int): Int {
+        val updated = getStudiPuntos() + delta
+        setStudiPuntos(updated)
+        return updated
+    }
+
+    /**
+     * Descuenta StudiPuntos al canjear un premio si el saldo es suficiente.
+     */
+    @Synchronized
+    fun deductStudiPuntos(cost: Int): Boolean {
+        if (cost <= 0) return false
+        val current = getStudiPuntos()
+        if (current < cost) return false
+        setStudiPuntos(current - cost)
+        return true
+    }
+
+    /**
+     * Lista de premios y tarjetas de regalo canjeadas por el estudiante.
+     */
+    fun getRedeemedRewards(): List<RedeemedReward> {
+        val raw = sessionPrefs.getString(KEY_REDEEMED_REWARDS, null) ?: return emptyList()
+        return raw.split(";").mapNotNull { deserializeReward(it) }
+    }
+
+    /**
+     * Registra un nuevo premio canjeado en la billetera local.
+     */
+    @Synchronized
+    fun saveRedeemedReward(reward: RedeemedReward) {
+        val current = getRedeemedRewards().toMutableList()
+        current.add(0, reward)
+        val serialized = current.joinToString(";") { serializeReward(it) }
+        sessionPrefs.edit().putString(KEY_REDEEMED_REWARDS, serialized).apply()
+        val user = getUserSession()
+        if (user != null && !user.isDev && isEmailRegistered(user.email)) {
+            val normalized = user.email.trim().lowercase()
+            accountPrefs.edit().putString("rewards_$normalized", serialized).apply()
+        }
+    }
+
+    private fun serializeReward(r: RedeemedReward): String {
+        fun esc(s: String) = s.replace("%", "%25").replace("|", "%7C").replace(";", "%3B")
+        return listOf(
+            esc(r.id),
+            esc(r.rewardTitle),
+            r.pointsCost.toString(),
+            esc(r.redemptionCode),
+            esc(r.redeemedAtFormatted),
+            esc(r.partnerName),
+            esc(r.iconEmoji)
+        ).joinToString("|")
+    }
+
+    private fun deserializeReward(s: String): RedeemedReward? {
+        try {
+            val parts = s.split("|")
+            if (parts.size < 7) return null
+            fun unesc(str: String) = str.replace("%3B", ";").replace("%7C", "|").replace("%25", "%")
+            return RedeemedReward(
+                id = unesc(parts[0]),
+                rewardTitle = unesc(parts[1]),
+                pointsCost = parts[2].toIntOrNull() ?: 0,
+                redemptionCode = unesc(parts[3]),
+                redeemedAtFormatted = unesc(parts[4]),
+                partnerName = unesc(parts[5]),
+                iconEmoji = unesc(parts[6])
+            )
+        } catch (_: Exception) {
+            return null
+        }
+    }
+
+    /**
      * Cierra la sesión activa borrando únicamente [sessionPrefs], preservando las cuentas registradas en [accountPrefs].
      */
     fun clearSession() {
         sessionPrefs.edit().clear().apply()
     }
 }
+

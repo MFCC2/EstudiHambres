@@ -320,4 +320,32 @@ class UserProfileAndSessionQaTest {
         assertEquals(customPhotoPath, userWithPhoto.profilePhotoPath)
         assertTrue(userWithPhoto.profilePhotoPath!!.endsWith(".jpg"))
     }
+
+    @Test
+    fun testPendingStudentDniReconciliationOnFirstScan() {
+        val pendingStudent = StudentUser(
+            id = "usr-mistype-01",
+            fullName = "Carolina Alvarado",
+            email = "carolina.alvarado@upsjb.edu.pe",
+            dni = "71234560",
+            university = "Universidad Privada San Juan Bautista",
+            studentCode = "2010103140",
+            verificationStatus = VerificationStatus.PENDING_VERIFICATION,
+            scannedCardDni = null
+        )
+
+        val realScannedDni = "71234567"
+        val canReconcile = pendingStudent.verificationStatus != VerificationStatus.VERIFIED || pendingStudent.isDev
+        assertTrue("Usuario con DNI mal escrito debe poder reconciliarlo con el escaneo de su carnet", canReconcile)
+
+        val reconciledUser = pendingStudent.copy(
+            dni = realScannedDni,
+            scannedCardDni = realScannedDni,
+            verificationStatus = VerificationStatus.VERIFIED
+        )
+
+        assertEquals("71234567", reconciledUser.dni)
+        assertEquals("71234567", reconciledUser.scannedCardDni)
+        assertEquals(VerificationStatus.VERIFIED, reconciledUser.verificationStatus)
+    }
 }

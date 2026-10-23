@@ -3,6 +3,7 @@ package com.example.estudihambres.core.navigation
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
@@ -26,7 +27,7 @@ import com.example.estudihambres.presentation.auth.LoginScreen
 import com.example.estudihambres.presentation.auth.RegisterScreen
 import com.example.estudihambres.presentation.home.HomeScreen
 import com.example.estudihambres.presentation.map.MapScreen
-import com.example.estudihambres.presentation.verification.OcrScanScreen
+import com.example.estudihambres.presentation.verification.StudentVerificationScreen
 
 /**
  * Elemento de la barra inferior de navegación.
@@ -38,7 +39,12 @@ private data class NavigationItem(
 
 /**
  * Grafo principal de navegación alojado en core/navigation.
- * Administra las 5 rutas principales: Login, Register, Verification, Home y Map.
+ * Administra las rutas principales: Login, Register, Verification, Home, Map y Profile.
+ *
+ * Corrección de seguridad:
+ * La barra inferior de navegación se oculta estrictamente durante la autenticación (Login, Register)
+ * y durante el escaneo y verificación de carnet (Verification) para evitar accesos no autorizados
+ * o fuga de navegación previa a la acreditación del estudiante.
  *
  * @param navController Controlador de navegación de Jetpack Compose.
  */
@@ -49,18 +55,19 @@ fun AppNavGraph(
     val bottomNavItems = listOf(
         NavigationItem(Screen.Home, Icons.Default.Home),
         NavigationItem(Screen.Map, Icons.Default.LocationOn),
-        NavigationItem(Screen.Verification, Icons.Default.QrCodeScanner),
+        NavigationItem(Screen.Rewards, Icons.Default.CardGiftcard),
         NavigationItem(Screen.Profile, Icons.Default.Person)
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Ocultar barra inferior en pantallas de autenticación
+    // Ocultar barra inferior en pantallas de autenticación y durante el escaneo de carnet
+    // Esto previene que un usuario no autenticado o no verificado navegue libremente
     val showBottomBar = currentRoute in listOf(
         Screen.Home.route,
         Screen.Map.route,
-        Screen.Verification.route,
+        Screen.Rewards.route,
         Screen.Profile.route
     )
 
@@ -141,7 +148,7 @@ fun AppNavGraph(
                 )
             }
             composable(Screen.Verification.route) {
-                com.example.estudihambres.presentation.verification.StudentVerificationScreen(
+                StudentVerificationScreen(
                     onVerificationCompleted = {
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Verification.route) { inclusive = true }
@@ -175,6 +182,9 @@ fun AppNavGraph(
             }
             composable(Screen.Map.route) {
                 MapScreen()
+            }
+            composable(Screen.Rewards.route) {
+                com.example.estudihambres.presentation.rewards.RewardsScreen()
             }
             composable(Screen.Profile.route) {
                 com.example.estudihambres.presentation.profile.ProfileScreen(

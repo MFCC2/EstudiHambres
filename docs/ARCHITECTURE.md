@@ -14,6 +14,7 @@ flowchart TD
         HOME["home/ (HomeScreen, HomeViewModel)"]
         MAP["map/ (MapScreen, MapViewModel)"]
         PROFILE["profile/ (ProfileScreen, ProfileViewModel)"]
+        REWARDS["rewards/ (RewardsScreen, RewardsViewModel)"]
     end
 
     subgraph CoreLayer["Core Layer (Cross-Cutting)"]
@@ -63,7 +64,7 @@ com.example.estudihambres/
 │   │   ├── Screen.kt                     # Rutas: Login, Register, Home, Map, Verification, Profile
 │   │   └── AppNavGraph.kt                # Scaffold + NavigationBar + NavHost con popUpTo anti-fugas
 │   ├── theme/
-│   │   ├── Color.kt                      # Paleta oficial: #3344EE, #00C853, #FF6D00
+│   │   ├── Color.kt                      # Paleta oficial: Obsidiana #09090B, Superficie #141417, Borde #27272A, Naranja Acento #F97316, Esmeralda #10B981
 │   │   ├── Shape.kt                      # CampusShapes (16.dp estricto en tarjetas)
 │   │   ├── Type.kt                       # Material 3 Typography y jerarquías
 │   │   └── Theme.kt                      # EstudiHambresTheme
@@ -134,6 +135,36 @@ com.example.estudihambres/
 | **Agente 2: UI/UX & Compose** | ✅ Producción | Material 3, esquinas 16.dp, avatar reactivo, carruseles horizontales, paleta corporativa y cero advertencias. |
 | **Agente 3: Auth & OCR** | ✅ Producción | Validación estricta de credenciales, estabilización multi-frame (4 frames/1.5s), filtro de recibos comerciales y carnet único por estudiante. |
 | **Agente 4: Geolocalización** | ✅ Producción | Google Maps nativo SDK + visor dual OSM/Leaflet, geocodificación real (Cusco/Lima) y navegación turn-by-turn. |
-| **Agente 5: QA & Pruebas** | ✅ Producción | Suite de 94 pruebas unitarias aprobadas al 100% (validación, OCR, Haversine, persistencia, inmutabilidad). |
+| **Agente 5: QA & Pruebas** | ✅ Producción | Suite de 164 pruebas unitarias aprobadas al 100% en 19 suites (seguridad SHA-256, prevención de doble gasto, anti-XSS, anti-phishing, OCR, Haversine, persistencia). |
 | **Agente 6: GitFlow & Release** | ✅ Producción | `./gradlew testDebugUnitTest assembleDebug` con 0 errores y 0 advertencias. Ramas `develop` y `main` sincronizadas. |
 
+
+
+---
+
+## 4. Arquitectura de Seguridad y Hardening
+
+El sistema incorpora defensas multicapa diseñadas para entornos universitarios de alta concurrencia:
+
+1. **Almacenamiento Criptográfico de Credenciales:**
+   - Algoritmo de Hashing: SHA-256 (`SessionManager.hashPassword`).
+   - Digest: 64 caracteres hexadecimales deterministas.
+   - Migración transparente sin pérdida de sesiones activas.
+
+2. **Control de Concurrencia y Billetera de StudiPuntos:**
+   - Bloqueos `@Synchronized` en mutaciones de saldo (`deductStudiPuntos`, `addStudiPuntos`, `setStudiPuntos`, `saveRedeemedReward`).
+   - Verificación atómica previa: `if (cost <= 0) return false; if (current < cost) return false`.
+   - Prevención matemática y temporal de doble gasto.
+
+3. **Fortificación de WebView en Radar OpenStreetMap:**
+   - `settings.allowFileAccess = false` y `settings.allowContentAccess = false`.
+   - `settings.setGeolocationEnabled(false)` en Web.
+   - `WebViewClient.shouldOverrideUrlLoading` restringido estrictamente a `https://openstreetmap.org` y `https://unpkg.com`.
+   - Sanitización bidireccional contra DOM XSS: `sanitizeForJson` (Kotlin) y `escapeHtml` (JavaScript).
+
+4. **Saneamiento de Intents y Despacho de URLs:**
+   - Validación de esquema estricto: únicamente `https` y `http`.
+   - Inclusión de `Intent.CATEGORY_BROWSABLE` para delegar la navegación exclusivamente a navegadores web autorizados por el sistema operativo.
+
+5. **Cifrado de Tráfico de Red:**
+   - Forzado de `android:usesCleartextTraffic="false"` en `AndroidManifest.xml`.

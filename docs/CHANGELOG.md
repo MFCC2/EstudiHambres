@@ -600,3 +600,131 @@ Atención y resolución exhaustiva a las 4 peticiones del usuario:
      - Búsqueda Reactiva: Localización precisa de marcas reales (Cineplanet, Apple, KFC, JetBrains).
      - Auditoría de Catálogo: Garantía de URLs HTTPS válidas y precios de ahorro mayores a cero.
    - **Total de pruebas unitarias:** **129 pruebas unitarias aprobadas al 100%** en 15 suites de testing, 0 advertencias y 0 errores en compilación y Android Lint.
+
+## [Rediseño Minimalista Monocromático, Escaneo Inteligente SUNEDU de 9 Campos, Reconciliación de DNI y Seguridad en Navegación v1.3.0] - 2026-10-22
+**Rama:** `develop` / `main`
+
+### Resumen de la Entrega
+Atención integral al requerimiento de rediseño visual profesional, corrección de bugs en registro de DNI, escaneo inteligente de carnet universitario de 9 campos y sellado de brechas de seguridad:
+
+1. **Rediseño Visual Sobrio y Minimalista (Menos Colores, Más Blanco y Negro, Profesional)**:
+   - Implementación de una paleta estética monocromática refinada inspirada en Obsidian/Dark Slate: fondo carbón profundo (`#09090B`), superficies de tarjetas oscuras (`#141417`), bordes sutiles y definidos (`#27272A`), texto blanco nítido (`#FAFAFA`) y gris suave (`#A1A1AA`).
+   - Restricción intencional de color: acentos vibrantes de color naranja (`#F97316`) reservados exclusivamente para promociones, insignias de descuento y botones primarios de acción (CTA), y verde esmeralda (`#10B981`) para distintivos de verificación aprobada.
+   - Eliminación de degradados excesivos o llamativos (`CampusGradientPurple`, `CampusGradientSunset`, etc.) en las tarjetas de beneficios y ahorro acumulado del dashboard (`HomeScreen.kt`), logrando un acabado profesional, simple, intuitivo y menos cargado.
+
+2. **Análisis Profundo y Extracción de 9 Campos Oficiales del Carnet SUNEDU (`ParseStudentCardOcrUseCase`, `StudentCardOcrResult`)**:
+   - Análisis exhaustivo de los carnets universitarios peruanos oficiales (casos reales como Carolina Alvarado, Vivian Ramírez y Manuel Fabrizio Callañaupa):
+     1. **Código de estudiante:** Identificador de matrícula universitaria (6-12 caracteres alfanuméricos).
+     2. **DNI:** Validación estricta de 8 dígitos numéricos peruanos, depurando sufijos verificadores (e.g. `01478744-1`).
+     3. **Universidad:** Mapeo canónico a universidades reconocidas (Continental, San Marcos, PUCP, San Agustín, San Antonio Abad, San Juan Bautista, etc.).
+     4. **Nombres:** Extracción en una o múltiples líneas independientes.
+     5. **Apellidos:** Extracción multilínea continua con formato Title Case.
+     6. **Facultad:** Detección de unidad académica (e.g. Humanidades, Ingeniería, Comunicación y Ciencias Administrativas, Post Grado).
+     7. **Carrera:** Detección de programa profesional o maestría (e.g. Ingeniería de Sistemas e Informática, Administración de Negocios, Medicina Humana).
+     8. **Sello Oficial de SUNEDU:** Evaluación del membrete institucional de la Superintendencia Nacional de Educación Superior Universitaria, escudo de la República del Perú, trama de seguridad guilloché y franja holográfica inferior ("CARNÉ UNIVERSITARIO 2025/2026").
+     9. **Año y Fecha de Vigencia:** Extracción de fecha exacta de expiración (DD/MM/AA) y año de vigencia (2025, 2026, 2027), determinando condición activa y regular o caducada.
+     10. **Estado de Estudiante:** Clasificación automática entre Pregrado Regular y Postgrado (maestrías/doctorados).
+
+3. **Solución a Bug de Registro y Reconciliación de DNI (`AuthViewModel`, `RegisterScreen`, `SessionManager`)**:
+   - **Registro Dual Inteligente:** Modo "Escanear Carnet (Recomendado)" que permite al nuevo usuario escanear directamente su carnet universitario físico mediante Google ML Kit OCR antes de crear la cuenta, autorrellenando código, DNI, universidad, carrera y nombres completos de manera 100% fidedigna.
+   - **Ingreso Manual con Fallback:** Modalidad alternativa para estudiantes que aún no dispongan del carnet físico en mano, con validación de DNI a 8 dígitos numéricos estrictos y selector inteligente de universidad.
+   - **Reconciliación de DNI en `SessionManager`:** Eliminación del bloqueo que impedía validar cuentas cuando el estudiante se había equivocado al escribir su DNI manualmente durante el registro. Ahora, si la cuenta está en estado `PENDING_VERIFICATION`, el escaneo del carnet oficial actualiza el DNI del perfil, reconcilia el índice de cuentas y consolida la verificación exitosa.
+
+4. **Corrección Crítica de Falla de Seguridad en Navegación (`AppNavGraph.kt`)**:
+   - Se removió `Screen.Verification.route` del conjunto `showBottomBar` en el Scaffold raíz.
+   - Durante todo el proceso de escaneo, validación u omisión del carnet universitario, la barra inferior de navegación permanece completamente oculta, impidiendo que usuarios no autenticados o en proceso de verificación puedan navegar libremente dentro de la aplicación sin haber validado su identidad.
+
+5. **Alineación con Contenido y Reglas de Negocio de `studihambres_mockup_showcase.html`**:
+   - Integración de bienvenida y acreditación de 500 StudiPuntos al registrar carnet universitario.
+   - Regla de oro de seguridad: Relación 1:1 estricta entre carnet universitario físico y cuenta institucional.
+
+6. **Ampliación de Suite QA a 138 Pruebas Unitarias Aprobadas al 100%**:
+   - Nuevos tests automatizados en `StudentCardOcrQaTest.kt` y `UserProfileAndSessionQaTest.kt` verificando la extracción de los 9 campos en carnets reales y la reconciliación de DNI en cuentas pendientes.
+   - Ejecución exitosa de `./gradlew testDebugUnitTest` y `./gradlew assembleDebug` (0 errores).
+
+## [Tienda de StudiPuntos (Premios), Alta Precisión en Mapa y API Remota de Promociones Validadas v1.3.5] - 2026-10-22
+**Rama:** `develop` / `main`
+
+### Resumen de la Entrega
+Atención integral y resolución de las 3 peticiones prioritarias del usuario:
+
+1. **Tienda de StudiPuntos / Billetera de Lealtad (Apartado Premios)**:
+   - Integración completa de la pestaña "Premios" (`Screen.Rewards`) en la barra de navegación persistente inferior de `AppNavGraph.kt`.
+   - Implementación de `RewardsScreen.kt` y `RewardsViewModel.kt`:
+     - **Cabecera de Billetera:** Saldo de StudiPuntos en tiempo real (`2,450 StudiPuntos 🪙`), indicador de racha activa ("Racha activa: 4 compras con descuento") y acción interactiva para registrar boletas de compra ("+ Escanear Boleta" que añade +80 StudiPuntos con feedback visual).
+     - **Tasa de Conversión Oficial:** `100 pts = S/ 1.00`.
+     - **Catálogo de Recompensas:** Tarjetas de regalo y vales oficiales (Roblox 400 Robux, Xbox Game Pass PC 1 Mes, Spotify Premium Estudiante, Combo Mega Bajón, Steam Wallet S/ 20, Cineplanet 2D, Starbucks Frappuccino Grande, Vale Librerías Crisol).
+     - **Diálogo Modal de Canje:** Entrega inmediata del premio con descuento de puntos, código oficial único en formato Monospace (con botón de copiado al portapapeles en 1 solo tap) y código de barras Code-128 renderizado en `Canvas`.
+   - Persistencia local en `SessionManager.kt` respaldando el saldo de puntos y la colección de premios canjeados.
+
+2. **Corrección de Precisión Geográfica en el Mapa (Eliminación de Superposiciones con Hospitales)**:
+   - Diagnóstico: Las coordenadas previas de Starbucks en Cusco (`-13.5231, -71.9478`) y en Lima (`-12.0910, -77.0380`) se ubicaban sobre los terrenos del Hospital Regional del Cusco y cerca al Hospital Rebagliati en Jesús María.
+   - Corrección en `MockPlaceRepository.kt` y `MapViewModel.kt`:
+     - **Starbucks Real Plaza Cusco (`cu-02`):** Posicionado con precisión en `latitude = -13.5232, longitude = -71.9442` (dentro del centro comercial Real Plaza Cusco en Av. Collasuyo, a más de 500 metros del hospital regional).
+     - **Starbucks Plaza San Miguel Lima (`pl-04`):** Posicionado con precisión en `latitude = -12.0772, longitude = -77.0802` (Plaza San Miguel en Av. Universitaria con Av. La Marina, a más de 4.5 km del Hospital Rebagliati).
+     - **Ajuste integral de comercios:** Coordenadas exactas para Bembos, Cineplanet, Papa John's, KFC, Pizza Hut, Librerías Crisol y sedes universitarias (Campus Continental en Cusco y PUCP/San Marcos en Lima).
+
+3. **Arquitectura de API Remota y Validación de Promociones (`PromotionApiService`, `PromotionDto`)**:
+   - Creación del paquete `data/remote/`:
+     - `PromotionApiService.kt`: Contrato para la captura de promociones universitarias y validación criptográfica/sintáctica de enlaces web.
+     - `DefaultPromotionApiServiceImpl.kt`: Implementación robusta con catálogo de 21 convenios estudiantiles y lista blanca de dominios oficiales (`trustedDomains`).
+     - `PromotionDto.kt`: DTO con campos de validación (`isValidated`, `verificationSource`, `officialUrl`) y mapeo a dominio.
+     - Validación estricta: Rechazo de protocolos HTTP no seguros o dominios externos no verificados.
+   - Enlace directo desde el Dashboard (`HomeScreen.kt`): Al pulsar sobre cualquier promoción o el botón "Ir al beneficio oficial", se lanza un intent `ACTION_VIEW` con la URL HTTPS validada hacia el portal oficial de la marca o terms de la promoción.
+
+4. **Ampliación de Suite QA a 152 Pruebas Unitarias Aprobadas al 100%**:
+   - Nuevas suites de testing:
+     - `RewardsStoreQaTest.kt`: Pruebas de catálogo de premios, canje con puntos suficientes, fallo por puntos insuficientes, suma de bonos por boletas y cálculo de tasa de cambio.
+     - `MapPrecisionQaTest.kt`: Pruebas de distancia euclidiana/esférica verificando que Starbucks no colisione con centros hospitalarios.
+     - `PromotionApiValidationQaTest.kt`: Pruebas de auditoría de URLs HTTPS y filtrado de dominios no confiables.
+   - Total: 152 pruebas unitarias ejecutadas con 100% de éxito (`BUILD SUCCESSFUL in 3s`).
+   - Compilación exitosa de APK debug mediante `./gradlew assembleDebug`.
+
+
+## [Auditoría de Seguridad, Pruebas de Sistema y Usuario y Hardening de Vulnerabilidades v1.4.0] - 2026-10-23
+**Rama:** `develop` / `main`
+
+### Resumen de la Entrega
+Auditoría exhaustiva del sistema, análisis y remediación completa de vulnerabilidades de seguridad, fortalecimiento de defensas en tiempo de ejecución y ampliación de pruebas automatizadas a 164 pruebas unitarias aprobadas al 100%:
+
+1. **Remediación de Almacenamiento de Contraseñas (Criptografía SHA-256 en `SessionManager.kt`)**:
+   - **Vulnerabilidad detectada:** Las contraseñas de cuentas registradas se almacenaban en texto claro dentro de las `SharedPreferences` privadas (`pwd_$email`).
+   - **Remediación aplicada:** Implementación del método de hashing criptográfico `hashPassword(password: String)` con algoritmo `SHA-256` (digest de 64 caracteres hexadecimales en minúsculas).
+   - **Migración sin interrupciones (Zero-Downtime Migration):** En `authenticate()`, se realiza la comprobación criptográfica y, si la cuenta utilizaba formato histórico en texto plano, se migra de manera transparente e instantánea al hash SHA-256 sin requerir reseteo ni afectar a los usuarios existentes.
+
+2. **Mitigación de Condiciones de Carrera y Doble Gasto (Concurrency & Race Conditions)**:
+   - **Vulnerabilidad detectada:** Las operaciones concurrentes de saldo de StudiPuntos (`deductStudiPuntos`, `addStudiPuntos`, `setStudiPuntos`, `saveRedeemedReward`) carecían de sincronización a nivel de hilo, lo que permitía condiciones de carrera para doble canje de premios.
+   - **Remediación aplicada:** Anotación `@Synchronized` y verificación atómica de saldo previo al débito, garantizando que el balance nunca se torne negativo ni sufra desincronización por peticiones simultáneas. Rechazo explícito de deducciones con costos negativos o iguales a cero.
+
+3. **Fortificación de WebView y Prevención de DOM XSS en Radar OSM (`MapScreen.kt`)**:
+   - **Vulnerabilidades detectadas:**
+     - `allowFileAccess` y `allowContentAccess` no estaban desactivados explícitamente en el `WebView` de Leaflet.
+     - Ausencia de `WebViewClient` con control de navegación externa.
+     - Posibilidad de inyección DOM XSS mediante nombres o atributos de locales inyectados directamente en los popups de Leaflet.
+   - **Remediación aplicada:**
+     - Desactivación explícita de `allowFileAccess = false`, `allowContentAccess = false` y `setGeolocationEnabled(false)`.
+     - Implementación de `WebViewClient` restringiendo la navegación interna únicamente al dominio base de OpenStreetMap (`https://openstreetmap.org`) y Leaflet CDN oficial (`https://unpkg.com`), bloqueando intentos de navegación a URLs arbitrarias dentro del puente JavaScript.
+     - Sanitización de strings en Kotlin (`sanitizeForJson`) y en el template JavaScript (`escapeHtml`) para neutralizar cualquier carga maliciosa en `place.name`, `place.discountBadge`, `place.category` o `place.id`.
+
+4. **Saneamiento de Redirección de URLs e Intent Injection (`HomeScreen.kt` y `MapScreen.kt`)**:
+   - **Vulnerabilidad detectada:** Lanzamiento de intents `ACTION_VIEW` con `Uri.parse(url)` sin validar el esquema del URI, exponiendo el sistema a esquemas peligrosos (`javascript:`, `file://`, `content://`, etc.).
+   - **Remediación aplicada:** Validación estricta que restringe la apertura externa exclusivamente a esquemas seguros `https` y `http`, agregando la categoría `Intent.CATEGORY_BROWSABLE` para delegar la apertura exclusivamente a navegadores web autorizados.
+
+5. **Eliminación de Fuga de Memoria Nativa en OCR (`StudentVerificationViewModel.kt`)**:
+   - **Vulnerabilidad detectada:** El cliente de reconocimiento de texto `TextRecognition.getClient(...)` (ML Kit C++ / TensorFlow Lite) no liberaba sus recursos nativos al destruirse el ViewModel.
+   - **Remediación aplicada:** Sobrescritura de `onCleared()` invocando `recognizer.close()` de manera segura.
+
+6. **Restricción de Tráfico en Texto Claro (`AndroidManifest.xml`)**:
+   - Configuración de `android:usesCleartextTraffic="false"` a nivel de `<application>` para forzar el uso exclusivo de conexiones seguras y cifradas HTTPS en todo el ciclo de vida de la aplicación.
+
+7. **Suite de Auditoría de Seguridad y Pruebas de Sistema (`SystemSecurityAuditQaTest.kt`)**:
+   - 12 nuevas pruebas de auditoría automatizada cubriendo:
+     - Integridad, determinismo y efecto avalancha de hashes SHA-256.
+     - Concurrencia de hilos previniendo doble gasto en StudiPuntos.
+     - Bloqueo de esquemas inseguros (`javascript:`, `file:`, `content:`, `intent:`, `smsto:`, `data:`).
+     - Validación de lista blanca de dominios y rechazo de dominios falsificados / phishing.
+     - Sanitización contra inyección HTML y DOM XSS en marcadores de mapa.
+     - Detección de inyecciones SQL y caracteres no numéricos en DNI.
+     - Simulación integral de la jornada del estudiante: registro -> bienvenida de puntos -> navegación segura -> canje comercial -> canje de premio -> rechazo por balance insuficiente.
+   - Total del proyecto: **164 pruebas unitarias aprobadas al 100%** en 19 suites de prueba.
+   - Empaquetado exitoso del APK debug (`BUILD SUCCESSFUL in 6s`).
