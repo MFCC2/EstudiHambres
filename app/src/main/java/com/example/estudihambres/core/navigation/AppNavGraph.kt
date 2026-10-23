@@ -28,6 +28,7 @@ import com.example.estudihambres.presentation.auth.RegisterScreen
 import com.example.estudihambres.presentation.home.HomeScreen
 import com.example.estudihambres.presentation.map.MapScreen
 import com.example.estudihambres.presentation.verification.StudentVerificationScreen
+import com.example.estudihambres.domain.model.VerificationStatus
 
 /**
  * Elemento de la barra inferior de navegación.
@@ -140,7 +141,16 @@ fun AppNavGraph(
                 RegisterScreen(
                     viewModel = authViewModel,
                     onRegisterSuccess = {
-                        navController.navigate(Screen.Verification.route)
+                        val isVerified = authViewModel.currentUser.value?.verificationStatus == VerificationStatus.VERIFIED
+                        if (isVerified) {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Register.route) { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate(Screen.Verification.route) {
+                                popUpTo(Screen.Register.route) { inclusive = true }
+                            }
+                        }
                     },
                     onNavigateToLogin = {
                         navController.popBackStack()

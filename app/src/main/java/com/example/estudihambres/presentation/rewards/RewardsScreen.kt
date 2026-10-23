@@ -143,7 +143,7 @@ fun RewardsScreen(
                     studiPuntos = state.studiPuntos,
                     streakText = state.activeStreakText,
                     isScanning = state.isScanningReceipt,
-                    onScanReceipt = { viewModel.onScanReceiptDemo() }
+                    onScanReceipt = { viewModel.onScanReceipt() }
                 )
             }
 

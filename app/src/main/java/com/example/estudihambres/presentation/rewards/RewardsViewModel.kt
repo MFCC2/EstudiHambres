@@ -111,7 +111,7 @@ class RewardsViewModel(
     /**
      * Acredita +80 StudiPuntos al escanear una boleta de compra.
      */
-    fun onScanReceiptDemo() {
+    fun onScanReceipt() {
         viewModelScope.launch {
             _uiState.update { it.copy(isScanningReceipt = true) }
             delay(500) // Simulación de reconocimiento OCR de boleta
