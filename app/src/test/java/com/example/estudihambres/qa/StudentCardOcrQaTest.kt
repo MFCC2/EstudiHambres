@@ -181,4 +181,85 @@ class StudentCardOcrQaTest {
         val result = parser("   \n\t   \n  ")
         assertFalse(result.isVerified)
     }
+
+    @Test
+    fun testOcrUserPhotoCarolinaAlvaradoNineFieldsExtraction() {
+        val ocr = """
+            REPÚBLICA DEL PERÚ
+            SUPERINTENDENCIA NACIONAL DE EDUCACIÓN SUPERIOR UNIVERSITARIA
+            SUNEDU
+            UNIVERSIDAD PRIVADA SAN JUAN BAUTISTA
+            CÓDIGO: 2010103140
+            DNI: 71234567
+            APELLIDOS: ALVARADO PÉREZ DE LA ROSA
+            NOMBRES: CAROLINA DAJHANA
+            FACULTAD: COMUNICACIÓN Y CIENCIAS ADMINISTRATIVAS
+            CARRERA: ADMINISTRACIÓN DE NEGOCIOS
+            EXPIRA
+            31
+            08
+            26
+            CARNÉ UNIVERSITARIO 2026
+        """.trimIndent()
+
+        val result = parser(ocr)
+        assertTrue("Carnet oficial SUNEDU debe estar verificado", result.isVerified)
+        assertTrue("Debe detectar sello oficial SUNEDU", result.hasSuneduSeal)
+        assertNotNull("Descripción del sello oficial SUNEDU debe estar presente", result.suneduSealDescription)
+        assertEquals("71234567", result.studentDni)
+        assertEquals("2010103140", result.studentCode)
+        assertEquals("31/08/2026", result.expirationDate)
+        assertEquals("2026", result.validityYearDetected)
+        assertTrue("Debe identificar vigencia activa", result.isVigente)
+        assertEquals("Universidad Privada San Juan Bautista", result.universityName)
+        assertEquals("Administración De Negocios", result.career)
+        assertEquals("Comunicación Y Ciencias Administrativas", result.faculty)
+        assertTrue("Estado del estudiante debe ser activo regular", result.studentStatus.contains("Activo"))
+    }
+
+    @Test
+    fun testOcrUserPhotoVivianRamirezNineFieldsExtraction() {
+        val ocr = """
+            REPÚBLICA DEL PERÚ
+            SUNEDU
+            UNIVERSIDAD CONTINENTAL
+            DNI: 72345678-1
+            APELLIDOS: RAMÍREZ ZÁRATE
+            NOMBRES: VIVIAN
+            CARRERA: MEDICINA HUMANA
+            EXPIRA 30/06/2026
+            CARNÉ UNIVERSITARIO 2026
+        """.trimIndent()
+
+        val result = parser(ocr)
+        assertTrue("Carnet Vivian debe estar verificado", result.isVerified)
+        assertTrue("Debe detectar membrete y sello SUNEDU", result.hasSuneduSeal)
+        assertEquals("72345678", result.studentDni)
+        assertEquals("Universidad Continental", result.universityName)
+        assertEquals("Medicina Humana", result.career)
+        assertEquals("30/06/2026", result.expirationDate)
+        assertEquals("2026", result.validityYearDetected)
+        assertTrue("Estado del estudiante debe ser regular activo", result.studentStatus.contains("Activo"))
+    }
+
+    @Test
+    fun testOcrPostgradoStudentIdentification() {
+        val ocr = """
+            REPÚBLICA DEL PERÚ
+            SUNEDU
+            UNIVERSIDAD NACIONAL MAYOR DE SAN MARCOS
+            FACULTAD: ESCUELA DE POSGRADO
+            CARRERA: MAESTRÍA EN INGENIERÍA DE SOFTWARE
+            DNI: 70894512
+            CÓDIGO: 20235012
+            VÁLIDO 2026
+        """.trimIndent()
+
+        val result = parser(ocr)
+        assertTrue("Carnet de postgrado debe ser verificado", result.isVerified)
+        assertTrue("Debe identificar condición de Postgrado", result.studentStatus.contains("Postgrado"))
+        assertTrue("Debe estar activo", result.studentStatus.contains("Activo"))
+        assertEquals("Universidad Nacional Mayor de San Marcos", result.universityName)
+        assertEquals("70894512", result.studentDni)
+    }
 }

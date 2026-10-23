@@ -4,49 +4,73 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 /**
- * Paleta de colores oficial y extendida de EstudiHambres según PROJECT_RULES.md:
- * - Primario Azul/Índigo: #3344EE
- * - Verde éxito: #00C853
- * - Naranja acento: #FF6D00
- * - Tonos modernos de superficie, elevación, degradados y bordes sutiles.
+ * Paleta de colores minimalista, profesional y de alto contraste (Blanco, Negro y Acentos selectos)
+ * para EstudiHambres.
+ *
+ * Enfoque de diseño:
+ * - Base monocromática profesional (Negro profundo, blancos puros y escalas de gris grafito).
+ * - Menos saturación visual para reducir sobrecarga cognitiva.
+ * - Acento vibrante naranja/ámbar reservado exclusivamente para promociones, descuentos y botones clave.
+ * - Verde esmeralda sutil para validaciones exitosas de SUNEDU y ahorro acumulado.
  */
-val CampusPrimary = Color(0xFF3344EE)
-val CampusPrimaryVariant = Color(0xFF2030C8)
-val CampusSecondary = Color(0xFFFF6D00)
-val CampusSuccess = Color(0xFF00C853)
 
-val CampusBackgroundLight = Color(0xFFF8F9FE)
-val CampusSurfaceLight = Color(0xFFFFFFFF)
-val CampusOnPrimaryLight = Color(0xFFFFFFFF)
-val CampusOnSecondaryLight = Color(0xFFFFFFFF)
-val CampusOnBackgroundLight = Color(0xFF0F172A)
-val CampusOnSurfaceLight = Color(0xFF0F172A)
+// Monocromo Principal Profesional
+val CampusBlack = Color(0xFF09090B)
+val CampusDarkSurface = Color(0xFF141417)
+val CampusDarkSurfaceVariant = Color(0xFF1C1C21)
+val CampusDarkBorder = Color(0xFF27272A)
+val CampusDarkTextPrimary = Color(0xFFFAFAFA)
+val CampusDarkTextSecondary = Color(0xFFA1A1AA)
 
-val CampusBackgroundDark = Color(0xFF0B0F19)
-val CampusSurfaceDark = Color(0xFF151D2C)
-val CampusOnPrimaryDark = Color(0xFFFFFFFF)
-val CampusOnSecondaryDark = Color(0xFFFFFFFF)
-val CampusOnBackgroundDark = Color(0xFFF1F5F9)
-val CampusOnSurfaceDark = Color(0xFFF1F5F9)
+val CampusWhite = Color(0xFFFFFFFF)
+val CampusLightBackground = Color(0xFFF9FAFB)
+val CampusLightSurface = Color(0xFFFFFFFF)
+val CampusLightSurfaceVariant = Color(0xFFF4F4F6)
+val CampusLightBorder = Color(0xFFE5E7EB)
+val CampusLightTextPrimary = Color(0xFF111827)
+val CampusLightTextSecondary = Color(0xFF6B7280)
 
-// Acentos sutiles para tarjetas, bordes y categorías
-val CampusCardBorder = Color(0xFFE2E8F0)
-val CampusCardBorderDark = Color(0xFF2E3A52)
-val CampusTagFood = Color(0xFFFF6D00)
-val CampusTagTech = Color(0xFF00C853)
+// Acentos selectos para promociones, ofertas y botones
+val CampusPrimary = Color(0xFF09090B) // Monocromo dominante
+val CampusPrimaryVariant = Color(0xFF18181B)
+val CampusSecondary = Color(0xFFF97316) // Naranja vibrante para promociones y ofertas
+val CampusSuccess = Color(0xFF10B981) // Verde éxito / SUNEDU verificado
+val CampusWarning = Color(0xFFF59E0B) // Ámbar de advertencia / pendiente
+val CampusError = Color(0xFFEF4444)
+
+// Compatibilidad con tokens previos de la app
+val CampusBackgroundLight = CampusLightBackground
+val CampusSurfaceLight = CampusLightSurface
+val CampusOnPrimaryLight = CampusWhite
+val CampusOnSecondaryLight = CampusWhite
+val CampusOnBackgroundLight = CampusLightTextPrimary
+val CampusOnSurfaceLight = CampusLightTextPrimary
+
+val CampusBackgroundDark = CampusBlack
+val CampusSurfaceDark = CampusDarkSurface
+val CampusOnPrimaryDark = CampusWhite
+val CampusOnSecondaryDark = CampusWhite
+val CampusOnBackgroundDark = CampusDarkTextPrimary
+val CampusOnSurfaceDark = CampusDarkTextPrimary
+
+// Bordes y acentos sutiles
+val CampusCardBorder = CampusLightBorder
+val CampusCardBorderDark = CampusDarkBorder
+val CampusTagFood = Color(0xFFF97316)
+val CampusTagTech = Color(0xFF10B981)
 val CampusTagTransport = Color(0xFF0284C7)
 val CampusTagCulture = Color(0xFF8B5CF6)
-val CampusGold = Color(0xFFFFB300)
+val CampusGold = Color(0xFFF59E0B)
 
-// Degradados premium oficiales
-val CampusGradientPrimary = Brush.horizontalGradient(listOf(Color(0xFF3344EE), Color(0xFF1D4ED8)))
-val CampusGradientEmerald = Brush.horizontalGradient(listOf(Color(0xFF0D6838), Color(0xFF107C41), Color(0xFF00695C)))
-val CampusGradientSunset = Brush.horizontalGradient(listOf(Color(0xFFFF6D00), Color(0xFFFF8F00)))
-val CampusGradientPurple = Brush.horizontalGradient(listOf(Color(0xFF7C3AED), Color(0xFF4F46E5)))
-val CampusGradientWallet = Brush.linearGradient(listOf(Color(0xFF0B6623), Color(0xFF0F8A5F), Color(0xFF1A5276)))
-val CampusGradientGold = Brush.horizontalGradient(listOf(Color(0xFFFFD54F), Color(0xFFFFB300), Color(0xFFFF8F00)))
+// Degradados profesionales refinados (sutiles y no sobrecargados)
+val CampusGradientPrimary = Brush.horizontalGradient(listOf(Color(0xFF18181B), Color(0xFF09090B)))
+val CampusGradientEmerald = Brush.horizontalGradient(listOf(Color(0xFF065F46), Color(0xFF047857)))
+val CampusGradientSunset = Brush.horizontalGradient(listOf(Color(0xFFEA580C), Color(0xFFF97316)))
+val CampusGradientPurple = Brush.horizontalGradient(listOf(Color(0xFF4C1D95), Color(0xFF6D28D9)))
+val CampusGradientWallet = Brush.linearGradient(listOf(Color(0xFF18181B), Color(0xFF27272A)))
+val CampusGradientGold = Brush.horizontalGradient(listOf(Color(0xFFD97706), Color(0xFFF59E0B)))
 
-// Colores de marcas aliadas oficiales peruanas e internacionales
+// Colores de marcas aliadas
 val BrandSpotify = Color(0xFF1DB954)
 val BrandKFC = Color(0xFFE4002B)
 val BrandStarbucks = Color(0xFF00704A)
@@ -90,7 +114,7 @@ fun getBrandColor(partnerName: String): Color {
         lower.contains("autodesk") -> BrandAutodesk
         lower.contains("atu") || lower.contains("transporte") -> BrandAtu
         lower.contains("cultura") || lower.contains("boleto") -> CampusTagCulture
-        else -> CampusPrimary
+        else -> CampusSecondary
     }
 }
 
@@ -98,27 +122,22 @@ fun getBrandColor(partnerName: String): Color {
  * Obtiene el monograma o iniciales para mostrar en la insignia del comercio aliado.
  */
 fun getBrandMonogram(partnerName: String): String {
-    val lower = partnerName.lowercase()
+    val clean = partnerName.trim()
+    val words = clean.split(" ").filter { it.isNotBlank() }
     return when {
-        lower.contains("bembos") -> "B"
-        lower.contains("starbucks") -> "☕"
-        lower.contains("kfc") -> "KFC"
-        lower.contains("cineplanet") -> "CP"
-        lower.contains("cinemark") -> "CM"
-        lower.contains("spotify") -> "🎵"
-        lower.contains("apple") -> ""
-        lower.contains("jetbrains") -> "JB"
-        lower.contains("github") -> "GH"
-        lower.contains("notion") -> "N"
-        lower.contains("figma") -> "Fg"
-        lower.contains("microsoft") -> "M"
-        lower.contains("papa john") -> "PJ"
-        lower.contains("crisol") -> "📚"
-        lower.contains("sbs") -> "SBS"
-        lower.contains("canva") -> "Cv"
-        lower.contains("autodesk") -> "AD"
-        lower.contains("cultura") || lower.contains("boleto") -> "🏛️"
-        lower.contains("transporte") || lower.contains("atu") -> "🚌"
-        else -> partnerName.take(2).uppercase()
+        clean.contains("KFC", ignoreCase = true) -> "KFC"
+        clean.contains("Bembos", ignoreCase = true) -> "BB"
+        clean.contains("Starbucks", ignoreCase = true) -> "SB"
+        clean.contains("Spotify", ignoreCase = true) -> "SP"
+        clean.contains("Cineplanet", ignoreCase = true) -> "CP"
+        clean.contains("Cinemark", ignoreCase = true) -> "CM"
+        clean.contains("Apple", ignoreCase = true) -> "AP"
+        clean.contains("Microsoft", ignoreCase = true) -> "MS"
+        clean.contains("GitHub", ignoreCase = true) -> "GH"
+        clean.contains("Figma", ignoreCase = true) -> "FG"
+        clean.contains("ATU", ignoreCase = true) -> "ATU"
+        words.size >= 2 -> "${words[0].first().uppercase()}${words[1].first().uppercase()}"
+        words.isNotEmpty() -> words[0].take(2).uppercase()
+        else -> "SH"
     }
 }

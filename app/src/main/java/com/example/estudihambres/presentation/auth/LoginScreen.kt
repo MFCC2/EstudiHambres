@@ -1,20 +1,27 @@
 package com.example.estudihambres.presentation.auth
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imeNestedScroll
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,13 +44,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.isImeVisible
-import androidx.compose.foundation.layout.imeNestedScroll
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,7 +59,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -69,20 +68,17 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.estudihambres.R
-import com.example.estudihambres.core.theme.CampusSecondary
 import com.example.estudihambres.core.theme.CampusShapes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Pantalla de inicio de sesión de EstudiHambres (presentation/auth).
- * Diseñada para máxima intuitividad: incluye alternancia de visibilidad de contraseña,
- * sugerencias contextuales, atajos de teclado y acceso directo de desarrollo.
+ * Pantalla de inicio de sesión con estética sobria y profesional (Blanco y Negro con acentos selectos).
  *
- * @param viewModel ViewModel de autenticación con validaciones y estado reactivo.
+ * @param viewModel ViewModel de autenticación con validaciones reactivas.
  * @param onLoginSuccess Navegación tras autenticación exitosa.
- * @param onNavigateToRegister Navegación hacia el formulario de registro de estudiante.
- * @param onBypassClick Acceso directo para pruebas locales y desarrollo rápido.
+ * @param onNavigateToRegister Navegación hacia el formulario de registro estudiantil.
+ * @param onBypassClick Acceso rápido para pruebas de desarrollo.
  * @param modifier Modificador Compose.
  */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
@@ -103,7 +99,6 @@ fun LoginScreen(
     val passwordBringIntoViewRequester = remember { BringIntoViewRequester() }
     var isPasswordFocused by remember { mutableStateOf(false) }
 
-    // Auto-desplazamiento inteligente al enfocar la contraseña o al abrirse el teclado
     LaunchedEffect(isImeVisible, isPasswordFocused) {
         if (isImeVisible && isPasswordFocused) {
             delay(150)
@@ -115,27 +110,18 @@ fun LoginScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.background
-                    )
-                )
-            )
+            .background(MaterialTheme.colorScheme.background)
             .imePadding()
             .imeNestedScroll()
             .verticalScroll(scrollState)
-            .padding(horizontal = 16.dp, vertical = 20.dp),
+            .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Card(
             shape = CampusShapes.medium,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -148,55 +134,54 @@ fun LoginScreen(
                 // Badge superior institucional
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+                    color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Text(
-                        text = "ESTUDIHAMBRES · BENEFICIOS UNIVERSITARIOS 🎓",
+                        text = "ESTUDIHAMBRES · ACCESO OFICIAL",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         letterSpacing = 0.8.sp,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                     )
                 }
 
-                // Logo oficial Mapache Mamey con doble anillo refinado
+                // Logo oficial Mapache Mamey
                 Box(
                     modifier = Modifier
-                        .size(92.dp)
+                        .size(80.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface)
-                        .border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                        .padding(3.dp)
-                        .clip(CircleShape)
-                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), CircleShape),
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        .padding(2.dp)
+                        .clip(CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(id = R.drawable.app_logo),
-                        contentDescription = "Logo Oficial Mapache Mamey",
+                        contentDescription = "Logo Oficial",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop
                     )
                 }
 
                 Text(
-                    text = "EstudiHambres 🎓",
-                    style = MaterialTheme.typography.headlineMedium,
+                    text = "Iniciar Sesión",
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Beneficios y convenios universitarios al alcance de tu bolsillo",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Ingresa con tu correo institucional universitario",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Mensaje informativo contextual
+                // Mensaje informativo minimalista
                 Surface(
                     shape = CampusShapes.small,
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -206,14 +191,14 @@ fun LoginScreen(
                         Icon(
                             imageVector = Icons.Default.Info,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "💡 Tip: Ingresa con tu correo institucional (.edu.pe) para activar descuentos universitarios.",
+                            text = "Valida tu carnet oficial SUNEDU para desbloquear menús subvencionados y descuentos.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -224,7 +209,7 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = state.email,
                     onValueChange = { viewModel.onLoginEmailChange(it) },
-                    label = { Text("Correo institucional") },
+                    label = { Text("Correo institucional (.edu.pe)") },
                     placeholder = { Text("alumno@continental.edu.pe") },
                     leadingIcon = { Icon(Icons.Default.Mail, contentDescription = null) },
                     isError = state.emailError != null,
@@ -240,7 +225,7 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Campo Contraseña con botón de visibilidad interactivo
+                // Campo Contraseña
                 OutlinedTextField(
                     value = state.password,
                     onValueChange = { viewModel.onLoginPasswordChange(it) },
@@ -283,73 +268,79 @@ fun LoginScreen(
                         }
                 )
 
-                // Alerta de error en caso de fallo de autenticación
                 if (state.errorMessage != null) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f)),
                         shape = CampusShapes.small,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
                             text = "⚠️ ${state.errorMessage}",
-                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(12.dp)
                         )
                     }
                 }
 
-                // Botón Iniciar Sesión con mayor presencia táctil
+                // Botón Iniciar Sesión profesional
                 Button(
                     onClick = { viewModel.login(onLoginSuccess) },
                     enabled = !state.isLoading,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                    shape = CampusShapes.small,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
                 ) {
                     if (state.isLoading) {
                         CircularProgressIndicator(
                             color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Verificando cuenta...")
+                        Text("Verificando credenciales...")
                     } else {
-                        Text("Iniciar Sesión", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                        Text("Iniciar Sesión", fontWeight = FontWeight.Bold)
                     }
                 }
 
-                // Botón Acceso Directo Dev estilo glassmorphic
+                // Botón Acceso Rápido Demo / Bypass Dev
                 OutlinedButton(
                     onClick = { viewModel.bypass(onBypassClick) },
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)),
+                    shape = CampusShapes.small,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     ),
-                    modifier = Modifier.fillMaxWidth().height(46.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
                 ) {
                     Text(
-                        text = "⚡ Acceso Directo (Bypass Dev)",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
+                        text = "⚡ Acceso Rápido Demo (Bypass)",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("¿No tienes cuenta?", style = MaterialTheme.typography.bodyMedium)
+                    Text("¿No tienes cuenta?", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = onNavigateToRegister) {
-                        Text("Regístrate aquí", fontWeight = FontWeight.Bold)
+                        Text("Regístrate aquí", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                     }
                 }
             }
         }
 
-        // Espaciador de despeje dinámico: se amplía con el teclado virtual abierto
-        val bottomClearance = if (isImeVisible) 240.dp else 60.dp
+        val bottomClearance = if (isImeVisible) 240.dp else 40.dp
         Spacer(modifier = Modifier.height(bottomClearance))
     }
 }
