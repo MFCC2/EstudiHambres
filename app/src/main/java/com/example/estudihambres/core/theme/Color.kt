@@ -23,20 +23,24 @@ val CampusDarkTextPrimary = Color(0xFFFAFAFA)
 val CampusDarkTextSecondary = Color(0xFFA1A1AA)
 
 val CampusWhite = Color(0xFFFFFFFF)
-val CampusLightBackground = Color(0xFFF9FAFB)
-val CampusLightSurface = Color(0xFFFFFFFF)
-val CampusLightSurfaceVariant = Color(0xFFF4F4F6)
-val CampusLightBorder = Color(0xFFE5E7EB)
-val CampusLightTextPrimary = Color(0xFF111827)
-val CampusLightTextSecondary = Color(0xFF6B7280)
+val CampusLightBackground = Color(0xFFFFFFFF) // Fondo blanco 100% puro como solicitado
+val CampusLightSurface = Color(0xFFFFFFFF) // Superficie de tarjeta blanca
+val CampusLightSurfaceVariant = Color(0xFFF8FAFC) // Pizarra muy sutil (Slate-50)
+val CampusLightBorder = Color(0xFFE2E8F0) // Borde nítido Slate-200 para delimitar tarjetas
+val CampusLightTextPrimary = Color(0xFF0F172A) // Tinta negra azabache profunda (Slate-900)
+val CampusLightTextSecondary = Color(0xFF475569) // Texto secundario nítido y legible (Slate-600)
 
-// Acentos selectos para promociones, ofertas y botones
-val CampusPrimary = Color(0xFF09090B) // Monocromo dominante
+// Acentos selectos de alto contraste para promociones, ofertas y botones
+val CampusPrimary = Color(0xFF0F172A) // Tinta oscura de alto contraste para botones principales
 val CampusPrimaryVariant = Color(0xFF18181B)
-val CampusSecondary = Color(0xFFF97316) // Naranja vibrante para promociones y ofertas
-val CampusSuccess = Color(0xFF10B981) // Verde éxito / SUNEDU verificado
-val CampusWarning = Color(0xFFF59E0B) // Ámbar de advertencia / pendiente
-val CampusError = Color(0xFFEF4444)
+val CampusSecondary = Color(0xFFEA580C) // Naranja vibrante de alto contraste para CTAs, canjes y ofertas
+val CampusSuccess = Color(0xFF059669) // Verde esmeralda nítido para SUNEDU verificado
+val CampusWarning = Color(0xFFD97706) // Ámbar de advertencia / pendiente
+val CampusError = Color(0xFFDC2626) // Rojo advertencia nítido
+
+// Tokens de alto contraste para botones
+val CampusButtonPrimaryText = Color(0xFFFFFFFF)
+val CampusButtonBorderContrast = Color(0xFF0F172A)
 
 // Compatibilidad con tokens previos de la app
 val CampusBackgroundLight = CampusLightBackground

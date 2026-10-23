@@ -48,7 +48,7 @@ private val DarkColorScheme = darkColorScheme(
  * y acentos selectos en promociones e insignias.
  */
 private val LightColorScheme = lightColorScheme(
-    primary = CampusBlack,
+    primary = CampusPrimary,
     onPrimary = CampusWhite,
     primaryContainer = CampusLightSurfaceVariant,
     onPrimaryContainer = CampusLightTextPrimary,
@@ -58,16 +58,16 @@ private val LightColorScheme = lightColorScheme(
     onSecondaryContainer = CampusSecondary,
     tertiary = CampusSuccess,
     onTertiary = CampusWhite,
-    tertiaryContainer = CampusSuccess.copy(alpha = 0.12f),
-    onTertiaryContainer = CampusSuccess,
-    background = CampusLightBackground,
-    surface = CampusLightSurface,
-    surfaceVariant = CampusLightSurfaceVariant,
-    onBackground = CampusLightTextPrimary,
+    tertiaryContainer = Color(0xFFECFDF5),
+    onTertiaryContainer = Color(0xFF065F46),
+    background = CampusLightBackground, // Blanco 100% puro
+    surface = CampusLightSurface, // Superficie blanca pura
+    surfaceVariant = CampusLightSurfaceVariant, // Slate-50 sutil
+    onBackground = CampusLightTextPrimary, // Tinta negra azabache de máximo contraste
     onSurface = CampusLightTextPrimary,
-    onSurfaceVariant = CampusLightTextSecondary,
-    outline = CampusLightBorder,
-    outlineVariant = CampusLightBorder.copy(alpha = 0.7f),
+    onSurfaceVariant = CampusLightTextSecondary, // Slate-600 nítido y legible
+    outline = CampusButtonBorderContrast, // Contorno nítido de tinta oscura para botones y foco (evita grises deshabilitados)
+    outlineVariant = CampusLightBorder, // Borde Slate-200 para delimitar tarjetas
     error = CampusError,
     onError = CampusWhite
 )

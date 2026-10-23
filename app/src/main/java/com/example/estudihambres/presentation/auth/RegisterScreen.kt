@@ -237,22 +237,31 @@ fun RegisterScreen(
                 Button(
                     onClick = {
                         showManualPendingWarningDialog = false
-                        viewModel.register(onRegisterSuccess)
+                        viewModel.setRegistrationMode(RegistrationMode.SCANNER)
+                        launchCarnetScanner()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    shape = CampusShapes.small,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = Color.White
+                    )
                 ) {
-                    Text("Continuar de todos modos")
+                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Escanear Carnet Ahora", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 OutlinedButton(
                     onClick = {
                         showManualPendingWarningDialog = false
-                        viewModel.setRegistrationMode(RegistrationMode.SCANNER)
-                        launchCarnetScanner()
-                    }
+                        viewModel.register(onRegisterSuccess)
+                    },
+                    shape = CampusShapes.small,
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text("Escanear Carnet Ahora")
+                    Text("Continuar de todos modos", fontWeight = FontWeight.SemiBold)
                 }
             }
         )

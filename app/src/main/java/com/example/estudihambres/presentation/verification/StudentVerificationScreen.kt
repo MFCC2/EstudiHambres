@@ -428,25 +428,25 @@ fun StudentVerificationScreen(
                         }
                     },
                     shape = CampusShapes.small,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-                    modifier = Modifier.weight(1f)
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.weight(1f).height(44.dp)
                 ) {
                     Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Galería", style = MaterialTheme.typography.labelSmall)
+                    Text("Galería", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
 
                 OutlinedButton(
                     onClick = { viewModel.toggleManualInputSheet(true) },
                     shape = CampusShapes.small,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-                    modifier = Modifier.weight(1f)
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.weight(1f).height(44.dp)
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Ingreso Manual", style = MaterialTheme.typography.labelSmall)
+                    Text("Ingreso Manual", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
 
 
@@ -574,11 +574,11 @@ fun StudentVerificationScreen(
         OutlinedButton(
             onClick = { viewModel.skipVerification(onSkipClick) },
             shape = CampusShapes.small,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
-            modifier = Modifier.fillMaxWidth()
+            border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+            modifier = Modifier.fillMaxWidth().height(48.dp)
         ) {
-            Text("Omitir por ahora (Acceso Pendiente de Validación)")
+            Text("Omitir por ahora (Acceso Pendiente de Validación)", fontWeight = FontWeight.SemiBold)
         }
     }
 

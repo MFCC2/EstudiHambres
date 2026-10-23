@@ -180,8 +180,13 @@ fun ProfileScreen(
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancelar")
+                OutlinedButton(
+                    onClick = { showLogoutDialog = false },
+                    shape = CampusShapes.small,
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Cancelar", fontWeight = FontWeight.SemiBold)
                 }
             }
         )
@@ -554,11 +559,13 @@ fun ProfileScreen(
             OutlinedButton(
                 onClick = onNavigateToVerification,
                 shape = CampusShapes.small,
+                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.secondary),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
                 Icon(Icons.Default.QrCodeScanner, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(reScanButtonText, fontWeight = FontWeight.SemiBold)
+                Text(reScanButtonText, fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(8.dp))

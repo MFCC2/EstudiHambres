@@ -900,7 +900,7 @@ private fun FeaturedPromoCard(
     val brandColor = getBrandColor(promotion.partnerName)
     val brandMonogram = getBrandMonogram(promotion.partnerName)
 
-    val bannerBackground = MaterialTheme.colorScheme.surfaceVariant
+    val bannerBackground = androidx.compose.ui.graphics.Brush.verticalGradient(listOf(brandColor, brandColor.copy(alpha = 0.88f)))
 
     val categoryEmoji = when {
         promotion.category.contains("Comida", ignoreCase = true) || promotion.partnerName.contains("Bembos", ignoreCase = true) || promotion.partnerName.contains("KFC", ignoreCase = true) -> "🍔"
@@ -1204,10 +1204,10 @@ private fun NearbyPromoCard(
                 Button(
                     onClick = onRedeem,
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = brandColor.copy(alpha = 0.15f)),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = brandColor, contentColor = Color.White),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Text("Canjear", color = brandColor, fontWeight = FontWeight.Bold)
+                    Text("Canjear", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -1333,7 +1333,7 @@ private fun DigitalBenefitCard(
                 Button(
                     onClick = onClaim,
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = brandColor),
+                    colors = ButtonDefaults.buttonColors(containerColor = brandColor, contentColor = Color.White),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text("Reclamar", fontWeight = FontWeight.Bold)
@@ -1466,12 +1466,12 @@ private fun DetailedPromotionCard(
                 Button(
                     onClick = onOpenUrl,
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = brandColor),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = brandColor, contentColor = Color.White),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text("Ir al beneficio", fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -1597,7 +1597,9 @@ private fun PromotionDetailSheet(
                     onOpenUrl(promotion.url)
                 },
                 shape = CampusShapes.small,
-                modifier = Modifier.fillMaxWidth().height(46.dp)
+                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
                 Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
@@ -1611,11 +1613,13 @@ private fun PromotionDetailSheet(
                         onNavigateToMap()
                     },
                     shape = CampusShapes.small,
-                    modifier = Modifier.fillMaxWidth().height(44.dp)
+                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.fillMaxWidth().height(46.dp)
                 ) {
                     Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Ver locales aliados en radar de 30 km")
+                    Text("Ver locales aliados en radar de 30 km", fontWeight = FontWeight.SemiBold)
                 }
             }
         }

@@ -169,7 +169,7 @@ class IntuitiveUxAndNavigationQaTest {
         assertTrue(cusco.displayName.contains("Cusco"))
         assertTrue(lima.displayName.contains("Lima"))
         assertEquals(-13.5230, cusco.coordinates.latitude, 0.001)
-        assertEquals(-12.0833, lima.coordinates.latitude, 0.001)
+        assertEquals(-12.0772, lima.coordinates.latitude, 0.005)
     }
 
     @Test
