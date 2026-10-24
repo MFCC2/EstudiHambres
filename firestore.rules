@@ -1,0 +1,388 @@
+rules_version = '2';
+
+// ===============================================================
+// EstudiHambres - Production Cloud Firestore Security Rules
+// ===============================================================
+//
+// Compliant with:
+// - Ley N° 29733 (Ley de Protección de Datos Personales del Perú)
+// - Res. SUNAT N° 097-2012 (Comprobantes de Pago Electrónicos - BVE)
+// - Firebase Security Invariants (Default Deny, Type Safety, Anti-DoS)
+//
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: claimed_receipts
+// Document ID: {receiptFingerprint} (16 hex chars SHA-256 slice of RUC+Serie+Correlativo)
+// Fields:
+//   - fingerprint: string (exact 16 hex chars, matches document ID, immutable)
+//   - claimedByUserId: string (UID of claiming student, 1-128 chars, matches request.auth.uid, immutable)
+//   - claimedByUserEmail: string (institutional email, valid email format, 5-100 chars, immutable)
+//   - partnerName: string (issuer commerce name, 1-100 chars, immutable)
+//   - totalAmount: number (positive int/float >= 5.0 and <= 100000.0, immutable)
+//   - claimedAt: timestamp (within 5 minutes, immutable)
+//   - expiresAt: timestamp (> claimedAt and <= claimedAt + 73h, immutable)
+//
+// Collection: users/{userId}
+// Document ID: {userId} (matches request.auth.uid)
+// Fields:
+//   - id: string (required, 1-128 chars, matches userId and auth.uid, immutable)
+//   - fullName: string (required, student full name, 1-100 chars)
+//   - email: string (required, valid email, 5-100 chars)
+//   - dni: string (optional, Peruvian DNI 0-8 digits)
+//   - university: string (optional, institution name, 0-100 chars)
+//   - studentCode: string (optional, student ID number, 0-50 chars)
+//   - verificationStatus: string (optional, UNVERIFIED | PENDING_VERIFICATION | VERIFIED | REJECTED)
+//   - career: string (optional, academic program, 0-100 chars)
+//   - isDev: bool (optional, privileged flag, strictly false on creation, immutable)
+//   - scannedCardDni: string (optional/nullable, OCR extracted DNI, 0-8 digits)
+//   - profilePhotoPath: string (optional/nullable, storage path, 0-500 chars)
+//   - faculty: string (optional/nullable, university faculty, 0-100 chars)
+//   - validityYear: string (optional/nullable, academic year, 0-10 chars)
+//   - studentStatus: string (optional/nullable, academic condition, 0-100 chars)
+//   - studiPuntos: int (optional, loyalty balance, >= 0 and <= 1000000)
+//   - createdAt: timestamp (optional, creation timestamp, immutable)
+//   - updatedAt: timestamp (optional, last update timestamp)
+//
+// Subcollection: users/{userId}/point_transactions/{txId}
+// Document ID: {txId} (UUID / timestamp ID)
+// Fields:
+//   - id: string (optional, matches txId, max 100 chars)
+//   - title: string (required, transaction concept, 1-120 chars)
+//   - description: string (optional/nullable, detail, 0-300 chars)
+//   - delta: int (required if pointsDelta missing, points movement, -100000 to 100000)
+//   - pointsDelta: int (required if delta missing, points movement, -100000 to 100000)
+//   - type: string (required, WELCOME_BONUS | ID_VERIFICATION | COUPON_REDEEMED | RECEIPT_SCAN | REWARD_PURCHASE)
+//   - txHash: string (required, SHA-256 block hash, 64 hex chars)
+//   - previousHash: string (optional/nullable, previous block hash, 1-64 chars)
+//   - referenceId: string (optional/nullable, linked receipt or coupon ID, 0-100 chars)
+//   - timestampMillis: number (optional, client epoch millis)
+//   - createdAt: timestamp (optional, server timestamp)
+//
+// Subcollection: users/{userId}/redeemed_rewards/{rewardId}
+// Document ID: {rewardId} (redemption UUID)
+// Fields:
+//   - id: string (optional, matches rewardId, max 100 chars)
+//   - rewardTitle: string (required, benefit title, 1-100 chars)
+//   - pointsCost: int (required, points deducted, >= 0 and <= 100000)
+//   - redemptionCode: string (required, unique coupon code, 1-50 chars)
+//   - redeemedAtFormatted: string (required, human-readable date, 1-50 chars)
+//   - partnerName: string (required, sponsor name, 1-100 chars)
+//   - iconEmoji: string (required, visual icon emoji, 1-20 chars)
+//   - isUsed: bool (required, voucher state, one-way transition: false -> true only)
+//   - expiresAtMillis: number (optional, expiration epoch millis)
+//   - securityToken: string (optional, anti-screenshot token, 1-20 chars)
+//   - officialUrl: string (optional, partner claim URL, 1-300 chars)
+//   - redemptionMethod: string (optional, ONLINE_CODE | IN_STORE_QR | IN_STORE_PRESENTIAL)
+//   - createdAt: timestamp (optional, creation timestamp)
+//   - usedAt: timestamp (optional, timestamp when marked as used)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user owns the resource based on path parameter
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user is owner based on document uid or id field
+    function isDocOwner() {
+      return isAuthenticated() && (
+        ('uid' in resource.data && request.auth.uid == resource.data.uid) ||
+        ('id' in resource.data && request.auth.uid == resource.data.id)
+      );
+    }
+
+    // Validate required fields exist in request
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Validate that the document contains only the allowed fields
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Validate string length bounds
+    function validStringLength(field, minLen, maxLen) {
+      return (field in request.resource.data) &&
+        request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    // Validate optional string (if present, must be string and within length bounds)
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+        (request.resource.data[field] is string &&
+         request.resource.data[field].size() >= minLen &&
+         request.resource.data[field].size() <= maxLen);
+    }
+
+    // Validate optional nullable string (if present, must be null or string within length bounds)
+    function isValidOptionalNullableString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+        request.resource.data[field] == null ||
+        (request.resource.data[field] is string &&
+         request.resource.data[field].size() >= minLen &&
+         request.resource.data[field].size() <= maxLen);
+    }
+
+    // Validate email format
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // Validate URL format (must start with https:// or http://)
+    function isValidUrl(url) {
+      return url is string &&
+        (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // Ensure immutable fields are unchanged during update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Validate recent timestamp within 5 minutes past or 2 minutes future (clock skew tolerance)
+    function isRecent(time) {
+      return time is timestamp &&
+        time > request.time - duration.value(5, 'm') &&
+        time <= request.time + duration.value(2, 'm');
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    // Validates SUNAT receipt deduplication document
+    function isValidClaimedReceipt(data) {
+      return hasOnlyAllowedFields([
+          'fingerprint', 'claimedByUserId', 'claimedByUserEmail',
+          'partnerName', 'totalAmount', 'claimedAt', 'expiresAt'
+        ])
+        && hasRequiredFields([
+          'fingerprint', 'claimedByUserId', 'claimedByUserEmail',
+          'partnerName', 'totalAmount', 'claimedAt', 'expiresAt'
+        ])
+        && data.fingerprint is string
+        && data.fingerprint.matches('^[a-fA-F0-9]{16}$')
+        && data.claimedByUserId is string
+        && data.claimedByUserId.size() >= 1
+        && data.claimedByUserId.size() <= 128
+        && data.claimedByUserId == request.auth.uid
+        && data.claimedByUserEmail is string
+        && data.claimedByUserEmail.size() >= 5
+        && data.claimedByUserEmail.size() <= 100
+        && isValidEmail(data.claimedByUserEmail)
+        && data.partnerName is string
+        && data.partnerName.size() >= 1
+        && data.partnerName.size() <= 100
+        && (data.totalAmount is int || data.totalAmount is float)
+        && data.totalAmount >= 5.0
+        && data.totalAmount <= 100000.0
+        && data.claimedAt is timestamp
+        && isRecent(data.claimedAt)
+        && data.expiresAt is timestamp
+        && data.expiresAt > data.claimedAt
+        && data.expiresAt <= data.claimedAt + duration.value(73, 'h');
+    }
+
+    // Validates student user profile document
+    function isValidStudentUser(data) {
+      return hasOnlyAllowedFields([
+          'id', 'fullName', 'email', 'dni', 'university', 'studentCode',
+          'verificationStatus', 'career', 'isDev', 'scannedCardDni',
+          'profilePhotoPath', 'faculty', 'validityYear', 'studentStatus',
+          'studiPuntos', 'createdAt', 'updatedAt'
+        ])
+        && hasRequiredFields(['id', 'fullName', 'email'])
+        && data.id is string && data.id.size() >= 1 && data.id.size() <= 128
+        && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 100
+        && data.email is string && data.email.size() >= 5 && data.email.size() <= 100 && isValidEmail(data.email)
+        && isValidOptionalString('dni', 0, 8)
+        && (!('dni' in data) || data.dni.matches('^[0-9]{0,8}$'))
+        && isValidOptionalString('university', 0, 100)
+        && isValidOptionalString('studentCode', 0, 50)
+        && (!('verificationStatus' in data) || (data.verificationStatus is string && data.verificationStatus in ['UNVERIFIED', 'PENDING_VERIFICATION', 'VERIFIED', 'REJECTED']))
+        && isValidOptionalString('career', 0, 100)
+        && (!('isDev' in data) || data.isDev is bool)
+        && isValidOptionalNullableString('scannedCardDni', 0, 8)
+        && (!('scannedCardDni' in data) || data.scannedCardDni == null || data.scannedCardDni.matches('^[0-9]{0,8}$'))
+        && isValidOptionalNullableString('profilePhotoPath', 0, 500)
+        && isValidOptionalNullableString('faculty', 0, 100)
+        && isValidOptionalNullableString('validityYear', 0, 10)
+        && isValidOptionalNullableString('studentStatus', 0, 100)
+        && (!('studiPuntos' in data) || (data.studiPuntos is int && data.studiPuntos >= 0 && data.studiPuntos <= 1000000))
+        && (!('createdAt' in data) || (data.createdAt is timestamp && data.createdAt <= request.time + duration.value(2, 'm')))
+        && (!('updatedAt' in data) || (data.updatedAt is timestamp && data.updatedAt <= request.time + duration.value(2, 'm')));
+    }
+
+    // Validates StudiPuntos transaction block in ledger
+    function isValidPointTransaction(data) {
+      return hasOnlyAllowedFields([
+          'id', 'title', 'description', 'delta', 'pointsDelta',
+          'type', 'txHash', 'previousHash', 'referenceId',
+          'timestampMillis', 'createdAt'
+        ])
+        && hasRequiredFields(['title', 'type', 'txHash'])
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 120
+        && data.type is string && data.type in [
+          'WELCOME_BONUS', 'ID_VERIFICATION', 'COUPON_REDEEMED',
+          'RECEIPT_SCAN', 'REWARD_PURCHASE'
+        ]
+        && data.txHash is string && data.txHash.matches('^[a-fA-F0-9]{64}$')
+        && (
+          (('delta' in data) && data.delta is int && data.delta >= -100000 && data.delta <= 100000) ||
+          (('pointsDelta' in data) && data.pointsDelta is int && data.pointsDelta >= -100000 && data.pointsDelta <= 100000)
+        )
+        && (!('delta' in data) || (data.delta is int && data.delta >= -100000 && data.delta <= 100000))
+        && (!('pointsDelta' in data) || (data.pointsDelta is int && data.pointsDelta >= -100000 && data.pointsDelta <= 100000))
+        && isValidOptionalNullableString('description', 0, 300)
+        && isValidOptionalNullableString('referenceId', 0, 100)
+        && isValidOptionalNullableString('previousHash', 1, 64)
+        && (!('id' in data) || (data.id is string && data.id.size() <= 100))
+        && (!('timestampMillis' in data) || (data.timestampMillis is int || data.timestampMillis is float))
+        && (!('createdAt' in data) || (data.createdAt is timestamp && data.createdAt <= request.time + duration.value(2, 'm')));
+    }
+
+    // Validates redeemed reward voucher document
+    function isValidRedeemedReward(data) {
+      return hasOnlyAllowedFields([
+          'id', 'rewardTitle', 'pointsCost', 'redemptionCode',
+          'redeemedAtFormatted', 'partnerName', 'iconEmoji',
+          'isUsed', 'expiresAtMillis', 'securityToken',
+          'officialUrl', 'redemptionMethod', 'createdAt', 'usedAt'
+        ])
+        && hasRequiredFields([
+          'rewardTitle', 'pointsCost', 'redemptionCode',
+          'redeemedAtFormatted', 'partnerName', 'iconEmoji', 'isUsed'
+        ])
+        && data.rewardTitle is string && data.rewardTitle.size() >= 1 && data.rewardTitle.size() <= 100
+        && data.pointsCost is int && data.pointsCost >= 0 && data.pointsCost <= 100000
+        && data.redemptionCode is string && data.redemptionCode.size() >= 1 && data.redemptionCode.size() <= 50
+        && data.redeemedAtFormatted is string && data.redeemedAtFormatted.size() >= 1 && data.redeemedAtFormatted.size() <= 50
+        && data.partnerName is string && data.partnerName.size() >= 1 && data.partnerName.size() <= 100
+        && data.iconEmoji is string && data.iconEmoji.size() >= 1 && data.iconEmoji.size() <= 20
+        && data.isUsed is bool
+        && (!('expiresAtMillis' in data) || (data.expiresAtMillis is int || data.expiresAtMillis is float))
+        && isValidOptionalString('securityToken', 1, 20)
+        && (!('officialUrl' in data) || (isValidUrl(data.officialUrl) && data.officialUrl.size() <= 300))
+        && (!('redemptionMethod' in data) || (data.redemptionMethod is string && data.redemptionMethod in ['ONLINE_CODE', 'IN_STORE_QR', 'IN_STORE_PRESENTIAL']))
+        && (!('id' in data) || (data.id is string && data.id.size() <= 100))
+        && (!('createdAt' in data) || (data.createdAt is timestamp && data.createdAt <= request.time + duration.value(2, 'm')))
+        && (!('usedAt' in data) || (data.usedAt is timestamp && data.usedAt <= request.time + duration.value(2, 'm')));
+    }
+
+    // ===============================================================
+    // Root Default Deny
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // Collection 1: SUNAT Receipt Anti-Replay Registry
+    // ===============================================================
+    // Prevents duplicate scans across multiple devices/users in a 72-hour window.
+    match /claimed_receipts/{receiptFingerprint} {
+      // Authenticated students can query or check receipt registration status
+      allow read: if isAuthenticated();
+
+      // Atomic registration: must not exist beforehand and data must be valid
+      allow create: if isAuthenticated()
+        && request.resource.data.claimedByUserId == request.auth.uid
+        && receiptFingerprint == request.resource.data.fingerprint
+        && !exists(/databases/$(database)/documents/claimed_receipts/$(receiptFingerprint))
+        && isValidClaimedReceipt(request.resource.data);
+
+      // Strictly immutable: nobody can alter a registered receipt
+      allow update: if false;
+
+      // Receipts cannot be deleted by clients; automated TTL or Cloud Functions prune after 72h
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Collection 2: Student Profiles (PII Vault)
+    // ===============================================================
+    match /users/{userId} {
+      // Only the authenticated student can access their private profile (Ley N° 29733)
+      allow read: if isOwner(userId);
+
+      // Account profile creation
+      allow create: if isOwner(userId)
+        && isValidStudentUser(request.resource.data)
+        && request.resource.data.id == userId
+        // Privilege escalation guard: new accounts cannot declare isDev = true
+        && request.resource.data.get('isDev', false) == false;
+
+      // Account profile update
+      allow update: if isOwner(userId)
+        && isValidStudentUser(request.resource.data)
+        // Immutable field guards (id, createdAt)
+        && areImmutableFieldsUnchanged(['id', 'createdAt'])
+        // Privilege escalation guard: isDev cannot be modified
+        && areImmutableFieldsUnchanged(['isDev']);
+
+      // Ley N° 29733 (ARCO rights): user can delete their own user document if requesting erasure
+      allow delete: if isOwner(userId);
+
+      // =============================================================
+      // Collection 3: StudiPuntos Cryptographic Transaction Ledger
+      // =============================================================
+      match /point_transactions/{txId} {
+        // Read strictly restricted to account owner
+        allow read: if isOwner(userId);
+
+        // Append-only creation of valid transaction block
+        allow create: if isOwner(userId)
+          && isValidPointTransaction(request.resource.data)
+          && (!('id' in request.resource.data) || request.resource.data.id == txId);
+
+        // Ledger is strictly immutable
+        allow update: if false;
+
+        // Ledger is strictly immutable
+        allow delete: if false;
+      }
+
+      // =============================================================
+      // Collection 4: Redeemed Reward Vouchers
+      // =============================================================
+      match /redeemed_rewards/{rewardId} {
+        // Only the voucher owner can read their redeemed reward
+        allow read: if isOwner(userId);
+
+        // Voucher creation in initial unused state (isUsed == false)
+        allow create: if isOwner(userId)
+          && isValidRedeemedReward(request.resource.data)
+          && request.resource.data.isUsed == false
+          && (!('id' in request.resource.data) || request.resource.data.id == rewardId);
+
+        // One-way latch: only allowed to transition isUsed from false to true
+        allow update: if isOwner(userId)
+          && isValidRedeemedReward(request.resource.data)
+          && resource.data.isUsed == false
+          && request.resource.data.isUsed == true
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isUsed', 'usedAt']);
+
+        // Vouchers cannot be deleted by clients
+        allow delete: if false;
+      }
+    }
+  }
+}

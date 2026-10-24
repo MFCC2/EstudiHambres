@@ -3,6 +3,8 @@ package com.example.estudihambres.presentation.auth
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,6 +40,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
@@ -88,6 +91,7 @@ import androidx.core.content.ContextCompat
 import com.example.estudihambres.core.theme.CampusShapes
 import com.example.estudihambres.domain.usecase.ParseStudentCardOcrUseCase
 import com.example.estudihambres.domain.usecase.ValidateStudentCredentialsUseCase
+import com.example.estudihambres.presentation.common.LiveCarnetScannerView
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -156,51 +160,55 @@ fun RegisterScreen(
     val validator = remember { ValidateStudentCredentialsUseCase() }
     val recognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
 
-    // Launcher de cámara para tomar foto directa del carnet y ejecutar OCR instantáneo
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: Bitmap? ->
-        if (bitmap != null) {
-            isOcrProcessing = true
-            val inputImage = InputImage.fromBitmap(bitmap, 0)
-            recognizer.process(inputImage)
-                .addOnSuccessListener { visionText ->
-                    isOcrProcessing = false
-                    val parsed = parser(visionText.text)
-                    if (parsed.isVerified) {
-                        viewModel.onCarnetScannedInRegister(parsed)
-                        Toast.makeText(context, "¡Carnet SUNEDU validado! Datos completados con éxito.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "No se detectaron los sellos oficiales de SUNEDU. Por favor enfoca nítidamente el anverso de tu carnet.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
-                .addOnFailureListener { error ->
-                    isOcrProcessing = false
-                    Toast.makeText(context, "Error al procesar carnet: ${error.localizedMessage}", Toast.LENGTH_SHORT).show()
-                }
-        }
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        )
     }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) {
-            cameraLauncher.launch(null)
-        } else {
-            Toast.makeText(context, "Se requiere permiso de cámara para escanear el carnet universitario.", Toast.LENGTH_SHORT).show()
+        hasCameraPermission = isGranted
+        if (!isGranted) {
+            Toast.makeText(context, "Se requiere permiso de cámara para el escaneo en tiempo real.", Toast.LENGTH_SHORT).show()
         }
     }
 
-    val launchCarnetScanner: () -> Unit = {
-        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-        if (hasPermission) {
-            cameraLauncher.launch(null)
-        } else {
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                val inputStream = context.contentResolver.openInputStream(it)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+                if (bitmap != null) {
+                    isOcrProcessing = true
+                    val inputImage = InputImage.fromBitmap(bitmap, 0)
+                    recognizer.process(inputImage)
+                        .addOnSuccessListener { visionText ->
+                            isOcrProcessing = false
+                            val parsed = parser(visionText.text)
+                            if (parsed.isVerified) {
+                                viewModel.onCarnetScannedInRegister(parsed)
+                                Toast.makeText(context, "¡Carnet SUNEDU validado! Datos completados con éxito.", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "No se detectaron los sellos oficiales de SUNEDU en la imagen seleccionada.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                        .addOnFailureListener { error ->
+                            isOcrProcessing = false
+                            Toast.makeText(context, "Error al procesar carnet: ${error.localizedMessage}", Toast.LENGTH_SHORT).show()
+                        }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error al abrir imagen: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -238,7 +246,9 @@ fun RegisterScreen(
                     onClick = {
                         showManualPendingWarningDialog = false
                         viewModel.setRegistrationMode(RegistrationMode.SCANNER)
-                        launchCarnetScanner()
+                        if (!hasCameraPermission) {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
                     },
                     shape = CampusShapes.small,
                     colors = ButtonDefaults.buttonColors(
@@ -403,55 +413,104 @@ fun RegisterScreen(
 
                             if (!state.isCardScanned) {
                                 Text(
-                                    text = "Enfoca el anverso de tu carnet universitario oficial SUNEDU. La cámara detectará y validará automáticamente tu DNI, código, nombres y universidad para evitar errores de tipeo.",
+                                    text = "Apunta la cámara al anverso de tu carnet universitario. El escáner inteligente en tiempo real detectará y verificará tus datos oficiales de SUNEDU.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
 
-                                Button(
-                                    onClick = launchCarnetScanner,
-                                    enabled = !isOcrProcessing,
-                                    shape = CampusShapes.small,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondary,
-                                        contentColor = MaterialTheme.colorScheme.onSecondary
-                                    ),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(48.dp)
-                                ) {
-                                    if (isOcrProcessing) {
-                                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Escaneando carnet con OCR...", style = MaterialTheme.typography.labelMedium)
-                                    } else {
-                                        Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Escanear Carnet con Cámara", fontWeight = FontWeight.Bold)
+                                if (hasCameraPermission) {
+                                    // Visor CameraX en vivo con análisis multi-frame y láser
+                                    Card(
+                                        shape = CampusShapes.medium,
+                                        colors = CardDefaults.cardColors(containerColor = Color.Black),
+                                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.secondary),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(260.dp)
+                                            .clip(CampusShapes.medium)
+                                    ) {
+                                        LiveCarnetScannerView(
+                                            onCardDetected = { verifiedResult ->
+                                                viewModel.onCarnetScannedInRegister(verifiedResult)
+                                                Toast.makeText(context, "¡Carnet SUNEDU validado en tiempo real!", Toast.LENGTH_SHORT).show()
+                                            },
+                                            onManualCapture = { bitmap ->
+                                                isOcrProcessing = true
+                                                val inputImage = InputImage.fromBitmap(bitmap, 0)
+                                                recognizer.process(inputImage)
+                                                    .addOnSuccessListener { visionText ->
+                                                        isOcrProcessing = false
+                                                        val parsed = parser(visionText.text)
+                                                        if (parsed.isVerified) {
+                                                            viewModel.onCarnetScannedInRegister(parsed)
+                                                            Toast.makeText(context, "¡Carnet SUNEDU validado!", Toast.LENGTH_SHORT).show()
+                                                        } else {
+                                                            Toast.makeText(context, "No se identificó el sello oficial SUNEDU. Enfoca con mayor nitidez.", Toast.LENGTH_SHORT).show()
+                                                        }
+                                                    }
+                                                    .addOnFailureListener {
+                                                        isOcrProcessing = false
+                                                    }
+                                            },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                } else {
+                                    // Tarjeta de activación de permisos de cámara
+                                    Surface(
+                                        shape = CampusShapes.medium,
+                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(16.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.PhotoCamera,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.secondary,
+                                                modifier = Modifier.size(36.dp)
+                                            )
+                                            Text(
+                                                text = "Se requiere acceso a la cámara para el escaneo en tiempo real",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                textAlign = TextAlign.Center
+                                            )
+                                            Button(
+                                                onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
+                                                shape = CampusShapes.small,
+                                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                                            ) {
+                                                Text("Habilitar Cámara", fontWeight = FontWeight.Bold)
+                                            }
+                                        }
                                     }
                                 }
 
-                                Surface(
-                                    shape = CampusShapes.small,
-                                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                                    modifier = Modifier.fillMaxWidth()
+                                // Opciones secundarias: Galería
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(10.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                    OutlinedButton(
+                                        onClick = { galleryLauncher.launch("image/*") },
+                                        enabled = !isOcrProcessing,
+                                        shape = CampusShapes.small,
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                                        modifier = Modifier.weight(1f).height(40.dp)
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Security,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.tertiary,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = "Reconocimiento seguro: Tus datos se completarán automáticamente una vez que escanees tu carnet.",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        if (isOcrProcessing) {
+                                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                        } else {
+                                            Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Subir foto de galería", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                                        }
                                     }
                                 }
                             } else {
@@ -486,7 +545,7 @@ fun RegisterScreen(
                                 }
 
                                 TextButton(
-                                    onClick = launchCarnetScanner,
+                                    onClick = { viewModel.resetCarnetScan() },
                                     modifier = Modifier.align(Alignment.End)
                                 ) {
                                     Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))

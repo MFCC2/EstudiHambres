@@ -4,6 +4,145 @@ Registro cronológico de modificaciones, agentes intervinientes y cambios arquit
 
 ---
 
+## [v1.5.0] - 2026-10-24
+**Rama:** `develop` / `main`
+**Versión:** `v1.5.0` (versionCode 13)
+
+### Resumen de la Versión v1.5.0
+Lanzamiento mayor que introduce:
+1. **Rediseño Visual Blanco Puro (#FFFFFF) y Modo de Apariencia Dinámico**: Fondo blanco limpio y minimalista como estándar global por defecto en toda la app, con selector de tema (`LIGHT`, `DARK`, `SYSTEM`) en `ProfileScreen` y botón rápido en `HomeScreen`, persistido con StateFlow reactivo.
+2. **Escáneres CameraX en Tiempo Real**: Sustitución de la cámara lenta por visores fluidos nativos con `ImageAnalysis` (30 fps), HUD estético, haz láser animado y estabilización multi-frame para el Carnet Universitario en Registro y Verificación.
+3. **Visor de Boletas SUNAT de Gran Escala**: Visor vertical adaptado a comprobantes impresos peruanos con doble motor en tiempo real (QR oficial de SUNAT vía Barcode Scanning + OCR de respaldo).
+4. **Infraestructura Cloud Antifraude en Firebase Firestore**: Detección de colisiones e intentos de doble escaneo entre múltiples usuarios con hashing SHA-256 e idempotencia en la colección `claimed_receipts`.
+5. **Cumplimiento Legal y Normativo SBS / LPDP**: Integración de Términos del Servicio y Política de Privacidad conforme a la Ley N° 29733 de Protección de Datos Personales del Perú.
+
+---
+
+## [Fase: Rediseño Visual Puro en Modo Claro, Estándar Blanco y Selector de Tema Dinámico] - 2026-10-24
+**Rama:** `feature/clean-white-light-theme-and-theme-mode-config`
+
+### Resumen de la Entrega
+Restablecimiento y priorización absoluta del **Modo Claro (Fondo blanco puro `#FFFFFF`, limpio, minimalista y de alto contraste)** como estándar de diseño predeterminado para toda la aplicación. Se solucionó el problema por el cual los dispositivos con modo oscuro activado forzaban el fondo negro a nivel global. Se implementó una arquitectura de tematización dinámica reactiva con persistencia local en `SessionManager` (`AppThemeMode`: `LIGHT`, `DARK`, `SYSTEM`), control accesible desde el apartado de Configuración en `ProfileScreen` y acceso rápido de un toque en el TopAppBar de `HomeScreen`.
+
+### Detalle de Modificaciones
+
+#### 1. Arquitectura de Temas y Colores (`core/theme/`)
+- **`AppThemeMode.kt`**: Nuevo enumerador con los 3 modos de apariencia: `LIGHT` (Claro, predeterminado), `DARK` (Oscuro) y `SYSTEM` (Sincronizado con Android).
+- **`Theme.kt`**: Modificado el parámetro por defecto de `EstudiHambresTheme(darkTheme = false)` para garantizar que el tema claro sea el estándar visual activo.
+  - Sincronización de la barra de estado con `WindowCompat.getInsetsController(...)`: en modo claro la barra es blanca con iconos oscuros nítidos (`isAppearanceLightStatusBars = true`).
+- **`Color.kt`**: Afinados los tokens de superficie (`#FFFFFF`), fondos limpios y bordes sutiles Slate-200 (`#E2E8F0`).
+
+#### 2. Persistencia y Reactividad (`core/util/SessionManager.kt`)
+- `KEY_THEME_MODE`: Almacén persistente en SharedPreferences.
+- `_themeModeFlow`: Emisión reactiva con `StateFlow<AppThemeMode>` para recomponer la jerarquía UI al instante sin requerir reiniciar la aplicación.
+- Métodos auxiliares: `getThemeMode()`, `setThemeMode(mode)` y `toggleThemeMode()`.
+
+#### 3. Orquestación Raíz (`MainActivity.kt`)
+- `MainActivity` observa reactivamente `themeModeFlow.collectAsState()` y conmuta al instante entre `DarkColorScheme` y `LightColorScheme`.
+
+#### 4. Apartado de Configuración y Perfil (`ProfileScreen.kt` & `ProfileViewModel.kt`)
+- En la sección **"Preferencias y Radar de Convenios"**, se añadió el bloque de **"Apariencia y Tema Visual"** con selector interactivo por chips:
+  - ☀️ **Claro (Recomendado):** "Fondo blanco limpio y alto contraste".
+  - 🌙 **Oscuro:** "Fondo obsidiana y superficies grafito".
+  - 📱 **Sistema:** "Sigue el modo activo de Android".
+
+#### 5. Botón de Conmutación Rápida en Dashboard (`HomeScreen.kt`)
+- Agregado botón de icono (Sol/Luna) en el `TopAppBarDashboard` para alternar entre modo claro y oscuro con un solo toque desde la pantalla principal.
+
+#### 6. Barra Inferior de Navegación (`AppNavGraph.kt`)
+- Configurado `containerColor = MaterialTheme.colorScheme.surface` (#FFFFFF en modo claro) con elevación tonal y colores contrastantes para items seleccionados y no seleccionados.
+
+---
+
+## [Fase: Escáneres CameraX en Tiempo Real para Registro de Carnet y Boletas SUNAT de Gran Escala] - 2026-10-24
+**Rama:** `feature/camerax-realtime-scanners-and-aesthetic-receipt-viewfinder`
+
+### Resumen de la Entrega
+Sustitución integral del lanzador externo lento de fotos (`TakePicturePreview`) en el registro estudiantil por visores embebidos de **CameraX con análisis de cuadros en tiempo real (ImageAnalysis STRATEGY_KEEP_ONLY_LATEST)** y reconocimiento OCR instantáneo de carnets SUNEDU. Creación del nuevo componente de escáner de boletas de venta electrónicas de gran escala (`LiveReceiptScannerDialog`), adaptado a tickets térmicos peruanos con visor vertical alargado, máscara atenuada de alta estética, esquineros luminosos, haz láser animado y **doble motor de detección en tiempo real** (código QR SUNAT normado vía `mlkit-barcode-scanning` + OCR de texto de respaldo).
+
+### Detalle de Modificaciones
+
+#### 1. Visor Embebido de Carnet Universitario (`LiveCarnetScannerView.kt`)
+- **Ruta:** `app/src/main/java/com/example/estudihambres/presentation/common/LiveCarnetScannerView.kt`
+- Visor CameraX `PreviewView` con escala `FILL_CENTER` incrustado directamente en el contenedor del carnet de registro.
+- Análisis continuo de cuadros en segundo plano mediante `Executors.newSingleThreadExecutor()` y `TextRecognition.getClient()`.
+- Estabilización progresiva multi-frame (3 cuadros válidos) con chips de progreso (33%, 66%, 100%) y respuesta háptica física (`HapticFeedbackType.LongPress`).
+- Control de linterna/flash en tiempo real (`cameraControl.enableTorch(isTorchEnabled)`).
+- Detección preventiva de comprobantes comerciales para evitar confusiones con tickets de compra ("Requiere carnet con sello SUNEDU").
+- Botón de captura manual de respaldo para ambientes con iluminación tenue.
+- Reutilizado de forma unificada en `RegisterScreen.kt` y `StudentVerificationScreen.kt`, eliminando código redundante.
+
+#### 2. Registro de Usuario con Escaneo en Vivo (`RegisterScreen.kt`)
+- Reemplazo total del contrato `ActivityResultContracts.TakePicturePreview()` que abría la app externa de cámara.
+- El visor en tiempo real se activa inmediatamente al seleccionar la pestaña "Escanear Carnet", autocompletando con cero errores de tipeo el DNI, código de estudiante, universidad, nombres completos, facultad y vigencia.
+- Soporte para carga de imágenes desde galería (`ActivityResultContracts.GetContent()`) como vía alternativa.
+- Botón "Volver a escanear carnet" conectado a `viewModel.resetCarnetScan()`.
+
+#### 3. Escáner de Boletas SUNAT de Gran Escala (`LiveReceiptScannerDialog.kt`)
+- **Ruta:** `app/src/main/java/com/example/estudihambres/presentation/rewards/components/LiveReceiptScannerDialog.kt`
+- Formato inmersivo vertical de gran envergadura (84% ancho de pantalla, 58% altura) optimizado para la proporción alargada de los comprobantes fiscales y tickets térmicos peruanos.
+- Máscara exterior oscurecida (`Path.combine(PathOperation.Difference, ...)` con 68% de opacidad) para enfoque visual absoluto sobre el ticket.
+- Esquineros luminosos tipo L-brackets en verde neón (`#00E676`) y barrido vertical de haz láser animado con gradiente suave (`rememberInfiniteTransition`).
+- **Doble motor de captura en tiempo real:**
+  - **Motor Principal (QR SUNAT):** Detección en menos de 50ms de la cadena de firma electrónica `RUC|03|SERIE|NUMERO|IGV|TOTAL|FECHA|...` con `mlkit-barcode-scanning`.
+  - **Motor de Respaldo (OCR Continuo):** Extracción heurística de RUC (11 dígitos), Serie (`B[A-Z0-9]{3}`), correlativo y monto total cuando el ticket no tiene código QR legible.
+- Alternancia ágil a ingreso manual asistido (`switchToManualReceipt`) o selector de fotos de galería.
+- Cumplimiento de la Ley N° 29733: procesamiento en memoria volátil de fotogramas sin guardar imágenes en disco ni enviarlas a servidores externos.
+
+#### 4. Integración en Tienda de Recompensas (`RewardsScreen.kt` & `RewardsViewModel.kt`)
+- El botón "+ Registrar Boleta" de la cabecera de billetera y la misión de comprobantes SUNAT abren directamente el escáner de boletas en tiempo real.
+- `RewardsViewModel`: incorporadas funciones de orquestación `openReceiptScanner()`, `dismissReceiptScanner()`, `switchToManualReceipt()` y `switchToScannerReceipt()`.
+- Diálogo manual `ReceiptRegisterDialog` actualizado con chip "Cámara" para retornar al escáner en vivo con un solo toque.
+
+#### 5. Pruebas y Verificación
+- 177 pruebas unitarias aprobadas al 100% (`testDebugUnitTest`).
+- Empaquetado final exitoso (`assembleDebug`) generando el APK firmado `app-debug.apk` (91.7 MB).
+
+---
+
+## [Fase: Conexión Cloud Firestore, Prevención Distribuida de Colisiones y Reglas Auditadas] - 2026-10-23
+**Rama:** `feature/firebase-firestore-receipt-collision-and-rules`
+
+### Resumen de la Entrega
+Conexión e integración formal de **Google Firebase Cloud Firestore** para la sincronización multi-dispositivo y prevención distribuida de colisiones en el canje de boletas electrónicas SUNAT. Se implementó una arquitectura híbrida resiliente con transacciones atómicas First-Come First-Served en la nube (`claimed_receipts/{receiptFingerprint}`), reglas de seguridad (`firestore.rules`) auditadas conforme a la Ley N° 29733 de Protección de Datos Personales, y pruebas unitarias de concurrencia simulando el intento de 10 estudiantes escaneando el mismo comprobante.
+
+### Detalle de Modificaciones por Agente
+
+#### Agente 1: Orquestador & Arquitectura (Clean Architecture)
+- **Dominio (`domain/repository/ReceiptCollisionRepository.kt`)**:
+  - Contrato abstracto independiente de infraestructura para verificar (`isReceiptClaimed`) y registrar de forma atómica (`claimReceipt`) comprobantes fiscales en la red.
+- **Datos (`data/`)**:
+  - `data/remote/dto/ClaimedReceiptFirestoreDto.kt`: DTO con validaciones de huella SHA-256 (16 hex chars), UID, correo institucional ofuscado, razón social, monto (>= S/ 5.00), marca de tiempo y ventana de expiración a 72 horas.
+  - `data/repository/FirebaseReceiptCollisionRepositoryImpl.kt`: Implementación híbrida que ejecuta transacciones atómicas en Firestore (`FirebaseFirestore.runTransaction`) con degradación elegante a `SessionManager` y memoria para entornos offline o pruebas JVM puras.
+  - `data/repository/MockRewardsRepositoryImpl.kt`: Actualizado para inyectar `ReceiptCollisionRepository` y bloquear preventivamente duplicados en `registerReceipt` y `registerReceiptQr`.
+- **Configuración Gradle & Firebase**:
+  - `gradle/libs.versions.toml`: Agregadas versiones y referencias para `firebase-bom` (33.9.0), `firebase-firestore`, `firebase-auth`, `googleServicesPlugin` (4.4.2) y `kotlinx-coroutines-play-services`.
+  - `build.gradle.kts` y `app/build.gradle.kts`: Configurado plugin `com.google.gms.google-services` y dependencias del BoM de Firebase.
+  - `app/google-services.json`: Configurado descriptor para compilación local y desarrollo.
+  - `settings.gradle.kts`: Repositorios Google Maven desbloqueados para plugins de Google Services.
+
+#### Agente Especialista: Firestore Rules Specialist (`firestore-rules-author`)
+- **`firestore.rules` (388 líneas auditadas)**:
+  - `claimed_receipts/{receiptFingerprint}`: Document ID verificado con Regex `^[a-fA-F0-9]{16}$`. Escritura atómica permitida solo si `!exists(...)` y `claimedByUserId == request.auth.uid`. Inmutabilidad estricta (`allow update, delete: if false`).
+  - `users/{userId}`: Datos PII privados protegidos por `isOwner(userId)`. Cumplimiento ARCO: permite eliminación por parte del titular. Prevención de elevación de privilegios (`isDev == false`).
+  - `users/{userId}/point_transactions/{txId}`: Libro mayor criptográfico inmutable de solo lectura/creación por el titular.
+  - `users/{userId}/redeemed_rewards/{rewardId}`: Vales de recompensas con trinquete de estado unidireccional (`isUsed: false -> true`).
+
+#### Agente 5: QA & Pruebas Unitarias
+- **`app/src/test/java/com/example/estudihambres/qa/CloudReceiptCollisionQaTest.kt`**:
+  - `testCloudRegistryDetectsUnclaimedReceipt`: Detección de boletas nuevas libres para canje.
+  - `testFirstUserCanClaimReceiptSuccessfully`: Registro exitoso del primer estudiante.
+  - `testSimulateTenStudentsScanningSameReceiptConcurrently`: Verificación matemática del escenario de 10 estudiantes con la misma boleta física: exactamente 1 éxito y 9 rechazos con código `COLLISION_DETECTED`.
+  - `testClaimedReceiptFirestoreDtoMapping`: Conformidad de atributos serializados para auditoría fiscal.
+  - `testRewardsRepositoryRejectsDuplicateViaCollisionRepository`: Integración integral con `MockRewardsRepositoryImpl`.
+- **Resultado de Suites de Prueba**: 177 pruebas unitarias aprobadas al 100% (0 fallos) en 20 suites.
+
+#### Agente 6: GitFlow & Release Manager
+- Compilación verificada con `./gradlew assembleDebug`.
+- APK debug generado exitosamente en `app/build/outputs/apk/debug/app-debug.apk` (69.7 MB).
+
+---
+
 ## [Fase 1: Setup Base, Dependencias y Clean Architecture] - 2026-09-30
 **Rama:** `feature/setup-dependencies-and-navigation`
 

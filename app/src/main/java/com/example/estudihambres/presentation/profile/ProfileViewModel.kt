@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.estudihambres.core.theme.AppThemeMode
 import com.example.estudihambres.core.util.SessionManager
 import com.example.estudihambres.domain.model.VerificationStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +36,8 @@ data class ProfileUiState(
     val errorMessage: String? = null,
     val isDev: Boolean = false,
     val scannedCardDni: String? = null,
-    val profilePhotoPath: String? = null
+    val profilePhotoPath: String? = null,
+    val themeMode: AppThemeMode = AppThemeMode.LIGHT
 )
 
 /**
@@ -71,6 +73,7 @@ class ProfileViewModel(
                     verificationStatus = user.verificationStatus,
                     radarRadiusKm = sessionManager.getRadarRadiusKm(),
                     notificationsEnabled = sessionManager.getNotificationsEnabled(),
+                    themeMode = sessionManager.getThemeMode(),
                     accumulatedSavings = savings,
                     couponsRedeemed = coupons.size,
                     redeemedCoupons = coupons
@@ -119,6 +122,11 @@ class ProfileViewModel(
         sessionManager.setNotificationsEnabled(value)
     }
 
+    fun onThemeModeChange(mode: AppThemeMode) {
+        sessionManager.setThemeMode(mode)
+        _uiState.update { it.copy(themeMode = mode) }
+    }
+
     fun saveProfile() {
         val state = _uiState.value
         if (state.fullName.isBlank()) {
@@ -141,6 +149,10 @@ class ProfileViewModel(
                 )
             }
         }
+    }
+
+    fun deleteAccountAndData(): Boolean {
+        return sessionManager.deleteCurrentAccountAndData()
     }
 
     fun clearFeedback() {
