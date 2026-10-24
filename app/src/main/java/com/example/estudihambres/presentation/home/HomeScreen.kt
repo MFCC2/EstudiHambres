@@ -33,8 +33,11 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.LocationOn
+import com.example.estudihambres.core.theme.AppThemeMode
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Savings
@@ -600,6 +603,17 @@ private fun TopAppBarDashboard(
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
+            }
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val sessionManager = androidx.compose.runtime.remember { SessionManager.getInstance(context) }
+            val currentThemeMode by sessionManager.themeModeFlow.collectAsState()
+
+            IconButton(onClick = { sessionManager.toggleThemeMode() }) {
+                Icon(
+                    imageVector = if (currentThemeMode == AppThemeMode.DARK) Icons.Default.LightMode else Icons.Default.DarkMode,
+                    contentDescription = "Alternar Modo Claro / Oscuro",
+                    tint = if (currentThemeMode == AppThemeMode.DARK) Color(0xFFFFD600) else MaterialTheme.colorScheme.primary
+                )
             }
             IconButton(onClick = { showLogoutDialog = true }) {
                 Icon(

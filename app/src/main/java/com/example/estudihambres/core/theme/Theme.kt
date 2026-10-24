@@ -74,10 +74,12 @@ private val LightColorScheme = lightColorScheme(
 
 /**
  * Tema principal de EstudiHambres con diseño sobrio y profesional.
+ * Por defecto prioriza el modo claro (fondo blanco 100% puro y limpio)
+ * como estándar de diseño institucional.
  */
 @Composable
 fun EstudiHambresTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme

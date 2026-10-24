@@ -206,6 +206,19 @@ class AuthViewModel(
     }
 
     /**
+     * Restablece el escaneo de carnet para permitir enfocar otra credencial.
+     */
+    fun resetCarnetScan() {
+        _registerState.update {
+            it.copy(
+                isCardScanned = false,
+                scannedCardResult = null,
+                errorMessage = null
+            )
+        }
+    }
+
+    /**
      * Registra al nuevo estudiante guardando su perfil y credenciales.
      * Si escaneó su carnet previamente, la cuenta queda automáticamente VERIFIED con +500 StudiPuntos.
      * Si ingresó datos manualmente, queda en PENDING_VERIFICATION para escanearlo más adelante.

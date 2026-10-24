@@ -2,166 +2,303 @@ package com.example.estudihambres.data.repository
 
 import com.example.estudihambres.core.util.Resource
 import com.example.estudihambres.core.util.SessionManager
+import com.example.estudihambres.data.remote.api.DefaultRewardsApiServiceImpl
+import com.example.estudihambres.data.remote.api.RewardsApiService
+import com.example.estudihambres.domain.model.PointTransaction
+import com.example.estudihambres.domain.model.PointTransactionType
+import com.example.estudihambres.domain.model.ReceiptValidationResult
 import com.example.estudihambres.domain.model.RedeemedReward
 import com.example.estudihambres.domain.model.RewardItem
+import com.example.estudihambres.domain.model.SunatReceiptData
+import com.example.estudihambres.domain.repository.ReceiptCollisionRepository
 import com.example.estudihambres.domain.repository.RewardsRepository
+import com.example.estudihambres.domain.usecase.ValidateSunatReceiptUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flow
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
 /**
- * Implementación en memoria y con respaldo en [SessionManager] del catálogo de recompensas de StudiPuntos.
+ * Implementación robusta del repositorio de recompensas de StudiPuntos.
+ * Integra el catálogo oficial [RewardsApiService], el validador fiscal SUNAT [ValidateSunatReceiptUseCase],
+ * el registro atómico anti-colisiones en la nube [ReceiptCollisionRepository] (Cloud Firestore)
+ * y el libro mayor inmutable respaldado en [SessionManager] con fallback en memoria para pruebas unitarias.
  *
- * @param sessionManager Gestor de persistencia de sesión y puntos.
+ * @param sessionManager Gestor de persistencia y registro multi-usuario de huellas.
+ * @param apiService Servicio de consulta de catálogo oficial de convenios.
+ * @param sunatValidator Validador de boletas electrónicas peruanas.
+ * @param collisionRepository Repositorio de verificación y registro atómico en la nube.
  */
 class MockRewardsRepositoryImpl(
-    private val sessionManager: SessionManager? = SessionManager.getInstanceOrNull()
+    private val sessionManager: SessionManager? = SessionManager.getInstanceOrNull(),
+    private val apiService: RewardsApiService = DefaultRewardsApiServiceImpl(),
+    private val sunatValidator: ValidateSunatReceiptUseCase = ValidateSunatReceiptUseCase(),
+    private val collisionRepository: ReceiptCollisionRepository = FirebaseReceiptCollisionRepositoryImpl(sessionManager = sessionManager)
 ) : RewardsRepository {
 
+    private val inMemoryRedeemed = mutableListOf<RedeemedReward>()
+    private val inMemoryTransactions = mutableListOf<PointTransaction>()
+    private val inMemoryClaimedReceipts = mutableSetOf<String>()
+
     private val pointsFlow = MutableStateFlow(sessionManager?.getStudiPuntos() ?: 2450)
+    private val transactionsFlow = MutableStateFlow(sessionManager?.getPointTransactions() ?: emptyList())
+    private val redeemedFlow = MutableStateFlow(sessionManager?.getRedeemedRewards() ?: emptyList())
 
-    private val catalogRewards = listOf(
-        RewardItem(
-            id = "rew-01",
-            title = "Roblox 400 Robux Card",
-            category = "Gaming",
-            pointsCost = 1800,
-            description = "Canjeable en la app oficial de Roblox para avatar items y pases.",
-            partnerName = "Roblox",
-            iconEmoji = "🟥",
-            sampleCode = "RBLX-9942-XQ88"
-        ),
-        RewardItem(
-            id = "rew-02",
-            title = "Xbox Game Pass PC (1 Mes)",
-            category = "Gaming",
-            pointsCost = 2200,
-            description = "Acceso ilimitado a cientos de juegos para PC, EA Play y títulos en la nube.",
-            partnerName = "Microsoft Xbox",
-            iconEmoji = "🎮",
-            sampleCode = "XBOX-MC99-7721"
-        ),
-        RewardItem(
-            id = "rew-03",
-            title = "Spotify Premium Estudiante",
-            category = "Música",
-            pointsCost = 1200,
-            description = "1 mes de música sin interrupciones ni anuncios en alta fidelidad.",
-            partnerName = "Spotify",
-            iconEmoji = "🎧",
-            sampleCode = "SPOT-UNIV-4411"
-        ),
-        RewardItem(
-            id = "rew-04",
-            title = "Combo Mega Bajón Estudiantil",
-            category = "Comida",
-            pointsCost = 950,
-            description = "Pollo crispy + papas familiares + gaseosa en patios de comida aliados.",
-            partnerName = "Mega Bajón",
-            iconEmoji = "🍗",
-            sampleCode = "VALE-POLLO-2026"
-        ),
-        RewardItem(
-            id = "rew-05",
-            title = "Steam Wallet Card S/ 20",
-            category = "Gaming",
-            pointsCost = 2000,
-            description = "Saldo directo en Soles para comprar juegos y DLCs en Steam Store.",
-            partnerName = "Valve / Steam",
-            iconEmoji = "🕹️",
-            sampleCode = "STEM-20PEN-8831"
-        ),
-        RewardItem(
-            id = "rew-06",
-            title = "Cineplanet Entrada 2D Regular",
-            category = "Cine",
-            pointsCost = 1100,
-            description = "Boleto válido de lunes a domingo en salas 2D a nivel nacional.",
-            partnerName = "Cineplanet",
-            iconEmoji = "🎬",
-            sampleCode = "CINE-2D-9182"
-        ),
-        RewardItem(
-            id = "rew-07",
-            title = "Starbucks Frappuccino Grande",
-            category = "Comida",
-            pointsCost = 850,
-            description = "Bebida fría Frappuccino tamaño Grande a elección en cualquier tienda.",
-            partnerName = "Starbucks",
-            iconEmoji = "☕",
-            sampleCode = "SBUX-FRAP-3321"
-        ),
-        RewardItem(
-            id = "rew-08",
-            title = "Vale Librerías Crisol S/ 25",
-            category = "Educación",
-            pointsCost = 2500,
-            description = "Vale de consumo en libros de texto académico, novelas y útiles.",
-            partnerName = "Crisol",
-            iconEmoji = "📚",
-            sampleCode = "CRIS-BOOK-5520"
-        )
-    )
-
-    override fun getAvailableRewards(): Flow<List<RewardItem>> {
-        return flowOf(catalogRewards)
+    override fun getAvailableRewards(): Flow<List<RewardItem>> = flow {
+        val dtos = try {
+            apiService.getVerifiedRewardsCatalog()
+        } catch (_: Exception) {
+            emptyList()
+        }
+        val domainRewards = dtos.map { it.toDomain() }
+        emit(domainRewards)
     }
 
     override fun getRedeemedRewards(): Flow<List<RedeemedReward>> {
-        val list = sessionManager?.getRedeemedRewards() ?: emptyList()
-        return flowOf(list)
+        val current = sessionManager?.getRedeemedRewards() ?: inMemoryRedeemed.toList()
+        redeemedFlow.value = current
+        return redeemedFlow.asStateFlow()
+    }
+
+    override fun getPointTransactions(): Flow<List<PointTransaction>> {
+        val current = sessionManager?.getPointTransactions() ?: inMemoryTransactions.toList()
+        transactionsFlow.value = current
+        return transactionsFlow.asStateFlow()
     }
 
     override fun getUserStudiPuntos(): Flow<Int> {
+        val current = sessionManager?.getStudiPuntos() ?: pointsFlow.value
+        pointsFlow.value = current
         return pointsFlow.asStateFlow()
     }
 
     override suspend fun redeemReward(reward: RewardItem): Resource<RedeemedReward> {
-        val current = sessionManager?.getStudiPuntos() ?: pointsFlow.value
-        if (current < reward.pointsCost) {
-            return Resource.Error("⚠️ Saldo insuficiente de StudiPuntos (${current} pts). Necesitas ${reward.pointsCost} pts.")
+        val currentPoints = sessionManager?.getStudiPuntos() ?: pointsFlow.value
+        if (currentPoints < reward.pointsCost) {
+            return Resource.Error("Saldo insuficiente de StudiPuntos para este premio. Te faltan ${reward.pointsCost - currentPoints} pts.")
         }
 
-        val successDeduct = sessionManager?.deductStudiPuntos(reward.pointsCost) ?: true
-        if (!successDeduct) {
-            return Resource.Error("No se pudo completar el canje.")
-        }
-
-        val newBalance = current - reward.pointsCost
-        pointsFlow.value = newBalance
-
-        val prefix = reward.title.take(4).uppercase().replace(" ", "X")
-        val randomSuffix = (1000..9999).random()
-        val randomLetters = ('A'..'Z').random().toString() + ('A'..'Z').random().toString()
-        val generatedCode = "$prefix-$randomSuffix-$randomLetters"
-
-        val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-        val formattedDate = dateFormat.format(Date())
+        val codePrefix = reward.partnerName.take(4).uppercase().replace(" ", "X")
+        val uniqueCode = "$codePrefix-${UUID.randomUUID().toString().take(6).uppercase()}"
+        val now = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.forLanguageTag("es-PE")).format(Date())
 
         val redeemed = RedeemedReward(
             id = UUID.randomUUID().toString(),
             rewardTitle = reward.title,
             pointsCost = reward.pointsCost,
-            redemptionCode = generatedCode,
-            redeemedAtFormatted = formattedDate,
+            redemptionCode = uniqueCode,
+            redeemedAtFormatted = now,
             partnerName = reward.partnerName,
-            iconEmoji = reward.iconEmoji
+            iconEmoji = reward.iconEmoji,
+            isUsed = false,
+            expiresAtMillis = System.currentTimeMillis() + (48L * 3600 * 1000),
+            officialUrl = reward.officialUrl,
+            redemptionMethod = reward.redemptionMethod
         )
 
-        sessionManager?.saveRedeemedReward(redeemed)
+        if (sessionManager != null) {
+            sessionManager.saveRedeemedReward(redeemed)
+            sessionManager.recordPointTransaction(
+                title = "Canje: ${reward.title}",
+                description = "Vale redimido para ${reward.partnerName} (${reward.redemptionMethod.name}).",
+                delta = -reward.pointsCost,
+                type = PointTransactionType.REWARD_PURCHASE,
+                referenceId = redeemed.id
+            )
+            val updated = sessionManager.getStudiPuntos()
+            pointsFlow.value = updated
+            transactionsFlow.value = sessionManager.getPointTransactions()
+            redeemedFlow.value = sessionManager.getRedeemedRewards()
+        } else {
+            val updated = pointsFlow.value - reward.pointsCost
+            pointsFlow.value = updated
+            val tx = PointTransaction(
+                id = UUID.randomUUID().toString(),
+                title = "Canje: ${reward.title}",
+                description = "Vale redimido para ${reward.partnerName}.",
+                pointsDelta = -reward.pointsCost,
+                type = PointTransactionType.REWARD_PURCHASE,
+                timestampMillis = System.currentTimeMillis(),
+                referenceId = redeemed.id
+            )
+            inMemoryTransactions.add(0, tx)
+            transactionsFlow.value = inMemoryTransactions.toList()
+            inMemoryRedeemed.add(0, redeemed)
+            redeemedFlow.value = inMemoryRedeemed.toList()
+        }
 
         return Resource.Success(redeemed)
     }
 
+    override suspend fun registerReceipt(
+        ruc: String,
+        serie: String,
+        correlativo: String,
+        amount: Double,
+        dateMillis: Long
+    ): Resource<ReceiptValidationResult> {
+        val user = sessionManager?.getUserSession()
+        val userId = user?.id ?: "usr_student_${System.currentTimeMillis()}"
+        val userEmail = user?.email ?: "estudiante@campus.pe"
+
+        val fingerprint = SunatReceiptData.calculateFingerprint(ruc, serie, correlativo)
+        val isAlreadyClaimed = collisionRepository.isReceiptClaimed(fingerprint) ||
+                (sessionManager?.isReceiptClaimedGlobally(fingerprint) ?: inMemoryClaimedReceipts.contains(fingerprint))
+
+        val result = sunatValidator(
+            ruc = ruc,
+            serie = serie,
+            correlativo = correlativo,
+            montoTotal = amount,
+            fechaEmisionMillis = dateMillis,
+            isFingerprintAlreadyClaimed = { isAlreadyClaimed }
+        )
+
+        if (!result.isValid) {
+            return Resource.Error(result.rejectionReason ?: "El comprobante no superó la auditoría de SUNAT.")
+        }
+
+        val receiptData = result.receiptData
+            ?: return Resource.Error("No se pudieron extraer los datos fiscales.")
+
+        // Registrar reclamo atómico global (Cloud Firestore + Local)
+        val claimResult = collisionRepository.claimReceipt(
+            fingerprint = receiptData.fingerprint,
+            userId = userId,
+            userEmail = userEmail,
+            partnerName = receiptData.partnerName,
+            amount = receiptData.montoTotal
+        )
+
+        if (claimResult.isFailure) {
+            return Resource.Error(claimResult.exceptionOrNull()?.message ?: "Error al registrar el comprobante.")
+        }
+
+        if (sessionManager != null) {
+            sessionManager.claimReceiptGlobally(
+                fingerprint = receiptData.fingerprint,
+                claimedByEmail = userEmail,
+                partnerName = receiptData.partnerName
+            )
+            sessionManager.recordPointTransaction(
+                title = "Boleta en ${receiptData.partnerName}",
+                description = "Comprobante ${receiptData.serie}-${receiptData.correlativo} verificado. +80 StudiPuntos acreditados.",
+                delta = 80,
+                type = PointTransactionType.RECEIPT_SCAN,
+                referenceId = receiptData.fingerprint
+            )
+            val updatedPoints = sessionManager.getStudiPuntos()
+            pointsFlow.value = updatedPoints
+            transactionsFlow.value = sessionManager.getPointTransactions()
+        } else {
+            inMemoryClaimedReceipts.add(receiptData.fingerprint)
+            val updated = pointsFlow.value + 80
+            pointsFlow.value = updated
+        }
+
+        return Resource.Success(result)
+    }
+
+    override suspend fun registerReceiptQr(qrRawText: String): Resource<ReceiptValidationResult> {
+        val user = sessionManager?.getUserSession()
+        val userId = user?.id ?: "usr_student_${System.currentTimeMillis()}"
+        val userEmail = user?.email ?: "estudiante@campus.pe"
+
+        val result = sunatValidator.parseSunatQr(
+            qrRawText = qrRawText,
+            isFingerprintAlreadyClaimed = { fingerprint ->
+                sessionManager?.isReceiptClaimedGlobally(fingerprint) ?: inMemoryClaimedReceipts.contains(fingerprint)
+            }
+        )
+
+        if (!result.isValid) {
+            return Resource.Error(result.rejectionReason ?: "El código QR no corresponde a una Boleta Electrónica válida de SUNAT.")
+        }
+
+        val receiptData = result.receiptData
+            ?: return Resource.Error("Error al procesar la firma digital del QR SUNAT.")
+
+        // Doble verificación en Cloud Firestore
+        if (collisionRepository.isReceiptClaimed(receiptData.fingerprint)) {
+            return Resource.Error("El comprobante fiscal ya fue registrado previamente en la red.")
+        }
+
+        val claimResult = collisionRepository.claimReceipt(
+            fingerprint = receiptData.fingerprint,
+            userId = userId,
+            userEmail = userEmail,
+            partnerName = receiptData.partnerName,
+            amount = receiptData.montoTotal
+        )
+
+        if (claimResult.isFailure) {
+            return Resource.Error(claimResult.exceptionOrNull()?.message ?: "Error al registrar el comprobante.")
+        }
+
+        if (sessionManager != null) {
+            sessionManager.claimReceiptGlobally(
+                fingerprint = receiptData.fingerprint,
+                claimedByEmail = userEmail,
+                partnerName = receiptData.partnerName
+            )
+            sessionManager.recordPointTransaction(
+                title = "Boleta QR en ${receiptData.partnerName}",
+                description = "Firma digital del comprobante ${receiptData.serie}-${receiptData.correlativo} verificada.",
+                delta = 80,
+                type = PointTransactionType.RECEIPT_SCAN,
+                referenceId = receiptData.fingerprint
+            )
+            val updatedPoints = sessionManager.getStudiPuntos()
+            pointsFlow.value = updatedPoints
+            transactionsFlow.value = sessionManager.getPointTransactions()
+        } else {
+            inMemoryClaimedReceipts.add(receiptData.fingerprint)
+            val updated = pointsFlow.value + 80
+            pointsFlow.value = updated
+        }
+
+        return Resource.Success(result)
+    }
+
+    override suspend fun markRewardAsUsed(rewardId: String): Boolean {
+        if (sessionManager != null) {
+            val success = sessionManager.markRewardAsUsed(rewardId)
+            if (success) {
+                redeemedFlow.value = sessionManager.getRedeemedRewards()
+            }
+            return success
+        } else {
+            val idx = inMemoryRedeemed.indexOfFirst { it.id == rewardId || it.redemptionCode == rewardId }
+            if (idx >= 0) {
+                inMemoryRedeemed[idx] = inMemoryRedeemed[idx].copy(isUsed = true)
+                redeemedFlow.value = inMemoryRedeemed.toList()
+                return true
+            }
+            return false
+        }
+    }
+
     override suspend fun earnPointsFromReceipt(): Resource<Int> {
         val bonus = 80
-        val updated = sessionManager?.addStudiPuntos(bonus) ?: (pointsFlow.value + bonus)
-        pointsFlow.value = updated
-        return Resource.Success(updated)
+        if (sessionManager != null) {
+            sessionManager.recordPointTransaction(
+                title = "Registro de Boleta Comercial",
+                description = "Comprobante de consumo verificado en comercio asociado del campus.",
+                delta = bonus,
+                type = PointTransactionType.RECEIPT_SCAN
+            )
+            val updated = sessionManager.getStudiPuntos()
+            pointsFlow.value = updated
+            transactionsFlow.value = sessionManager.getPointTransactions()
+            return Resource.Success(updated)
+        } else {
+            val updated = pointsFlow.value + bonus
+            pointsFlow.value = updated
+            return Resource.Success(updated)
+        }
     }
 }

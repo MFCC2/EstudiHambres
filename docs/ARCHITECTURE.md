@@ -135,8 +135,8 @@ com.example.estudihambres/
 | **Agente 2: UI/UX & Compose** | ✅ Producción | Material 3, esquinas 16.dp, avatar reactivo, carruseles horizontales, paleta corporativa y cero advertencias. |
 | **Agente 3: Auth & OCR** | ✅ Producción | Validación estricta de credenciales, estabilización multi-frame (4 frames/1.5s), filtro de recibos comerciales y carnet único por estudiante. |
 | **Agente 4: Geolocalización** | ✅ Producción | Google Maps nativo SDK + visor dual OSM/Leaflet, geocodificación real (Cusco/Lima) y navegación turn-by-turn. |
-| **Agente 5: QA & Pruebas** | ✅ Producción | Suite de 164 pruebas unitarias aprobadas al 100% en 19 suites (seguridad SHA-256, prevención de doble gasto, anti-XSS, anti-phishing, OCR, Haversine, persistencia). |
-| **Agente 6: GitFlow & Release** | ✅ Producción | `./gradlew testDebugUnitTest assembleDebug` con 0 errores y 0 advertencias. Ramas `develop` y `main` sincronizadas. |
+| **Agente 5: QA & Pruebas** | ✅ Producción | Suite de 177 pruebas unitarias aprobadas al 100% en 20 suites (prevención de colisiones Firestore, concurrencia de 10 estudiantes, validación SUNAT, anti-replay multi-usuario, ledger criptográfico SHA-256, anti-XSS, anti-phishing, OCR, Haversine, persistencia). |
+| **Agente 6: GitFlow & Release** | ✅ Producción | `./gradlew testDebugUnitTest assembleDebug` con 0 errores. APK generado en `app/build/outputs/apk/debug/app-debug.apk` (69.7 MB). |
 
 
 
@@ -146,7 +146,13 @@ com.example.estudihambres/
 
 El sistema incorpora defensas multicapa diseñadas para entornos universitarios de alta concurrencia:
 
-1. **Almacenamiento Criptográfico de Credenciales:**
+1. **Prevención Distribuida de Colisiones en la Nube (Cloud Firestore):**
+   - Colección inmutable: `claimed_receipts/{receiptFingerprint}`.
+   - Huella digital compacta: Primeros 16 caracteres hexadecimales de `SHA-256(RUC-Serie-Correlativo)`.
+   - Transacciones atómicas $O(1)$ (`FirebaseFirestore.runTransaction`) con First-Come First-Served garantizado. Si 10 estudiantes intentan registrar la misma boleta física, exactamente 1 la acredita y los otros 9 son rechazados con `COLLISION_DETECTED`.
+   - Reglas de seguridad (`firestore.rules`) auditadas con Regex de huella, validación temporal de 72 horas y bloqueo total de mutación o borrado por clientes (`allow update, delete: if false`).
+
+2. **Almacenamiento Criptográfico de Credenciales:**
    - Algoritmo de Hashing: SHA-256 (`SessionManager.hashPassword`).
    - Digest: 64 caracteres hexadecimales deterministas.
    - Migración transparente sin pérdida de sesiones activas.

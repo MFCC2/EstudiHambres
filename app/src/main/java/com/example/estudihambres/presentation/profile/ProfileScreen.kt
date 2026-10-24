@@ -31,13 +31,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Shield
+import com.example.estudihambres.core.legal.LegalConstants
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Save
@@ -89,6 +94,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.estudihambres.R
+import com.example.estudihambres.core.theme.AppThemeMode
 import com.example.estudihambres.core.theme.CampusGold
 import com.example.estudihambres.core.theme.CampusPrimary
 import com.example.estudihambres.core.theme.CampusShapes
@@ -143,6 +149,8 @@ fun ProfileScreen(
     }
 
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showArcoDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var selectedCouponForVoucher by remember { mutableStateOf<RedeemedCoupon?>(null) }
 
     LaunchedEffect(Unit) {
@@ -187,6 +195,78 @@ fun ProfileScreen(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text("Cancelar", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        )
+    }
+
+    if (showArcoDialog) {
+        AlertDialog(
+            onDismissRequest = { showArcoDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Privacidad & Ley N° 29733", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Tratamiento de Datos Personales:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = LegalConstants.DATA_PROTECTION_POLICY,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Tus Derechos ARCO:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = LegalConstants.ARCO_RIGHTS_INFO,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { showArcoDialog = false }) {
+                    Text("Entendido", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountDialog = false },
+            title = {
+                Text("¿Eliminar Cuenta y Datos?", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+            },
+            text = {
+                Text("En ejercicio de tu Derecho ARCO de Cancelación / Supresión (Ley N° 29733), todos tus datos, carnet verificado, StudiPuntos y vales canjeados se eliminarán definitivamente de este dispositivo.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteAccountDialog = false
+                        viewModel.deleteAccountAndData()
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Sí, Eliminar Definitivamente", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteAccountDialog = false }) {
+                    Text("Cancelar")
                 }
             }
         )
@@ -527,6 +607,66 @@ fun ProfileScreen(
                             onCheckedChange = { viewModel.onNotificationsToggle(it) }
                         )
                     }
+
+                    // Divider sutil de configuración
+                    androidx.compose.material3.HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        thickness = 1.dp
+                    )
+
+                    // 4.1 Apariencia y Tema Visual (Modo Claro / Modo Oscuro / Sistema)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (state.themeMode == AppThemeMode.DARK) Icons.Default.DarkMode else Icons.Default.LightMode,
+                                contentDescription = null,
+                                tint = if (state.themeMode == AppThemeMode.DARK) Color(0xFF818CF8) else Color(0xFFF59E0B)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("Apariencia y Tema Visual", fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    text = state.themeMode.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AppThemeMode.entries.forEach { mode ->
+                            val isSelected = state.themeMode == mode
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { viewModel.onThemeModeChange(mode) },
+                                leadingIcon = {
+                                    val icon = when (mode) {
+                                        AppThemeMode.LIGHT -> Icons.Default.LightMode
+                                        AppThemeMode.DARK -> Icons.Default.DarkMode
+                                        AppThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                                    }
+                                    Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
+                                },
+                                label = {
+                                    Text(
+                                        text = if (mode == AppThemeMode.LIGHT) "Claro ☀️" else if (mode == AppThemeMode.DARK) "Oscuro 🌙" else "Sistema 📱",
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                },
+                                shape = CampusShapes.small,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -604,7 +744,53 @@ fun ProfileScreen(
                 }
             }
 
-            // 7. Botón explícito para cerrar sesión con confirmación
+            // 7. Privacidad y Derechos ARCO (Ley N° 29733)
+            Card(
+                shape = CampusShapes.medium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Privacidad & Derechos ARCO (Ley N° 29733)", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    }
+                    Text(
+                        text = "Tus comprobantes y datos se procesan de forma 100% local en tu dispositivo. Puedes consultar las políticas o solicitar la supresión total de tu cuenta.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showArcoDialog = true },
+                            modifier = Modifier.weight(1f),
+                            shape = CampusShapes.small
+                        ) {
+                            Text("Ver Políticas", style = MaterialTheme.typography.labelSmall)
+                        }
+                        OutlinedButton(
+                            onClick = { showDeleteAccountDialog = true },
+                            modifier = Modifier.weight(1f),
+                            shape = CampusShapes.small,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Eliminar Datos", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 8. Botón explícito para cerrar sesión con confirmación
             OutlinedButton(
                 onClick = { showLogoutDialog = true },
                 shape = CampusShapes.small,

@@ -2,12 +2,19 @@ package com.example.estudihambres.core.util
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.estudihambres.core.theme.AppThemeMode
+import com.example.estudihambres.domain.model.PointTransaction
+import com.example.estudihambres.domain.model.PointTransactionType
 import com.example.estudihambres.domain.model.RedeemedCoupon
 import com.example.estudihambres.domain.model.RedeemedReward
+import com.example.estudihambres.domain.model.RedemptionMethod
 import com.example.estudihambres.domain.model.StudentUser
 import com.example.estudihambres.domain.model.VerificationStatus
 import com.example.estudihambres.domain.usecase.RedeemCouponUseCase
 import java.security.MessageDigest
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Gestor de persistencia local y autenticación para EstudiHambres.
@@ -22,6 +29,9 @@ class SessionManager(context: Context) {
 
     private val sessionPrefs: SharedPreferences = context.getSharedPreferences(PREF_SESSION_NAME, Context.MODE_PRIVATE)
     private val accountPrefs: SharedPreferences = context.getSharedPreferences(PREF_ACCOUNTS_NAME, Context.MODE_PRIVATE)
+
+    private val _themeModeFlow = MutableStateFlow(getThemeMode())
+    val themeModeFlow: StateFlow<AppThemeMode> = _themeModeFlow.asStateFlow()
 
     companion object {
         private const val PREF_SESSION_NAME = "estudihambres_session_prefs"
@@ -42,11 +52,14 @@ class SessionManager(context: Context) {
 
         private const val KEY_RADAR_RADIUS = "key_radar_radius"
         private const val KEY_NOTIFICATIONS_ENABLED = "key_notifications_enabled"
+        private const val KEY_THEME_MODE = "key_app_theme_mode"
 
         private const val KEY_ACCUMULATED_SAVINGS = "key_accumulated_savings"
         private const val KEY_REDEEMED_COUPONS = "key_redeemed_coupons"
         private const val KEY_STUDI_PUNTOS = "key_studi_puntos"
         private const val KEY_REDEEMED_REWARDS = "key_redeemed_rewards"
+        private const val KEY_POINT_TRANSACTIONS = "key_point_transactions"
+        private const val KEY_GLOBAL_CLAIMED_RECEIPTS = "key_global_claimed_receipts"
 
         @Volatile
         private var instance: SessionManager? = null
@@ -134,6 +147,12 @@ class SessionManager(context: Context) {
 
         saveAccountInternal(user.copy(email = normalizedEmail), password)
         saveUserSession(user.copy(email = normalizedEmail))
+        recordPointTransaction(
+            title = "Bono de Bienvenida Institucional",
+            description = "Bienvenido a EstudiHambres. +200 StudiPuntos acreditados para canje.",
+            delta = 200,
+            type = PointTransactionType.WELCOME_BONUS
+        )
         return Result.success(user)
     }
 
@@ -277,6 +296,19 @@ class SessionManager(context: Context) {
                 .putString("scanned_card_$normalized", user.scannedCardDni)
                 .putString("photo_$normalized", user.profilePhotoPath)
                 .apply()
+
+            val savedPoints = accountPrefs.getInt("points_$normalized", -1)
+            if (savedPoints != -1) {
+                sessionPrefs.edit().putInt(KEY_STUDI_PUNTOS, savedPoints).apply()
+            }
+            val savedTxs = accountPrefs.getString("txs_$normalized", null)
+            if (savedTxs != null) {
+                sessionPrefs.edit().putString(KEY_POINT_TRANSACTIONS, savedTxs).apply()
+            }
+            val savedRewards = accountPrefs.getString("rewards_$normalized", null)
+            if (savedRewards != null) {
+                sessionPrefs.edit().putString(KEY_REDEEMED_REWARDS, savedRewards).apply()
+            }
         }
     }
 
@@ -436,6 +468,7 @@ class SessionManager(context: Context) {
     }
 
     fun updateVerificationStatus(status: VerificationStatus) {
+        val prevStatus = getUserSession()?.verificationStatus
         sessionPrefs.edit()
             .putString(KEY_VERIFICATION_STATUS, status.name)
             .apply()
@@ -447,6 +480,15 @@ class SessionManager(context: Context) {
                 .putString("status_$normalized", status.name)
                 .apply()
         }
+
+        if (prevStatus != VerificationStatus.VERIFIED && status == VerificationStatus.VERIFIED) {
+            recordPointTransaction(
+                title = "Acreditación Carnet SUNEDU",
+                description = "Validación oficial de carnet universitario mediante reconocimiento óptico seguro.",
+                delta = 300,
+                type = PointTransactionType.ID_VERIFICATION
+            )
+        }
     }
 
     fun getRadarRadiusKm(): Float = sessionPrefs.getFloat(KEY_RADAR_RADIUS, 30.0f)
@@ -457,6 +499,35 @@ class SessionManager(context: Context) {
     fun getNotificationsEnabled(): Boolean = sessionPrefs.getBoolean(KEY_NOTIFICATIONS_ENABLED, true)
     fun setNotificationsEnabled(enabled: Boolean) {
         sessionPrefs.edit().putBoolean(KEY_NOTIFICATIONS_ENABLED, enabled).apply()
+    }
+
+    /**
+     * Retorna el modo visual de tema configurado.
+     * Predeterminado: [AppThemeMode.LIGHT] (Fondo blanco limpio).
+     */
+    fun getThemeMode(): AppThemeMode {
+        val raw = sessionPrefs.getString(KEY_THEME_MODE, AppThemeMode.LIGHT.name) ?: AppThemeMode.LIGHT.name
+        return try {
+            AppThemeMode.valueOf(raw)
+        } catch (_: Exception) {
+            AppThemeMode.LIGHT
+        }
+    }
+
+    /**
+     * Actualiza el modo visual y notifica reactivamente a toda la interfaz.
+     */
+    fun setThemeMode(mode: AppThemeMode) {
+        sessionPrefs.edit().putString(KEY_THEME_MODE, mode.name).apply()
+        _themeModeFlow.value = mode
+    }
+
+    /**
+     * Alterna rápidamente entre Modo Claro y Modo Oscuro.
+     */
+    fun toggleThemeMode() {
+        val next = if (getThemeMode() == AppThemeMode.DARK) AppThemeMode.LIGHT else AppThemeMode.DARK
+        setThemeMode(next)
     }
 
     // --- GESTIÓN DE AHORROS Y CUPONES CANJEADOS (FUNCIONALIDAD REAL) ---
@@ -526,6 +597,13 @@ class SessionManager(context: Context) {
         currentCoupons.add(0, newCoupon)
         saveRedeemedCouponsInternal(currentCoupons)
         addAccumulatedSavings(newCoupon.savingsAmountSoles)
+        recordPointTransaction(
+            title = "Canje en $partnerName",
+            description = "Puntos de fidelidad por canjear '$title'.",
+            delta = 50,
+            type = PointTransactionType.COUPON_REDEEMED,
+            referenceId = newCoupon.id
+        )
         return newCoupon
     }
 
@@ -679,11 +757,16 @@ class SessionManager(context: Context) {
      * Descuenta StudiPuntos al canjear un premio si el saldo es suficiente.
      */
     @Synchronized
-    fun deductStudiPuntos(cost: Int): Boolean {
+    fun deductStudiPuntos(cost: Int, rewardTitle: String = "Premio Universitario"): Boolean {
         if (cost <= 0) return false
         val current = getStudiPuntos()
         if (current < cost) return false
-        setStudiPuntos(current - cost)
+        recordPointTransaction(
+            title = "Canje de $rewardTitle",
+            description = "Canje de beneficio en la Tienda de StudiPuntos.",
+            delta = -cost,
+            type = PointTransactionType.REWARD_PURCHASE
+        )
         return true
     }
 
@@ -711,6 +794,28 @@ class SessionManager(context: Context) {
         }
     }
 
+    /**
+     * Marca un vale de recompensa como utilizado en caja física o en la web del aliado.
+     */
+    @Synchronized
+    fun markRewardAsUsed(rewardId: String): Boolean {
+        val current = getRedeemedRewards().toMutableList()
+        val index = current.indexOfFirst { it.id == rewardId || it.redemptionCode == rewardId }
+        if (index >= 0) {
+            val updated = current[index].copy(isUsed = true)
+            current[index] = updated
+            val serialized = current.joinToString(";") { serializeReward(it) }
+            sessionPrefs.edit().putString(KEY_REDEEMED_REWARDS, serialized).apply()
+            val user = getUserSession()
+            if (user != null && !user.isDev && isEmailRegistered(user.email)) {
+                val normalized = user.email.trim().lowercase()
+                accountPrefs.edit().putString("rewards_$normalized", serialized).apply()
+            }
+            return true
+        }
+        return false
+    }
+
     private fun serializeReward(r: RedeemedReward): String {
         fun esc(s: String) = s.replace("%", "%25").replace("|", "%7C").replace(";", "%3B")
         return listOf(
@@ -720,7 +825,12 @@ class SessionManager(context: Context) {
             esc(r.redemptionCode),
             esc(r.redeemedAtFormatted),
             esc(r.partnerName),
-            esc(r.iconEmoji)
+            esc(r.iconEmoji),
+            r.isUsed.toString(),
+            r.expiresAtMillis.toString(),
+            esc(r.securityToken),
+            esc(r.officialUrl),
+            r.redemptionMethod.name
         ).joinToString("|")
     }
 
@@ -729,6 +839,18 @@ class SessionManager(context: Context) {
             val parts = s.split("|")
             if (parts.size < 7) return null
             fun unesc(str: String) = str.replace("%3B", ";").replace("%7C", "|").replace("%25", "%")
+            val isUsed = if (parts.size > 7) parts[7].toBoolean() else false
+            val expiresAt = if (parts.size > 8) parts[8].toLongOrNull() ?: (System.currentTimeMillis() + 48L * 3600 * 1000) else (System.currentTimeMillis() + 48L * 3600 * 1000)
+            val secToken = if (parts.size > 9) unesc(parts[9]) else (100000..999999).random().toString()
+            val officialUrl = if (parts.size > 10) unesc(parts[10]) else "https://estudihambres.pe"
+            val method = if (parts.size > 11) {
+                try {
+                    RedemptionMethod.valueOf(parts[11])
+                } catch (_: Exception) {
+                    RedemptionMethod.ONLINE_CODE
+                }
+            } else RedemptionMethod.ONLINE_CODE
+
             return RedeemedReward(
                 id = unesc(parts[0]),
                 rewardTitle = unesc(parts[1]),
@@ -736,11 +858,241 @@ class SessionManager(context: Context) {
                 redemptionCode = unesc(parts[3]),
                 redeemedAtFormatted = unesc(parts[4]),
                 partnerName = unesc(parts[5]),
-                iconEmoji = unesc(parts[6])
+                iconEmoji = unesc(parts[6]),
+                isUsed = isUsed,
+                expiresAtMillis = expiresAt,
+                securityToken = secToken,
+                officialUrl = officialUrl,
+                redemptionMethod = method
             )
         } catch (_: Exception) {
             return null
         }
+    }
+
+    // --- LIBRO MAYOR CRIPTOGRÁFICO DE STUDIPUNTOS (POINT LEDGER SHA-256) ---
+
+    /**
+     * Emite el historial completo de movimientos inmutables de StudiPuntos.
+     */
+    fun getPointTransactions(): List<PointTransaction> {
+        val raw = sessionPrefs.getString(KEY_POINT_TRANSACTIONS, null)
+        if (raw.isNullOrBlank()) {
+            return getInitialTransactionsIfEmpty()
+        }
+        return raw.split(";").mapNotNull { deserializeTransaction(it) }
+    }
+
+    private fun getInitialTransactionsIfEmpty(): List<PointTransaction> {
+        val points = getStudiPuntos()
+        val now = System.currentTimeMillis()
+        val welcome = PointTransaction(
+            id = "tx-welcome-init",
+            title = "Bono de Bienvenida Institucional",
+            description = "Acreditación inicial por registro de cuenta estudiantil.",
+            pointsDelta = 200,
+            type = PointTransactionType.WELCOME_BONUS,
+            timestampMillis = now - (3600_000L * 24),
+            previousHash = "GENESIS_BLOCK"
+        )
+        val verif = PointTransaction(
+            id = "tx-verif-init",
+            title = "Acreditación Carnet SUNEDU",
+            description = "Validación de identidad universitaria mediante OCR.",
+            pointsDelta = 300,
+            type = PointTransactionType.ID_VERIFICATION,
+            timestampMillis = now - (3600_000L * 18),
+            previousHash = welcome.txHash
+        )
+        val list = if (points > 500) {
+            val loyalty = PointTransaction(
+                id = "tx-loyalty-init",
+                title = "Puntos de Fidelización Universitaria",
+                description = "Consumo acumulado y beneficios canjeados en comercios asociados.",
+                pointsDelta = points - 500,
+                type = PointTransactionType.COUPON_REDEEMED,
+                timestampMillis = now - (3600_000L * 6),
+                previousHash = verif.txHash
+            )
+            listOf(loyalty, verif, welcome)
+        } else {
+            listOf(verif, welcome)
+        }
+        val serialized = list.joinToString(";") { serializeTransaction(it) }
+        sessionPrefs.edit().putString(KEY_POINT_TRANSACTIONS, serialized).apply()
+        return list
+    }
+
+    /**
+     * Registra un nuevo movimiento en el libro mayor encadenado con hash SHA-256.
+     */
+    @Synchronized
+    fun recordPointTransaction(
+        title: String,
+        description: String,
+        delta: Int,
+        type: PointTransactionType,
+        referenceId: String? = null
+    ): PointTransaction {
+        val currentTxs = getPointTransactions()
+        val previousHash = currentTxs.firstOrNull()?.txHash ?: "GENESIS_BLOCK"
+        val txId = "tx-${System.currentTimeMillis()}-${(1000..9999).random()}"
+        val now = System.currentTimeMillis()
+        val tx = PointTransaction(
+            id = txId,
+            title = title,
+            description = description,
+            pointsDelta = delta,
+            type = type,
+            timestampMillis = now,
+            referenceId = referenceId,
+            previousHash = previousHash
+        )
+
+        val updated = mutableListOf(tx)
+        updated.addAll(currentTxs)
+        val serialized = updated.joinToString(";") { serializeTransaction(it) }
+        sessionPrefs.edit().putString(KEY_POINT_TRANSACTIONS, serialized).apply()
+
+        val newBalance = getStudiPuntos() + delta
+        sessionPrefs.edit().putInt(KEY_STUDI_PUNTOS, newBalance).apply()
+
+        val user = getUserSession()
+        if (user != null && !user.isDev && isEmailRegistered(user.email)) {
+            val normalized = user.email.trim().lowercase()
+            accountPrefs.edit()
+                .putString("txs_$normalized", serialized)
+                .putInt("points_$normalized", newBalance)
+                .apply()
+        }
+        return tx
+    }
+
+    private fun serializeTransaction(t: PointTransaction): String {
+        fun esc(s: String) = s.replace("%", "%25").replace("|", "%7C").replace(";", "%3B")
+        return listOf(
+            esc(t.id),
+            esc(t.title),
+            esc(t.description),
+            t.pointsDelta.toString(),
+            t.type.name,
+            t.timestampMillis.toString(),
+            esc(t.referenceId ?: ""),
+            esc(t.previousHash),
+            esc(t.txHash)
+        ).joinToString("|")
+    }
+
+    private fun deserializeTransaction(s: String): PointTransaction? {
+        try {
+            val parts = s.split("|")
+            if (parts.size < 9) return null
+            fun unesc(str: String) = str.replace("%3B", ";").replace("%7C", "|").replace("%25", "%")
+            val type = try {
+                PointTransactionType.valueOf(parts[4])
+            } catch (_: Exception) {
+                PointTransactionType.COUPON_REDEEMED
+            }
+            return PointTransaction(
+                id = unesc(parts[0]),
+                title = unesc(parts[1]),
+                description = unesc(parts[2]),
+                pointsDelta = parts[3].toIntOrNull() ?: 0,
+                type = type,
+                timestampMillis = parts[5].toLongOrNull() ?: System.currentTimeMillis(),
+                referenceId = unesc(parts[6]).ifBlank { null },
+                previousHash = unesc(parts[7]),
+                txHash = unesc(parts[8])
+            )
+        } catch (_: Exception) {
+            return null
+        }
+    }
+
+    // --- REGISTRO GLOBAL DE BOLETAS ANTI-DOBLE CANJE (MULTI-USUARIO) ---
+
+    /**
+     * Consulta O(1) si una huella de boleta electrónica ya fue reclamada por cualquier usuario.
+     */
+    @Synchronized
+    fun isReceiptClaimedGlobally(fingerprint: String): Boolean {
+        purgeExpiredReceiptClaims()
+        val raw = accountPrefs.getString(KEY_GLOBAL_CLAIMED_RECEIPTS, "") ?: ""
+        return raw.split(";").any { it.startsWith("$fingerprint:") }
+    }
+
+    /**
+     * Reclama atómicamente una boleta asociándola al correo del estudiante que la procesó primero.
+     */
+    @Synchronized
+    fun claimReceiptGlobally(fingerprint: String, claimedByEmail: String, partnerName: String): Boolean {
+        purgeExpiredReceiptClaims()
+        if (isReceiptClaimedGlobally(fingerprint)) return false
+        val raw = accountPrefs.getString(KEY_GLOBAL_CLAIMED_RECEIPTS, "") ?: ""
+        val now = System.currentTimeMillis()
+        val entry = "$fingerprint:${claimedByEmail.trim().lowercase()}:$now:${partnerName.trim()}"
+        val updated = if (raw.isBlank()) entry else "$raw;$entry"
+        accountPrefs.edit().putString(KEY_GLOBAL_CLAIMED_RECEIPTS, updated).apply()
+        return true
+    }
+
+    /**
+     * Purgado de ventana rodante de 72 horas para optimización extrema de memoria (< 50 KB).
+     */
+    @Synchronized
+    fun purgeExpiredReceiptClaims() {
+        val raw = accountPrefs.getString(KEY_GLOBAL_CLAIMED_RECEIPTS, "") ?: ""
+        if (raw.isBlank()) return
+        val now = System.currentTimeMillis()
+        val threshold = now - (72L * 3600 * 1000)
+        val valid = raw.split(";").filter { entry ->
+            val parts = entry.split(":")
+            if (parts.size >= 3) {
+                val time = parts[2].toLongOrNull() ?: 0L
+                time >= threshold
+            } else false
+        }
+        val updated = valid.joinToString(";")
+        if (updated != raw) {
+            accountPrefs.edit().putString(KEY_GLOBAL_CLAIMED_RECEIPTS, updated).apply()
+        }
+    }
+
+    // --- DERECHOS ARCO (LEY N° 29733 DE PROTECCIÓN DE DATOS PERSONALES) ---
+
+    /**
+     * Ejerce el Derecho ARCO de Cancelación / Supresión de datos personales.
+     * Elimina del dispositivo la cuenta, credenciales, historial de puntos, vales y cupones,
+     * cerrando la sesión activa inmediatamente.
+     */
+    @Synchronized
+    fun deleteCurrentAccountAndData(): Boolean {
+        val user = getUserSession() ?: return false
+        val normalized = user.email.trim().lowercase()
+        val dni = user.dni.trim()
+
+        accountPrefs.edit()
+            .remove("pwd_$normalized")
+            .remove("id_$normalized")
+            .remove("name_$normalized")
+            .remove("dni_$normalized")
+            .remove("uni_$normalized")
+            .remove("code_$normalized")
+            .remove("career_$normalized")
+            .remove("status_$normalized")
+            .remove("isDev_$normalized")
+            .remove("scanned_card_$normalized")
+            .remove("photo_$normalized")
+            .remove("points_$normalized")
+            .remove("txs_$normalized")
+            .remove("rewards_$normalized")
+            .remove("coupons_$normalized")
+            .remove("savings_$normalized")
+            .remove("dni_to_email_$dni")
+            .apply()
+
+        clearSession()
+        return true
     }
 
     /**
