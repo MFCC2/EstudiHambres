@@ -2,7 +2,7 @@ package com.example.estudihambres.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.estudihambres.data.repository.MockAuthRepositoryImpl
+import com.example.estudihambres.data.repository.FirebaseAuthRepositoryImpl
 import com.example.estudihambres.data.repository.MockPromotionRepositoryImpl
 import com.example.estudihambres.domain.model.Promotion
 import com.example.estudihambres.domain.model.StudentUser
@@ -49,7 +49,7 @@ data class HomeUiState(
  */
 class HomeViewModel(
     private val promotionRepository: PromotionRepository = MockPromotionRepositoryImpl(),
-    private val authRepository: AuthRepository = MockAuthRepositoryImpl(),
+    private val authRepository: AuthRepository = FirebaseAuthRepositoryImpl(),
     private val sessionManager: com.example.estudihambres.core.util.SessionManager? = com.example.estudihambres.core.util.SessionManager.getInstanceOrNull()
 ) : ViewModel() {
 

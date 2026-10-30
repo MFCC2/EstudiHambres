@@ -4,6 +4,20 @@ Registro cronológico de modificaciones, agentes intervinientes y cambios arquit
 
 ---
 
+## [v1.5.1] - 2026-10-30
+**Rama:** `develop` / `main`
+**Versión:** `v1.5.1` (versionCode 14)
+
+### Resumen de la Versión v1.5.1
+Migración de la autenticación local (Mock) a **Firebase Authentication y Cloud Firestore multi-dispositivo en tiempo real**:
+1. **Inicio de Sesión y Registro Multi-Teléfono en la Nube**: Implementación de `FirebaseAuthRepositoryImpl` conectado a `FirebaseAuth` (`signInWithEmailAndPassword` y `createUserWithEmailAndPassword`) y Cloud Firestore (`users/{userId}`), permitiendo registrarse en un celular y entrar inmediatamente desde cualquier otro dispositivo móvil.
+2. **Sincronización en la Nube y Caché Híbrido**: Sincronización transparente de nombres, carrera, código estudiantil, DNI y StudiPuntos con soporte de tolerancia a fallos offline en `SessionManager`.
+3. **Ledger Inmutable en Firestore**: Registro de transacciones criptográficas en la subcolección `users/{userId}/point_transactions` para bonos de bienvenida y auditoría.
+4. **Cierre de Sesión Seguro Global**: Limpieza simultánea de la sesión de `FirebaseAuth` y la memoria local del dispositivo al pulsar "Cerrar sesión".
+5. **Pruebas Automatizadas**: 185/185 pruebas unitarias verificadas con 100% de éxito, incluyendo la nueva suite `FirebaseAuthRepositoryTest`.
+
+---
+
 ## [v1.5.0] - 2026-10-24
 **Rama:** `develop` / `main`
 **Versión:** `v1.5.0` (versionCode 13)

@@ -42,4 +42,9 @@ interface AuthRepository {
      * Cierra la sesión activa y limpia los datos persistidos.
      */
     suspend fun clearSession(): Result<Unit> = Result.success(Unit)
+
+    /**
+     * Actualiza los datos de perfil del estudiante autenticado.
+     */
+    suspend fun updateProfile(fullName: String, career: String, studentCode: String): Result<Unit> = Result.success(Unit)
 }

@@ -123,5 +123,56 @@ class ParseStudentCardOcrUseCaseTest {
         assertEquals("72945602", result.studentDni)
         assertEquals("Manuel Fabrizio Callañaupa Cjuiro", result.studentName)
         assertEquals("Universidad Continental", result.universityName)
+        assertTrue(result.isCompleteForRegistration)
     }
-}
+
+    @Test
+    fun `video sample with semester and uncoloned faculty extracts accurately and rejects noise`() {
+        val ocrFromVideo = """
+            República del Perú
+            Superintendencia Nacional de Educación Superior Universitaria
+            UNIVERSIDAD CONTINENTAL
+            2023 - I
+            CALLANAUPA QUIRO
+            MANUEL FABRIZIO
+            D.N.I.
+            72945602
+            FAC. DE INGENIERÍA
+            ING. DE SISTEMAS E INFORMÁTICA
+            CADUCIDAD 2026
+            CARNÉ UNIVERSITARIO
+        """.trimIndent()
+
+        val result = parser(ocrFromVideo)
+
+        assertTrue(result.isVerified)
+        assertEquals("72945602", result.studentDni)
+        assertEquals("72945602", result.studentCode)
+        assertEquals("Ingeniería", result.faculty)
+        assertEquals("Ing. De Sistemas E Informática", result.career)
+        assertTrue(result.isCompleteForRegistration)
+    }
+
+    @Test
+    fun `two letter noise like ga is rejected for student code`() {
+        val ocrWithGa = """
+            REPÚBLICA DEL PERÚ
+            SUNEDU
+            UNIVERSIDAD CONTINENTAL
+            CÓD: ga
+            DNI: 72945602
+            APELLIDOS: CALLANAUPA QUIRO
+            NOMBRES: MANUEL FABRIZIO
+            2u23-1
+            CARNÉ UNIVERSITARIO 2026
+        """.trimIndent()
+
+        val result = parser(ocrWithGa)
+
+        assertTrue(result.isVerified)
+        assertEquals("72945602", result.studentCode)
+        org.junit.Assert.assertNotEquals("2u23-1", result.faculty)
+        org.junit.Assert.assertNotEquals("2u23-1", result.career)
+        assertTrue(result.isCompleteForRegistration)
+    }
+    }

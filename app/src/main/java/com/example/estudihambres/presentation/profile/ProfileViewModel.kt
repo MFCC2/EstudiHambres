@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.estudihambres.core.theme.AppThemeMode
 import com.example.estudihambres.core.util.SessionManager
+import com.example.estudihambres.data.repository.FirebaseAuthRepositoryImpl
+import com.example.estudihambres.domain.repository.AuthRepository
 import com.example.estudihambres.domain.model.VerificationStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,7 +46,8 @@ data class ProfileUiState(
  * ViewModel encargado de la carga, edición y persistencia del perfil universitario.
  */
 class ProfileViewModel(
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val authRepository: AuthRepository = FirebaseAuthRepositoryImpl(sessionManager = sessionManager)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -142,6 +145,11 @@ class ProfileViewModel(
                 career = state.career.trim(),
                 studentCode = state.studentCode.trim()
             )
+            authRepository.updateProfile(
+                fullName = state.fullName.trim(),
+                career = state.career.trim(),
+                studentCode = state.studentCode.trim()
+            )
             _uiState.update {
                 it.copy(
                     isSaving = false,
@@ -161,10 +169,11 @@ class ProfileViewModel(
 }
 
 class ProfileViewModelFactory(
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val authRepository: AuthRepository = FirebaseAuthRepositoryImpl(sessionManager = sessionManager)
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return ProfileViewModel(sessionManager) as T
+        return ProfileViewModel(sessionManager, authRepository) as T
     }
 }
