@@ -170,7 +170,8 @@ class RewardsStoreQaTest {
 
     @Test
     fun testSunatQrFormatParsing() {
-        val qrRaw = "20100107214|03|B001|00049281|3.33|21.90|23/10/2026|1|72945602|DIGEST_HASH_ABC123==|"
+        val todayStr = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.ROOT).format(java.util.Date())
+        val qrRaw = "20100107214|03|B001|00049281|3.33|21.90|$todayStr|1|72945602|DIGEST_HASH_ABC123==|"
         val result = sunatValidator.parseSunatQr(qrRaw)
         assertTrue("El QR de SUNAT debe ser parseado exitosamente", result.isValid)
         assertEquals("20100107214", result.receiptData?.ruc)

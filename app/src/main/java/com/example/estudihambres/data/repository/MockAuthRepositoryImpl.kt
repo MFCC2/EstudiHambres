@@ -133,4 +133,16 @@ class MockAuthRepositoryImpl(
         session?.clearSession()
         return Result.success(Unit)
     }
+
+    override suspend fun updateProfile(fullName: String, career: String, studentCode: String): Result<Unit> {
+        val current = currentUserState.value ?: return Result.failure(IllegalStateException("No hay un usuario en sesión"))
+        val updated = current.copy(
+            fullName = fullName.trim(),
+            career = career.trim(),
+            studentCode = studentCode.trim()
+        )
+        currentUserState.value = updated
+        session?.updateProfile(fullName, updated.email, career, studentCode)
+        return Result.success(Unit)
+    }
 }

@@ -44,4 +44,15 @@ data class StudentCardOcrResult(
     val studentStatus: String = "Estudiante Regular (Vigente)",
     val isVigente: Boolean = true,
     val rawText: String = ""
-)
+) {
+    /**
+     * Determina si el resultado contiene los datos indispensables para completar el registro estudiantil
+     * (Universidad, DNI peruano de 8 dígitos e identificación del estudiante).
+     */
+    val isCompleteForRegistration: Boolean
+        get() = isVerified &&
+                !universityName.isNullOrBlank() &&
+                !studentDni.isNullOrBlank() &&
+                studentDni.length == 8 &&
+                (!studentName.isNullOrBlank() || !apellidos.isNullOrBlank() || !nombres.isNullOrBlank())
+}

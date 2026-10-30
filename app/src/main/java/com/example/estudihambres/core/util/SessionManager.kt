@@ -205,7 +205,7 @@ class SessionManager(context: Context) {
         return accountPrefs.contains("dni_to_email_$cleanDni")
     }
 
-    private fun saveAccountInternal(user: StudentUser, password: String) {
+    fun saveAccountInternal(user: StudentUser, password: String) {
         val normalizedEmail = user.email.trim().lowercase()
         val passwordToStore = if (password.length == 64 && password.all { it.isDigit() || it in 'a'..'f' }) {
             password
@@ -1099,6 +1099,9 @@ class SessionManager(context: Context) {
      * Cierra la sesión activa borrando únicamente [sessionPrefs], preservando las cuentas registradas en [accountPrefs].
      */
     fun clearSession() {
+        try {
+            com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
+        } catch (_: Exception) {}
         sessionPrefs.edit().clear().apply()
     }
 }

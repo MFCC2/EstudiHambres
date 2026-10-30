@@ -22,10 +22,21 @@ import java.util.Locale
 class ParseStudentCardOcrUseCase {
 
     private val yearRegex = Regex("""\b(19\d{2}|20\d{2})\b""")
-    private val codeRegex = Regex("""(?i)\b(?:C[OÓ]DIGO|C[OÓ]D\.?)\s*:?\s*([A-Za-z0-9\-]+)""")
-    private val dniRegex = Regex("""(?i)\b(?:D\.?N\.?I\.?)\s*:?\s*([0-9]{8,9}(?:-[0-9])?)""")
+    private val codeRegex = Regex("""(?i)\b(?:C[OÓ]DIGO|C[OÓ]D\.?)\s*:?\s*([A-Za-z0-9\-]{5,15})""")
+    private val dniRegex = Regex("""(?i)\b(?:D\.?\s*N\.?\s*I\.?)\s*:?\s*([0-9]{8,9}(?:-[0-9])?)""")
     private val dniStandaloneRegex = Regex("""\b(\d{8})\b""")
     private val expireDateRegex = Regex("""(?i)EXPIRA[:\s]*(\d{1,2})[\s/\.-]+(\d{1,2})[\s/\.-]+(\d{2,4})""")
+
+    /**
+     * Identifica si una cadena corresponde a un periodo académico o ciclo de ingreso (ej. "2023 - I", "2u23-1", "2024-II")
+     * para evitar que se asigne erróneamente como facultad, carrera o nombre de estudiante.
+     */
+    private fun isSemesterOrPeriod(text: String): Boolean {
+        val clean = text.trim().uppercase(Locale.ROOT)
+        return clean.matches(Regex("""^2[0uUoO]\d{2}\s*[-/–]\s*[0-9IIVv]+$""")) ||
+                clean.matches(Regex("""^2\d{3}\s*[-/–]\s*[0-9IIVv]+$""")) ||
+                clean.matches(Regex("""^2\d{3}[-/][0-9IIVv]+$"""))
+    }
 
     /**
      * Procesa el texto plano extraído del documento y evalúa si califica fehacientemente como carnet universitario oficial.
@@ -145,14 +156,17 @@ class ParseStudentCardOcrUseCase {
                 detectedUniversity = line
             }
 
-            // Detección de Código
+            // Detección de Código (debe tener al menos 5 caracteres alfanuméricos)
             if (detectedCodigo == null) {
                 val codeMatch = codeRegex.find(line)
                 if (codeMatch != null) {
-                    detectedCodigo = codeMatch.groupValues[1].trim()
+                    val candidate = codeMatch.groupValues[1].trim()
+                    if (candidate.length >= 5) {
+                        detectedCodigo = candidate
+                    }
                 } else if ((upper.startsWith("CODIGO:") || upper.startsWith("COD:") || upper.startsWith("CÓDIGO:")) && i + 1 < rawLines.size) {
                     val candidate = rawLines[i + 1].trim()
-                    if (candidate.all { it.isLetterOrDigit() || it == '-' }) {
+                    if (candidate.length >= 5 && candidate.all { it.isLetterOrDigit() || it == '-' }) {
                         detectedCodigo = candidate
                     }
                 }
@@ -163,8 +177,10 @@ class ParseStudentCardOcrUseCase {
                 val dniMatch = dniRegex.find(line)
                 if (dniMatch != null) {
                     val rawDni = dniMatch.groupValues[1].replace("-", "").trim()
-                    detectedDni = rawDni.take(8)
-                } else if ((upper.startsWith("DNI:") || upper.startsWith("D.N.I:") || upper.startsWith("DNI") || upper.startsWith("D.N.I")) && i + 1 < rawLines.size) {
+                    if (rawDni.length >= 8) {
+                        detectedDni = rawDni.take(8)
+                    }
+                } else if ((upper.startsWith("DNI") || upper.startsWith("D.N.I") || upper.startsWith("D. N. I")) && i + 1 < rawLines.size) {
                     val candidate = rawLines[i + 1].replace("-", "").trim()
                     if (candidate.length >= 8 && candidate.take(8).all { it.isDigit() }) {
                         detectedDni = candidate.take(8)
@@ -172,19 +188,42 @@ class ParseStudentCardOcrUseCase {
                 }
             }
 
-            // Detección de Apellidos
+            // Detección combinada de Apellidos y Nombres (ej. "ESTUDIANTE: CALLAÑAUPA CJUIRO, MANUEL FABRIZIO")
+            if (detectedApellidos == null && (upper.startsWith("ESTUDIANTE:") || upper.startsWith("ALUMNO:") || upper.startsWith("APELLIDOS Y NOMBRES:"))) {
+                val afterColon = line.substringAfter(":").trim()
+                if (afterColon.isNotBlank()) {
+                    if (afterColon.contains(",")) {
+                        val parts = afterColon.split(",")
+                        detectedApellidos = parts[0].trim()
+                        if (detectedNombres == null) {
+                            detectedNombres = parts.getOrNull(1)?.trim()
+                        }
+                    } else {
+                        val words = afterColon.split(" ").filter { it.isNotBlank() }
+                        if (words.size >= 3) {
+                            detectedApellidos = "${words[0]} ${words[1]}"
+                            if (detectedNombres == null) {
+                                detectedNombres = words.drop(2).joinToString(" ")
+                            }
+                        } else {
+                            detectedApellidos = afterColon
+                        }
+                    }
+                }
+            }
+
+            // Detección de Apellidos por encabezado
             if (detectedApellidos == null && (upper.startsWith("APELLIDOS") || upper.startsWith("APELLIDO"))) {
                 val afterColon = line.substringAfter(":").trim()
                 if (afterColon.isNotBlank() && !afterColon.equals(line, ignoreCase = true)) {
                     detectedApellidos = afterColon
                 } else {
-                    // Recoger las siguientes líneas si no son encabezados de otros campos
                     val apellidoParts = mutableListOf<String>()
                     var j = i + 1
                     while (j < rawLines.size && j <= i + 2) {
                         val nextLine = rawLines[j].trim()
                         val nextUpper = nextLine.uppercase()
-                        if (nextUpper.startsWith("NOMBRE") || nextUpper.startsWith("FACULTAD") || nextUpper.startsWith("CARRERA") || nextUpper.startsWith("DNI") || nextUpper.startsWith("CODIGO")) {
+                        if (nextUpper.startsWith("NOMBRE") || nextUpper.startsWith("FACULTAD") || nextUpper.startsWith("CARRERA") || nextUpper.startsWith("DNI") || nextUpper.startsWith("CODIGO") || isSemesterOrPeriod(nextLine)) {
                             break
                         }
                         if (nextLine.isNotBlank()) {
@@ -198,7 +237,7 @@ class ParseStudentCardOcrUseCase {
                 }
             }
 
-            // Detección de Nombres
+            // Detección de Nombres por encabezado
             if (detectedNombres == null && (upper.startsWith("NOMBRES") || upper.startsWith("NOMBRE"))) {
                 val afterColon = line.substringAfter(":").trim()
                 if (afterColon.isNotBlank() && !afterColon.equals(line, ignoreCase = true)) {
@@ -209,7 +248,7 @@ class ParseStudentCardOcrUseCase {
                     while (j < rawLines.size && j <= i + 2) {
                         val nextLine = rawLines[j].trim()
                         val nextUpper = nextLine.uppercase()
-                        if (nextUpper.startsWith("FACULTAD") || nextUpper.startsWith("CARRERA") || nextUpper.startsWith("DNI") || nextUpper.startsWith("CODIGO") || nextUpper.startsWith("EXPIRA")) {
+                        if (nextUpper.startsWith("FACULTAD") || nextUpper.startsWith("CARRERA") || nextUpper.startsWith("DNI") || nextUpper.startsWith("CODIGO") || nextUpper.startsWith("EXPIRA") || isSemesterOrPeriod(nextLine)) {
                             break
                         }
                         if (nextLine.isNotBlank()) {
@@ -223,23 +262,50 @@ class ParseStudentCardOcrUseCase {
                 }
             }
 
-            // Detección de Facultad
-            if (detectedFaculty == null && upper.contains("FACULTAD")) {
-                val afterColon = line.substringAfter(":").trim()
-                if (afterColon.isNotBlank() && !afterColon.equals(line, ignoreCase = true)) {
-                    detectedFaculty = afterColon
-                } else if (i + 1 < rawLines.size) {
-                    detectedFaculty = rawLines[i + 1].trim()
+            // Detección de Facultad (soporta "FAC. DE INGENIERÍA", "FACULTAD DE ...", etc.)
+            if (detectedFaculty == null && !isSemesterOrPeriod(line)) {
+                when {
+                    upper.startsWith("FAC. DE ") || upper.startsWith("FAC DE ") -> {
+                        detectedFaculty = line.substring(line.indexOf("DE ", ignoreCase = true) + 3).trim()
+                    }
+                    upper.startsWith("FACULTAD DE ") -> {
+                        detectedFaculty = line.substring(line.indexOf("DE ", ignoreCase = true) + 3).trim()
+                    }
+                    upper.startsWith("FACULTAD:") -> {
+                        val after = line.substringAfter(":").trim()
+                        if (after.isNotBlank() && !isSemesterOrPeriod(after)) {
+                            detectedFaculty = after
+                        } else if (i + 1 < rawLines.size && !isSemesterOrPeriod(rawLines[i + 1])) {
+                            detectedFaculty = rawLines[i + 1].trim()
+                        }
+                    }
+                    upper == "FACULTAD" && i + 1 < rawLines.size && !isSemesterOrPeriod(rawLines[i + 1]) -> {
+                        detectedFaculty = rawLines[i + 1].trim()
+                    }
                 }
             }
 
-            // Detección de Carrera
-            if (detectedCareer == null && (upper.contains("CARRERA") || upper.contains("ESCUELA"))) {
-                val afterColon = line.substringAfter(":").trim()
-                if (afterColon.isNotBlank() && !afterColon.equals(line, ignoreCase = true)) {
-                    detectedCareer = afterColon
-                } else if (i + 1 < rawLines.size) {
-                    detectedCareer = rawLines[i + 1].trim()
+            // Detección de Carrera (soporta "ING. DE SISTEMAS...", "CARRERA: ...", "ESCUELA: ...")
+            if (detectedCareer == null && !isSemesterOrPeriod(line)) {
+                when {
+                    upper.startsWith("CARRERA:") || upper.startsWith("ESCUELA:") -> {
+                        val after = line.substringAfter(":").trim()
+                        if (after.isNotBlank() && !isSemesterOrPeriod(after)) {
+                            detectedCareer = after
+                        } else if (i + 1 < rawLines.size && !isSemesterOrPeriod(rawLines[i + 1])) {
+                            detectedCareer = rawLines[i + 1].trim()
+                        }
+                    }
+                    upper.startsWith("ING. DE ") || upper.startsWith("INGENIERIA DE ") || upper.startsWith("INGENIERÍA DE ") ||
+                    upper.startsWith("LIC. EN ") || upper.startsWith("LICENCIATURA EN ") ||
+                    upper.startsWith("CARRERA DE ") || upper.startsWith("CARRERA PROFESIONAL DE ") ||
+                    upper.startsWith("ESC. DE ") || upper.startsWith("ESCUELA DE ") ||
+                    upper.startsWith("MEDICINA ") || upper.startsWith("DERECHO") || upper.startsWith("ARQUITECTURA") || upper.startsWith("PSICOLOGIA") -> {
+                        detectedCareer = line.trim()
+                    }
+                    upper == "CARRERA" && i + 1 < rawLines.size && !isSemesterOrPeriod(rawLines[i + 1]) -> {
+                        detectedCareer = rawLines[i + 1].trim()
+                    }
                 }
             }
 
@@ -266,8 +332,8 @@ class ParseStudentCardOcrUseCase {
             }
         }
 
-        // Si código no se extrajo por prefijo, usar DNI o coincidencia de código
-        if (detectedCodigo == null) {
+        // Si código no se extrajo por prefijo o era ruido corto (< 5 caracteres), usar DNI
+        if (detectedCodigo == null || detectedCodigo.length < 5) {
             detectedCodigo = detectedDni
         }
 

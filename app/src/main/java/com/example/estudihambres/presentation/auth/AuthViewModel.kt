@@ -2,7 +2,7 @@ package com.example.estudihambres.presentation.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.estudihambres.data.repository.MockAuthRepositoryImpl
+import com.example.estudihambres.data.repository.FirebaseAuthRepositoryImpl
 import com.example.estudihambres.domain.model.StudentCardOcrResult
 import com.example.estudihambres.domain.model.StudentUser
 import com.example.estudihambres.domain.model.VerificationStatus
@@ -68,7 +68,7 @@ data class RegisterUiState(
  * @param validator Caso de uso para validación de formato de credenciales.
  */
 class AuthViewModel(
-    private val authRepository: AuthRepository = MockAuthRepositoryImpl(),
+    private val authRepository: AuthRepository = FirebaseAuthRepositoryImpl(),
     private val validator: ValidateStudentCredentialsUseCase = ValidateStudentCredentialsUseCase()
 ) : ViewModel() {
 

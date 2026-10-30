@@ -3,7 +3,7 @@ package com.example.estudihambres.presentation.verification
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.estudihambres.data.repository.MockAuthRepositoryImpl
+import com.example.estudihambres.data.repository.FirebaseAuthRepositoryImpl
 import com.example.estudihambres.domain.model.StudentCardOcrResult
 import com.example.estudihambres.domain.model.VerificationStatus
 import com.example.estudihambres.domain.repository.AuthRepository
@@ -39,7 +39,7 @@ data class VerificationUiState(
  * @param validator Caso de uso para validar formato de DNI y credenciales.
  */
 class StudentVerificationViewModel(
-    private val authRepository: AuthRepository = MockAuthRepositoryImpl(),
+    private val authRepository: AuthRepository = FirebaseAuthRepositoryImpl(),
     private val parser: ParseStudentCardOcrUseCase = ParseStudentCardOcrUseCase(),
     private val validator: ValidateStudentCredentialsUseCase = ValidateStudentCredentialsUseCase()
 ) : ViewModel() {
