@@ -82,6 +82,28 @@ class ParseStudentCardOcrUseCase {
             )
         }
 
+        // 1.1 Filtro de rechazo DNI / RENIEC: Detección explícita de DNI peruano para alertar al usuario
+        val isNationalIdCard = normalized.contains("RENIEC") ||
+                normalized.contains("REGISTRO NACIONAL DE IDENTIFICACION") ||
+                normalized.contains("DOCUMENTO NACIONAL DE IDENTIDAD") ||
+                normalized.contains("TRIBUNAL CONSTITUCIONAL") ||
+                (normalized.contains("FECHA DE NACIMIENTO") && (normalized.contains("SEXO") || normalized.contains("ESTADO CIVIL") || normalized.contains("DONACION"))) ||
+                (normalized.contains("REPUBLICA DEL PERU") && normalized.contains("DOCUMENTO NACIONAL"))
+
+        if (isNationalIdCard) {
+            val dniFound = dniStandaloneRegex.find(rawText)?.value
+            return StudentCardOcrResult(
+                isVerified = false,
+                isNationalIdCard = true,
+                hasSuneduKeyword = false,
+                hasUniversityKeyword = false,
+                hasSuneduSeal = false,
+                studentDni = dniFound,
+                rejectionReason = "⚠️ Has escaneado un DNI (RENIEC). Para acceder a los beneficios debes enfocar tu Carnet Universitario SUNEDU oficial.",
+                rawText = rawText
+            )
+        }
+
         // 2. Detección de SUNEDU y membrete oficial de la República del Perú
         val hasSuneduKeyword = normalized.contains("SUNEDU") ||
                 normalized.contains("SUPERINTENDENCIA NACIONAL DE EDUCACION")
@@ -385,8 +407,14 @@ class ParseStudentCardOcrUseCase {
 
         // 7. Evaluación de vigencia y condición del estudiante
         val detectedYearInt = detectedYear?.toIntOrNull()
-        val isYearValid = detectedYearInt?.let { it >= 2024 } ?: true
-        val isVigente = isYearValid && (detectedYearInt == null || detectedYearInt >= 2025)
+        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        val isVigente = when {
+            detectedYearInt != null -> detectedYearInt >= currentYear
+            normalized.contains(currentYear.toString()) || normalized.contains((currentYear + 1).toString()) -> true
+            else -> false
+        }
+        val isYearValid = isVigente
+
 
         // Estado de estudiante (Regular de pregrado vs Postgrado)
         val isPostgrado = normalized.contains("POST GRADO") ||
@@ -395,15 +423,22 @@ class ParseStudentCardOcrUseCase {
                 normalized.contains("DOCTORADO")
 
         val studentStatus = when {
-            isPostgrado && isVigente -> "Activo (Postgrado - Vigencia ${detectedYear ?: "2026"})"
-            isPostgrado -> "Caducado (Postgrado - Venció ${detectedYear ?: "Anterior"})"
-            isVigente -> "Activo (Pregrado Regular - Vigencia ${detectedYear ?: "2026"})"
-            else -> "Caducado (Pregrado - Venció ${detectedYear ?: "Anterior"})"
+            isPostgrado && isVigente -> "Activo (Postgrado - Vigencia ${detectedYear ?: currentYear.toString()})"
+            isPostgrado -> "Caducado (Postgrado - Venció ${detectedYear ?: "año anterior"})"
+            isVigente -> "Activo (Pregrado Regular - Vigencia ${detectedYear ?: currentYear.toString()})"
+            else -> "Caducado (Pregrado - Venció ${detectedYear ?: "año anterior"})"
         }
 
         // 8. Criterio de verificación estricta:
         // Debe ser carnet universitario auténtico con SUNEDU + UNIVERSIDAD o CARNET + UNIVERSIDAD + identificadores
-        val isVerified = !isCommercialReceipt && isYearValid && (
+        val rejectionReason = when {
+            !isVigente && detectedYear != null -> "⚠️ Carnet caducado en $detectedYear. Se requiere carnet universitario con vigencia $currentYear o superior."
+            !isVigente -> "⚠️ Carnet sin vigencia comprobable. Se requiere carnet universitario con vigencia $currentYear o superior."
+            !hasSuneduKeyword && !hasSuneduSeal -> "⚠️ No se detectaron los sellos oficiales de SUNEDU."
+            else -> null
+        }
+
+        val isVerified = !isCommercialReceipt && !isNationalIdCard && isVigente && (
                 (hasSuneduKeyword && hasUniversityKeyword && (hasCarnetKeyword || detectedDni != null || hasStudentKeywords)) ||
                 (hasCarnetKeyword && hasUniversityKeyword && (detectedDni != null || hasStudentKeywords || detectedYear != null)) ||
                 (hasUniversityKeyword && detectedDni != null && detectedYear != null && hasStudentKeywords)
@@ -427,6 +462,7 @@ class ParseStudentCardOcrUseCase {
             faculty = detectedFaculty?.let { toTitleCase(it) },
             studentStatus = studentStatus,
             isVigente = isVigente,
+            rejectionReason = if (!isVerified) rejectionReason else null,
             rawText = rawText
         )
     }

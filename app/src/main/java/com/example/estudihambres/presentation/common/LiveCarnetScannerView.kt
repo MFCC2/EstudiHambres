@@ -127,14 +127,20 @@ private class LiveCarnetAccumulator {
         val hasInstitution = hasSuneduKeyword || hasUniversityKeyword || !universityName.isNullOrBlank()
         val hasDni = !studentDni.isNullOrBlank() && studentDni!!.length == 8
         val hasName = !studentName.isNullOrBlank() || !apellidos.isNullOrBlank()
-        return hasInstitution && hasDni && hasName
+        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        val yearInt = validityYearDetected?.toIntOrNull()
+        val isYearVigente = yearInt == null || yearInt >= currentYear
+        return hasInstitution && hasDni && hasName && isYearVigente
     }
 
     fun buildResult(rawText: String): StudentCardOcrResult {
         val effectiveName = studentName ?: listOfNotNull(nombres, apellidos).joinToString(" ").takeIf { it.isNotBlank() }
         val effectiveCode = studentCode ?: studentDni
+        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+        val yearInt = validityYearDetected?.toIntOrNull()
+        val isVigente = yearInt == null || yearInt >= currentYear
         return StudentCardOcrResult(
-            isVerified = true,
+            isVerified = isVigente,
             hasSuneduKeyword = hasSuneduKeyword,
             hasUniversityKeyword = hasUniversityKeyword,
             hasSuneduSeal = hasSuneduSeal,
@@ -149,8 +155,9 @@ private class LiveCarnetAccumulator {
             studentCode = effectiveCode,
             career = career,
             faculty = faculty,
-            studentStatus = "Activo (Pregrado Regular - Vigencia ${validityYearDetected ?: "2026"})",
-            isVigente = true,
+            studentStatus = if (isVigente) "Activo (Pregrado Regular - Vigencia ${validityYearDetected ?: currentYear.toString()})" else "Caducado (Pregrado - Venció ${validityYearDetected ?: "año anterior"})",
+            isVigente = isVigente,
+            rejectionReason = if (!isVigente) "⚠️ Carnet caducado en ${validityYearDetected ?: "año anterior"}. Requiere vigencia $currentYear o superior." else null,
             rawText = rawText
         )
     }
@@ -288,6 +295,23 @@ fun LiveCarnetScannerView(
                                                 }
                                             } else {
                                                 val parsed = parser(visionText.text)
+                                                if (parsed.isNationalIdCard) {
+                                                    accumulator.reset()
+                                                    consecutiveValidFrames = 0
+                                                    ContextCompat.getMainExecutor(ctx).execute {
+                                                        scanProgress = 0f
+                                                        scanStatusMessage = "⚠️ Es un DNI (RENIEC). Requiere Carnet SUNEDU"
+                                                    }
+                                                    return@addOnSuccessListener
+                                                }
+                                                if (!parsed.isVigente && parsed.validityYearDetected != null) {
+                                                    consecutiveValidFrames = 0
+                                                    ContextCompat.getMainExecutor(ctx).execute {
+                                                        scanProgress = 0.20f
+                                                        scanStatusMessage = "⚠️ Carnet caducado (${parsed.validityYearDetected}). Requiere vigencia 2026"
+                                                    }
+                                                    return@addOnSuccessListener
+                                                }
                                                 accumulator.update(parsed)
 
                                                 if (accumulator.isReadyForCompletion()) {

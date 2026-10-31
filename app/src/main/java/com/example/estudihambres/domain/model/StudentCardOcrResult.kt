@@ -43,6 +43,8 @@ data class StudentCardOcrResult(
     val faculty: String? = null,
     val studentStatus: String = "Estudiante Regular (Vigente)",
     val isVigente: Boolean = true,
+    val isNationalIdCard: Boolean = false,
+    val rejectionReason: String? = null,
     val rawText: String = ""
 ) {
     /**
@@ -51,6 +53,8 @@ data class StudentCardOcrResult(
      */
     val isCompleteForRegistration: Boolean
         get() = isVerified &&
+                isVigente &&
+                !isNationalIdCard &&
                 !universityName.isNullOrBlank() &&
                 !studentDni.isNullOrBlank() &&
                 studentDni.length == 8 &&

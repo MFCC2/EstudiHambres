@@ -197,7 +197,7 @@ fun RegisterScreen(
                             } else {
                                 Toast.makeText(
                                     context,
-                                    "No se detectaron los sellos oficiales de SUNEDU en la imagen seleccionada.",
+                                    parsed.rejectionReason ?: "No se detectaron los sellos oficiales de SUNEDU en la imagen seleccionada.",
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
@@ -451,7 +451,7 @@ fun RegisterScreen(
                                                             viewModel.onCarnetScannedInRegister(parsed)
                                                             Toast.makeText(context, "¡Carnet SUNEDU validado!", Toast.LENGTH_SHORT).show()
                                                         } else {
-                                                            Toast.makeText(context, "No se identificó el sello oficial SUNEDU. Enfoca con mayor nitidez.", Toast.LENGTH_SHORT).show()
+                                                            Toast.makeText(context, parsed.rejectionReason ?: "No se identificó el sello oficial SUNEDU. Enfoca con mayor nitidez.", Toast.LENGTH_SHORT).show()
                                                         }
                                                     }
                                                     .addOnFailureListener {

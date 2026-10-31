@@ -46,14 +46,14 @@ class ParseStudentCardOcrUseCaseTest {
         val sampleOcrText = """
             UNIVERSIDAD DE INGENIERÍA
             CARNET ESTUDIANTIL
-            VÁLIDO 2025
+            VÁLIDO 2026
         """.trimIndent()
 
         val result = parser(sampleOcrText)
 
         assertTrue(result.isVerified)
         assertTrue(result.hasUniversityKeyword)
-        assertEquals("2025", result.validityYearDetected)
+        assertEquals("2026", result.validityYearDetected)
     }
 
     @Test
@@ -124,6 +124,7 @@ class ParseStudentCardOcrUseCaseTest {
         assertEquals("Manuel Fabrizio Callañaupa Cjuiro", result.studentName)
         assertEquals("Universidad Continental", result.universityName)
         assertTrue(result.isCompleteForRegistration)
+
     }
 
     @Test
@@ -151,6 +152,7 @@ class ParseStudentCardOcrUseCaseTest {
         assertEquals("Ingeniería", result.faculty)
         assertEquals("Ing. De Sistemas E Informática", result.career)
         assertTrue(result.isCompleteForRegistration)
+
     }
 
     @Test
@@ -174,5 +176,55 @@ class ParseStudentCardOcrUseCaseTest {
         org.junit.Assert.assertNotEquals("2u23-1", result.faculty)
         org.junit.Assert.assertNotEquals("2u23-1", result.career)
         assertTrue(result.isCompleteForRegistration)
+
+    }
+
+    @Test
+    fun `peruvian national DNI is rejected with informative message and flagged as DNI`() {
+        val dniOcrText = """
+            REPÚBLICA DEL PERÚ
+            REGISTRO NACIONAL DE IDENTIFICACIÓN Y ESTADO CIVIL
+            DOCUMENTO NACIONAL DE IDENTIDAD
+            72945602
+            CALLAÑAUPA CJUIRO
+            MANUEL FABRIZIO
+            FECHA DE NACIMIENTO: 15/04/2003
+            SEXO: M
+            ESTADO CIVIL: S
+        """.trimIndent()
+
+        val result = parser(dniOcrText)
+
+        assertFalse(result.isVerified)
+        assertTrue(result.isNationalIdCard)
+        assertEquals("72945602", result.studentDni)
+        assertNotNull(result.rejectionReason)
+        assertTrue(result.rejectionReason!!.contains("RENIEC"))
+        assertFalse(result.isCompleteForRegistration)
+    }
+
+    @Test
+    fun `expired carnet with year 2024 or 2025 is marked as expired and unverified`() {
+        val expiredCarnet = """
+            REPÚBLICA DEL PERÚ
+            SUNEDU
+            CARNET UNIVERSITARIO
+            UNIVERSIDAD CONTINENTAL
+            ESTUDIANTE: CALLAÑAUPA CJUIRO, MANUEL FABRIZIO
+            CÓDIGO: 72945602
+            EXPIRA: 31/12/2024
+            VÁLIDO 2024
+        """.trimIndent()
+
+        val result = parser(expiredCarnet)
+
+        assertFalse(result.isVerified)
+        assertFalse(result.isVigente)
+        assertEquals("2024", result.validityYearDetected)
+        assertTrue(result.studentStatus.contains("Caducado"))
+        assertNotNull(result.rejectionReason)
+        assertTrue(result.rejectionReason!!.contains("caducado"))
+        assertFalse(result.isCompleteForRegistration)
+
     }
     }
