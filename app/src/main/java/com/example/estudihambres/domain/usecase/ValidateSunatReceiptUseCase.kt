@@ -74,7 +74,7 @@ class ValidateSunatReceiptUseCase {
         }
 
         // 2. Validación de Serie (debe ser boleta electrónica: B### o EB##)
-        if (!cleanSerie.matches(Regex("""^E?B[A-Z0-9]{3}$"""))) {
+        if (!cleanSerie.matches(Regex("""^(?:B[A-Z0-9]{3}|EB[A-Z0-9]{2})$"""))) {
             return ReceiptValidationResult(
                 isValid = false,
                 rejectionReason = "Serie '$cleanSerie' no admitida. Las Boletas de Venta Electrónicas de SUNAT inician con 'B' (ej. B001, BA01)."
