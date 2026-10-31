@@ -259,4 +259,45 @@ class RewardsStoreQaTest {
         val soles500 = points500 / 100.0
         assertEquals(5.00, soles500, 0.01)
     }
+    @Test
+    fun testThermalReceiptOcrRegexParsing() {
+        val thermalReceiptOcr = """
+            BEMBOS S.A.C.
+            RUC: 20252391498
+            AV. LARCO 1050 MIRAFLORES
+            BOLETA DE VENTA ELECTRONICA
+            B001-00049281
+            FECHA: 30/10/2026 14:20
+            1 COMBO CLASICA S/ 19.90
+            1 PAPAS REGULARES S/ 5.90
+            1 GASEOSA 500ML S/ 4.00
+            OP. GRAVADA S/ 25.25
+            IGV (18%) S/ 4.55
+            TOTAL S/ 29.80
+        """.trimIndent()
+
+        val rucRegex = Regex("""\b(20\d{9}|10\d{9})\b""")
+        val rucMatch = rucRegex.find(thermalReceiptOcr.uppercase())?.value
+        assertEquals("20252391498", rucMatch)
+
+        val boletaComboRegex = Regex("""\b(E?B[A-Z0-9]{3})\s*[-–:/#\s]\s*([0-9]{1,8})\b""")
+        val combo = boletaComboRegex.find(thermalReceiptOcr.uppercase())
+        assertNotNull(combo)
+        assertEquals("B001", combo?.groupValues?.get(1))
+        assertEquals("00049281", combo?.groupValues?.get(2))
+
+        val totalRegex = Regex("""(?:TOTAL|IMPORTE\s*TOTAL|TOTAL\s*A\s*PAGAR|VENTA\s*TOTAL|PAGAR|TOTAL\s*S/\.?)\s*[:=]?\s*S?/?\.?\s*([0-9]+[.,][0-9]{2})""")
+        val total = totalRegex.findAll(thermalReceiptOcr.uppercase()).lastOrNull()?.groupValues?.get(1)?.toDoubleOrNull()
+        assertEquals(29.80, total ?: 0.0, 0.01)
+
+        val result = sunatValidator(
+            ruc = rucMatch!!,
+            serie = combo!!.groupValues[1],
+            correlativo = combo.groupValues[2],
+            montoTotal = total!!,
+            fechaEmisionMillis = System.currentTimeMillis()
+        )
+        assertTrue("La boleta térmica parseada debe ser válida", result.isValid)
+        assertEquals(80, result.pointsAwarded)
+    }
 }

@@ -615,21 +615,39 @@ fun LiveReceiptScannerDialog(
 private fun parseReceiptTextFallback(text: String): Quadruple<String, String, String, Double>? {
     val upper = text.uppercase()
 
-    // 1. Buscar RUC (11 dígitos, prefijo 20 o 10)
+    // 1. Buscar RUC (11 dígitos, prefijo 20 o 10, con tolerancia a espacios o prefijo RUC)
     val rucRegex = Regex("""\b(20\d{9}|10\d{9})\b""")
-    val rucMatch = rucRegex.find(upper)?.value ?: return null
+    val rucMatch = rucRegex.find(upper)?.value ?: run {
+        val rucSpaced = Regex("""(?:RUC[:\s]*)(\d[\d\s-]{9,15}\d)""").find(upper)?.groupValues?.get(1)?.replace(Regex("""[\s-]"""), "")
+        if (rucSpaced != null && rucSpaced.length == 11 && (rucSpaced.startsWith("20") || rucSpaced.startsWith("10"))) {
+            rucSpaced
+        } else {
+            return null
+        }
+    }
 
-    // 2. Buscar Serie de Boleta (B001, B002, etc.)
-    val serieRegex = Regex("""\b(B[A-Z0-9]{3})\b""")
-    val serieMatch = serieRegex.find(upper)?.value ?: return null
+    // 2. Buscar Serie y Correlativo juntos o separados (soporte unificado a "B001-00049281", "B001 - 49281", "BA01:00012345")
+    val boletaComboRegex = Regex("""\b(E?B[A-Z0-9]{3})\s*[-–:/#\s]\s*([0-9]{1,8})\b""")
+    val comboMatch = boletaComboRegex.find(upper)
 
-    // 3. Buscar Correlativo numérico cercano (1 a 8 dígitos)
-    val numRegex = Regex("""(?:-|N°|NRO|NUMERO)?\s*([0-9]{1,8})\b""")
-    val numMatch = numRegex.find(upper)?.groupValues?.get(1) ?: "00000001"
+    val (serieMatch, numMatch) = if (comboMatch != null) {
+        Pair(comboMatch.groupValues[1], comboMatch.groupValues[2])
+    } else {
+        val serieRegex = Regex("""\b(E?B[A-Z0-9]{3})\b""")
+        val s = serieRegex.find(upper)?.value ?: return null
+        val afterSerie = upper.substringAfter(s)
+        val numRegex = Regex("""(?:N°|NRO|NUMERO|N°:)?\s*([0-9]{1,8})\b""")
+        val n = numRegex.find(afterSerie)?.groupValues?.get(1) ?: "00000001"
+        Pair(s, n)
+    }
 
-    // 4. Buscar Monto Total
-    val totalRegex = Regex("""(?:TOTAL|IMPORTE|S/|SOLES)\s*[:=]?\s*S?/?\.?\s*([0-9]+[.,][0-9]{2})""")
-    val totalMatch = totalRegex.find(upper)?.groupValues?.get(1)?.replace(",", ".")?.toDoubleOrNull() ?: 18.50
+    // 3. Buscar Monto Total
+    val totalRegex = Regex("""(?:TOTAL|IMPORTE\s*TOTAL|TOTAL\s*A\s*PAGAR|VENTA\s*TOTAL|PAGAR|TOTAL\s*S/\.?)\s*[:=]?\s*S?/?\.?\s*([0-9]+[.,][0-9]{2})""")
+    val totalMatch = totalRegex.findAll(upper).lastOrNull()?.groupValues?.get(1)?.replace(",", ".")?.toDoubleOrNull()
+        ?: run {
+            val currencyRegex = Regex("""S/\.?\s*([0-9]+[.,][0-9]{2})""")
+            currencyRegex.findAll(upper).mapNotNull { it.groupValues[1].replace(",", ".").toDoubleOrNull() }.maxOrNull() ?: 18.50
+        }
 
     return Quadruple(rucMatch, serieMatch, numMatch, totalMatch)
 }
