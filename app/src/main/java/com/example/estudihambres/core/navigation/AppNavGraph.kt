@@ -194,6 +194,9 @@ fun AppNavGraph(
                     onNavigateToMap = {
                         navController.navigate(Screen.Map.route)
                     },
+                    onNavigateToRewards = {
+                        navController.navigate(Screen.Rewards.route)
+                    },
                     onLogout = {
                         sessionManager.clearSession()
                         navController.navigate(Screen.Login.route) {

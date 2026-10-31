@@ -125,6 +125,7 @@ fun HomeScreen(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToVerification: () -> Unit = {},
     onNavigateToMap: () -> Unit = {},
+    onNavigateToRewards: () -> Unit = {},
     onLogout: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
@@ -237,9 +238,13 @@ fun HomeScreen(
                 }
             }
 
-            // 2. Tarjeta de Ahorro Acumulado
+            // 2. Tarjeta Dual de Métricas Universitarias: Ahorro + StudiPuntos
             item {
-                SavingsHighlightCard(accumulatedSavings = state.accumulatedSavings)
+                DualMetricsDashboardCard(
+                    accumulatedSavings = state.accumulatedSavings,
+                    studiPuntos = state.studiPuntos,
+                    onNavigateToRewards = onNavigateToRewards
+                )
             }
 
             // 3. Barra de Búsqueda Funcional con chips sugeridos
@@ -274,13 +279,7 @@ fun HomeScreen(
                             val isSelected = state.searchQuery.equals(tag, ignoreCase = true)
                             FilterChip(
                                 selected = isSelected,
-                                onClick = {
-                                    if (isSelected) {
-                                        viewModel.onSearchQueryChange("")
-                                    } else {
-                                        viewModel.onSearchQueryChange(tag)
-                                    }
-                                },
+                                onClick = { viewModel.onQuickTagSelect(tag) },
                                 label = { Text(tag, style = MaterialTheme.typography.labelSmall) },
                                 shape = CampusShapes.small
                             )
@@ -763,92 +762,152 @@ private fun VerificationBadge(status: VerificationStatus) {
 }
 
 /**
- * Tarjeta destacada con el cálculo acumulativo de ahorro en Soles.
- * Estilo fintech premium con degradado esmeralda profundo y accesos directos.
+ */
+/**
+ * Tarjeta Dual de Métricas Universitarias:
+ * - Lado A: Dinero Total Ahorrado (S/ XX.XX).
+ * - Lado B: StudiPuntos Acumulados (X,XXX pts) con acceso en 1 toque al catálogo de recompensas.
  */
 @Composable
-private fun SavingsHighlightCard(accumulatedSavings: Double) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth()
+private fun DualMetricsDashboardCard(
+    accumulatedSavings: Double,
+    studiPuntos: Int,
+    onNavigateToRewards: () -> Unit = {}
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp)
+        // Tarjeta A: Dinero Ahorrado
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.weight(1f)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(50.dp)
-                            .clip(RoundedCornerShape(14.dp))
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
                             .background(MaterialTheme.colorScheme.surface)
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp)),
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "🪙", fontSize = 26.sp)
+                        Text(text = "💰", fontSize = 18.sp)
                     }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "TU AHORRO UNIVERSITARIO",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = 0.8.sp
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                text = "S/ ${"%.2f".format(accumulatedSavings)}",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.surface,
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                            ) {
-                                Text(
-                                    text = "Billetera Activa",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Text(
+                            text = "Ahorrado",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
                     }
                 }
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "DINERO AHORRADO",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "S/ ${"%.2f".format(accumulatedSavings)}",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
 
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        // Tarjeta B: StudiPuntos Obtenidos (Acceso a Tienda de Recompensas)
+        Card(
+            onClick = onNavigateToRewards,
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.weight(1f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "Activo ›",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "🪙", fontSize = 18.sp)
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = "Canjear ›",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "STUDIPUNTOS",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 0.5.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "${"%,d".format(studiPuntos)} pts",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }
+}
+
+@Composable
+private fun SavingsHighlightCard(accumulatedSavings: Double, studiPuntos: Int = 2450) {
+    DualMetricsDashboardCard(accumulatedSavings = accumulatedSavings, studiPuntos = studiPuntos)
 }
 
 /**
