@@ -151,10 +151,15 @@ class RewardsStoreQaTest {
         assertFalse(resInvalidRuc.isValid)
         assertTrue(resInvalidRuc.rejectionReason?.contains("RUC") == true)
 
-        // Serie inválida (no inicia con B)
-        val resInvalidSerie = sunatValidator("20100107214", "F001", "123", 15.0, now)
+        // Serie inválida (no autorizada por SUNAT)
+        val resInvalidSerie = sunatValidator("20100107214", "Z001", "123", 15.0, now)
         assertFalse(resInvalidSerie.isValid)
         assertTrue(resInvalidSerie.rejectionReason?.contains("Serie") == true)
+
+        // Factura electrónica F001 autorizada
+        val resFactura = sunatValidator("20100107214", "F001", "123", 15.0, now)
+        assertTrue("La Factura electrónica F001 debe ser admitida", resFactura.isValid)
+        assertEquals("01", resFactura.receiptData?.tipoComprobante)
 
         // Boleta de más de 72 horas (antigua)
         val fourDaysAgo = now - (96L * 3600 * 1000)
@@ -173,11 +178,18 @@ class RewardsStoreQaTest {
         val todayStr = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.ROOT).format(java.util.Date())
         val qrRaw = "20100107214|03|B001|00049281|3.33|21.90|$todayStr|1|72945602|DIGEST_HASH_ABC123==|"
         val result = sunatValidator.parseSunatQr(qrRaw)
-        assertTrue("El QR de SUNAT debe ser parseado exitosamente", result.isValid)
+        assertTrue("El QR de Boleta SUNAT debe ser parseado exitosamente", result.isValid)
         assertEquals("20100107214", result.receiptData?.ruc)
         assertEquals("B001", result.receiptData?.serie)
         assertEquals("00049281", result.receiptData?.correlativo)
         assertEquals(21.90, result.receiptData?.montoTotal ?: 0.0, 0.01)
+
+        // QR oficial de Factura Electrónica (01, F001)
+        val qrFactura = "20100107214|01|F001|00012345|18.00|118.00|$todayStr|6|20512345678|DIGEST_HASH_F123==|"
+        val resultFactura = sunatValidator.parseSunatQr(qrFactura)
+        assertTrue("El QR de Factura SUNAT debe ser admitido", resultFactura.isValid)
+        assertEquals("01", resultFactura.receiptData?.tipoComprobante)
+        assertEquals("F001", resultFactura.receiptData?.serie)
     }
 
     @Test

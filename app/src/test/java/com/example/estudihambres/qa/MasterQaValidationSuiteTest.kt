@@ -909,17 +909,32 @@ class MasterQaValidationSuiteTest {
     }
 
     @Test
-    fun hu07_scenario05_explicitRejection_facturaSerieF001RejectedAsNonBoleta() {
+    fun hu07_scenario05_explicitRejection_serieInvalidaNoSunatRejected() {
         val now = System.currentTimeMillis()
         val result = receiptUseCase.invoke(
             ruc = "20252391498",
-            serie = "F001", // Factura comercial, no boleta
+            serie = "Z001", // Serie no autorizada por SUNAT
             correlativo = "1234",
             montoTotal = 50.00,
             fechaEmisionMillis = now - 3600_000L
         )
-        assertFalse("Serie de Factura F001 debe ser rechazada", result.isValid)
+        assertFalse("Serie no autorizada Z001 debe ser rechazada", result.isValid)
         assertThat(result.rejectionReason).contains("Serie")
+    }
+
+    @Test
+    fun hu07_scenario05b_admitFacturaSerieF001_asValidComprobante() {
+        val now = System.currentTimeMillis()
+        val result = receiptUseCase.invoke(
+            ruc = "20252391498",
+            serie = "F001", // Factura comercial autorizada
+            correlativo = "1234",
+            montoTotal = 50.00,
+            fechaEmisionMillis = now - 3600_000L
+        )
+        assertTrue("Serie de Factura F001 debe ser admitida", result.isValid)
+        assertThat(result.receiptData?.tipoComprobante).isEqualTo("01")
+        assertThat(result.receiptData?.tipoComprobanteDesc).isEqualTo("Factura Electrónica")
     }
 
     @Test
@@ -937,7 +952,8 @@ class MasterQaValidationSuiteTest {
 
     @Test
     fun hu07_scenario07_concurrency_sunatQrPipeSeparatedStringParsedAtomically() {
-        val qrRaw = "20252391498|03|B001|00049281|3.89|25.50|30/10/2026|0|DIGEST|"
+        val todayStr = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.ROOT).format(java.util.Date())
+        val qrRaw = "20252391498|03|B001|00049281|3.89|25.50|$todayStr|0|DIGEST|"
         val result = receiptUseCase.parseSunatQr(qrRaw)
         assertTrue("Parsing de QR oficial SUNAT debe ser exitoso", result.isValid)
         assertThat(result.receiptData?.ruc).isEqualTo("20252391498")
