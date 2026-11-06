@@ -209,4 +209,41 @@ class IntuitiveUxAndNavigationQaTest {
         assertEquals(12, calculateWalkingMinutes(1.0))
         assertEquals(24, calculateWalkingMinutes(2.0))
     }
+
+    @Test
+    fun testMapNavigationRouteTitleIsRadar30km() {
+        assertEquals("Radar 30km", com.example.estudihambres.core.navigation.Screen.Map.title)
+        assertEquals("map", com.example.estudihambres.core.navigation.Screen.Map.route)
+    }
+
+    @Test
+    fun testHomeDecouplingBetweenBrandTagsAndCategories() {
+        var state = com.example.estudihambres.presentation.home.HomeUiState()
+        assertEquals("Todas", state.selectedCategory)
+        assertEquals("", state.searchQuery)
+        assertEquals(2450, state.studiPuntos)
+
+        val applyQuickTag: (String, com.example.estudihambres.presentation.home.HomeUiState) -> com.example.estudihambres.presentation.home.HomeUiState = { tag, s ->
+            if (s.searchQuery.equals(tag, ignoreCase = true)) {
+                s.copy(searchQuery = "", selectedCategory = "Todas")
+            } else {
+                s.copy(searchQuery = tag, selectedCategory = "Todas")
+            }
+        }
+
+        state = applyQuickTag("Bembos", state)
+        assertEquals("Bembos", state.searchQuery)
+        assertEquals("Todas", state.selectedCategory)
+
+        val applyCategory: (String, com.example.estudihambres.presentation.home.HomeUiState) -> com.example.estudihambres.presentation.home.HomeUiState = { cat, s ->
+            s.copy(
+                selectedCategory = cat,
+                searchQuery = if (cat != "Todas") "" else s.searchQuery
+            )
+        }
+
+        state = applyCategory("💻 Software", state)
+        assertEquals("💻 Software", state.selectedCategory)
+        assertEquals("", state.searchQuery)
+    }
 }

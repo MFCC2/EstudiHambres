@@ -28,6 +28,7 @@ data class HomeUiState(
     val career: String = "Ingeniería de Software · Ciclo 2025-I",
     val verificationStatus: VerificationStatus = VerificationStatus.PENDING_VERIFICATION,
     val accumulatedSavings: Double = 142.50,
+    val studiPuntos: Int = 2450,
     val searchQuery: String = "",
     val selectedCategory: String = "Todas",
     val categories: List<String> = listOf("Todas", "🔥 Destacados", "🍕 Comida", "💻 Software", "🎬 Ocio & Cine", "📚 Educación", "🚌 Transporte"),
@@ -64,7 +65,8 @@ class HomeViewModel(
 
     fun refreshSavings() {
         val savings = sessionManager?.getAccumulatedSavings() ?: 142.50
-        _uiState.update { it.copy(accumulatedSavings = savings) }
+        val points = sessionManager?.getStudiPuntos() ?: 2450
+        _uiState.update { it.copy(accumulatedSavings = savings, studiPuntos = points) }
     }
 
     private fun loadData() {
@@ -79,7 +81,8 @@ class HomeViewModel(
                         university = if (isDevMode) "Entorno Sandbox / Testing" else (user?.university?.ifBlank { "Universidad Continental" } ?: "Universidad Continental"),
                         career = if (isDevMode) "Pruebas de Integración y Validación OCR" else if (!user?.studentCode.isNullOrBlank()) "${user.university} · Cód. ${user.studentCode}" else "Ingeniería de Software · Ciclo 2025-I",
                         verificationStatus = user?.verificationStatus ?: VerificationStatus.PENDING_VERIFICATION,
-                        profilePhotoPath = user?.profilePhotoPath
+                        profilePhotoPath = user?.profilePhotoPath,
+                        studiPuntos = user?.studiPuntos ?: sessionManager?.getStudiPuntos() ?: 2450
                     )
                 }
             }
@@ -105,12 +108,32 @@ class HomeViewModel(
     }
 
     fun onSearchQueryChange(query: String) {
-        _uiState.update { it.copy(searchQuery = query) }
+        _uiState.update {
+            it.copy(
+                searchQuery = query,
+                selectedCategory = if (query.isNotBlank()) "Todas" else it.selectedCategory
+            )
+        }
         applyFilters()
     }
 
     fun onCategorySelect(category: String) {
-        _uiState.update { it.copy(selectedCategory = category) }
+        _uiState.update {
+            it.copy(
+                selectedCategory = category,
+                searchQuery = if (category != "Todas") "" else it.searchQuery
+            )
+        }
+    }
+
+    fun onQuickTagSelect(tag: String) {
+        val currentTag = _uiState.value.searchQuery
+        if (currentTag.equals(tag, ignoreCase = true)) {
+            _uiState.update { it.copy(searchQuery = "", selectedCategory = "Todas") }
+        } else {
+            _uiState.update { it.copy(searchQuery = tag, selectedCategory = "Todas") }
+        }
+        applyFilters()
         applyFilters()
     }
 

@@ -151,10 +151,15 @@ class RewardsStoreQaTest {
         assertFalse(resInvalidRuc.isValid)
         assertTrue(resInvalidRuc.rejectionReason?.contains("RUC") == true)
 
-        // Serie inválida (no inicia con B)
-        val resInvalidSerie = sunatValidator("20100107214", "F001", "123", 15.0, now)
+        // Serie inválida (no autorizada por SUNAT)
+        val resInvalidSerie = sunatValidator("20100107214", "Z001", "123", 15.0, now)
         assertFalse(resInvalidSerie.isValid)
         assertTrue(resInvalidSerie.rejectionReason?.contains("Serie") == true)
+
+        // Factura electrónica F001 autorizada
+        val resFactura = sunatValidator("20100107214", "F001", "123", 15.0, now)
+        assertTrue("La Factura electrónica F001 debe ser admitida", resFactura.isValid)
+        assertEquals("01", resFactura.receiptData?.tipoComprobante)
 
         // Boleta de más de 72 horas (antigua)
         val fourDaysAgo = now - (96L * 3600 * 1000)
@@ -173,11 +178,18 @@ class RewardsStoreQaTest {
         val todayStr = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.ROOT).format(java.util.Date())
         val qrRaw = "20100107214|03|B001|00049281|3.33|21.90|$todayStr|1|72945602|DIGEST_HASH_ABC123==|"
         val result = sunatValidator.parseSunatQr(qrRaw)
-        assertTrue("El QR de SUNAT debe ser parseado exitosamente", result.isValid)
+        assertTrue("El QR de Boleta SUNAT debe ser parseado exitosamente", result.isValid)
         assertEquals("20100107214", result.receiptData?.ruc)
         assertEquals("B001", result.receiptData?.serie)
         assertEquals("00049281", result.receiptData?.correlativo)
         assertEquals(21.90, result.receiptData?.montoTotal ?: 0.0, 0.01)
+
+        // QR oficial de Factura Electrónica (01, F001)
+        val qrFactura = "20100107214|01|F001|00012345|18.00|118.00|$todayStr|6|20512345678|DIGEST_HASH_F123==|"
+        val resultFactura = sunatValidator.parseSunatQr(qrFactura)
+        assertTrue("El QR de Factura SUNAT debe ser admitido", resultFactura.isValid)
+        assertEquals("01", resultFactura.receiptData?.tipoComprobante)
+        assertEquals("F001", resultFactura.receiptData?.serie)
     }
 
     @Test
@@ -258,5 +270,46 @@ class RewardsStoreQaTest {
         val points500 = 500
         val soles500 = points500 / 100.0
         assertEquals(5.00, soles500, 0.01)
+    }
+    @Test
+    fun testThermalReceiptOcrRegexParsing() {
+        val thermalReceiptOcr = """
+            BEMBOS S.A.C.
+            RUC: 20252391498
+            AV. LARCO 1050 MIRAFLORES
+            BOLETA DE VENTA ELECTRONICA
+            B001-00049281
+            FECHA: 30/10/2026 14:20
+            1 COMBO CLASICA S/ 19.90
+            1 PAPAS REGULARES S/ 5.90
+            1 GASEOSA 500ML S/ 4.00
+            OP. GRAVADA S/ 25.25
+            IGV (18%) S/ 4.55
+            TOTAL S/ 29.80
+        """.trimIndent()
+
+        val rucRegex = Regex("""\b(20\d{9}|10\d{9})\b""")
+        val rucMatch = rucRegex.find(thermalReceiptOcr.uppercase())?.value
+        assertEquals("20252391498", rucMatch)
+
+        val boletaComboRegex = Regex("""\b(E?B[A-Z0-9]{3})\s*[-–:/#\s]\s*([0-9]{1,8})\b""")
+        val combo = boletaComboRegex.find(thermalReceiptOcr.uppercase())
+        assertNotNull(combo)
+        assertEquals("B001", combo?.groupValues?.get(1))
+        assertEquals("00049281", combo?.groupValues?.get(2))
+
+        val totalRegex = Regex("""(?:TOTAL|IMPORTE\s*TOTAL|TOTAL\s*A\s*PAGAR|VENTA\s*TOTAL|PAGAR|TOTAL\s*S/\.?)\s*[:=]?\s*S?/?\.?\s*([0-9]+[.,][0-9]{2})""")
+        val total = totalRegex.findAll(thermalReceiptOcr.uppercase()).lastOrNull()?.groupValues?.get(1)?.toDoubleOrNull()
+        assertEquals(29.80, total ?: 0.0, 0.01)
+
+        val result = sunatValidator(
+            ruc = rucMatch!!,
+            serie = combo!!.groupValues[1],
+            correlativo = combo.groupValues[2],
+            montoTotal = total!!,
+            fechaEmisionMillis = System.currentTimeMillis()
+        )
+        assertTrue("La boleta térmica parseada debe ser válida", result.isValid)
+        assertEquals(80, result.pointsAwarded)
     }
 }

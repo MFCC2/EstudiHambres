@@ -95,6 +95,8 @@ import com.example.estudihambres.domain.model.RedemptionMethod
 import com.example.estudihambres.domain.model.RewardItem
 import com.example.estudihambres.domain.usecase.ValidateSunatReceiptUseCase
 import com.example.estudihambres.presentation.rewards.components.LiveReceiptScannerDialog
+import com.example.estudihambres.presentation.rewards.components.SunatOfficialValidationDialog
+import androidx.compose.material.icons.filled.SmartToy
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -254,7 +256,7 @@ fun RewardsScreen(
         )
     }
 
-    // Modal para registrar Boleta SUNAT
+    // Modal para registrar Boleta o Factura SUNAT
     if (state.showReceiptDialog) {
         ReceiptRegisterDialog(
             isProcessing = state.isScanningReceipt,
@@ -267,7 +269,24 @@ fun RewardsScreen(
             },
             onSwitchToScanner = {
                 viewModel.switchToScannerReceipt()
+            },
+            onOpenSunatBot = { ruc, serie, correlativo, amount, tipo ->
+                viewModel.openSunatBotDialog(ruc, serie, correlativo, amount, tipo)
             }
+        )
+    }
+
+    // Modal del Bot Validador SUNAT Oficial en tiempo real
+    if (state.showSunatBotDialog) {
+        SunatOfficialValidationDialog(
+            ruc = state.sunatBotRuc,
+            serie = state.sunatBotSerie,
+            correlativo = state.sunatBotCorrelativo,
+            monto = state.sunatBotMonto,
+            tipoCpe = state.sunatBotTipoCpe,
+            fechaMillis = state.sunatBotFechaMillis,
+            onDismiss = { viewModel.dismissSunatBotDialog() },
+            onConfirmCreditPoints = { viewModel.onConfirmSunatBotCredit() }
         )
     }
 
@@ -1082,7 +1101,8 @@ private fun ReceiptRegisterDialog(
     onDismiss: () -> Unit,
     onSubmitManual: (String, String, String, Double) -> Unit,
     onSubmitQr: (String) -> Unit,
-    onSwitchToScanner: () -> Unit = {}
+    onSwitchToScanner: () -> Unit = {},
+    onOpenSunatBot: (String, String, String, Double, String) -> Unit = { _, _, _, _, _ -> }
 ) {
     var selectedPartner by remember { mutableStateOf("Delosi (Starbucks / KFC / Burger King)") }
     var selectedRuc by remember { mutableStateOf("20100107214") }
@@ -1206,6 +1226,23 @@ private fun ReceiptRegisterDialog(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedButton(
+                        onClick = {
+                            val amount = montoStr.toDoubleOrNull() ?: 18.50
+                            val tipo = if (serie.uppercase().startsWith("F") || (serie.uppercase().startsWith("E") && !serie.uppercase().startsWith("EB"))) "01" else "03"
+                            onOpenSunatBot(selectedRuc, serie, correlativo.ifBlank { "00049281" }, amount, tipo)
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0038A8)),
+                        border = BorderStroke(1.dp, Color(0xFF0038A8)),
+                        modifier = Modifier.fillMaxWidth().height(42.dp)
+                    ) {
+                        Icon(Icons.Default.SmartToy, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("🤖 Validar con Bot SUNAT Oficial", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         },

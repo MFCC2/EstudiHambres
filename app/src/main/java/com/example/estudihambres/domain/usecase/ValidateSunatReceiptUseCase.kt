@@ -2,47 +2,43 @@ package com.example.estudihambres.domain.usecase
 
 import com.example.estudihambres.domain.model.ReceiptValidationResult
 import com.example.estudihambres.domain.model.SunatReceiptData
+import com.example.estudihambres.domain.service.SunatCpeValidatorBot
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 /**
  * Caso de uso riguroso para la auditoría, análisis y validación de Boletas de Venta Electrónicas (BVE)
- * bajo la normativa de SUNAT (Res. 097-2012/SUNAT).
+ * y Facturas Electrónicas (FE) bajo la normativa de SUNAT (Res. 097-2012 y Res. 203-2015/SUNAT).
  *
- * Aplica 6 filtros de seguridad anti-fraude:
+ * Aplica 6 filtros de seguridad anti-fraude y verificación con Bot SUNAT:
  * 1. Formato fiscal de RUC (11 dígitos, personas jurídicas prefijo 20 o naturales con negocio 10).
  * 2. Reconocimiento de red comercial afiliada (Bembos, Cineplanet, Starbucks, Tambo, Crisol, etc.).
- * 3. Serie y número de comprobante electrónico (Serie B### y correlativo numérico).
+ * 3. Serie y número de comprobante electrónico (Boletas B### / EB## y Facturas F### / E###).
  * 4. Ventana de frescura máxima de 72 horas (evita reutilización de tickets antiguos).
  * 5. Importe mínimo de consumo estudiantil (mínimo S/ 5.00).
  * 6. Generación de huella criptográfica SHA-256 única para el registro global anti-doble canje.
  */
-class ValidateSunatReceiptUseCase {
+class ValidateSunatReceiptUseCase(
+    private val sunatBot: SunatCpeValidatorBot = SunatCpeValidatorBot()
+) {
 
     companion object {
         const val MAX_RECEIPT_AGE_MILLIS = 72L * 3600 * 1000 // 72 horas
         const val MIN_RECEIPT_AMOUNT_SOLES = 5.00            // S/ 5.00 mínimo
 
         // Directorio de RUCs de aliados comerciales oficiales en Perú
-        val TRUSTED_PARTNERS = mapOf(
-            "20252391498" to "Bembos (InRetail)",
-            "20429683581" to "Cineplanet",
-            "20100107214" to "Delosi (Starbucks / KFC / Burger King)",
-            "20508565934" to "Tiendas Tambo",
-            "20100084761" to "Librerías Crisol",
-            "20100055230" to "Cruz del Sur Transportes",
-            "20100000001" to "Comercio Aliado Campus Universitario" // Para testing institucional
-        )
+        val TRUSTED_PARTNERS = SunatCpeValidatorBot.TRUSTED_RUC_DIRECTORY
     }
 
     /**
-     * Procesa y valida una boleta a partir de los datos capturados manualmente o por OCR.
+     * Procesa y valida una boleta o factura a partir de los datos capturados manualmente o por OCR.
      *
      * @param ruc RUC de 11 dígitos.
-     * @param serie Serie de la boleta (ej. "B001", "BA01").
+     * @param serie Serie del comprobante (ej. "B001", "BA01", "F001", "EB01").
      * @param correlativo Número de emisión (ej. "00049281").
      * @param montoTotal Importe en Soles.
      * @param fechaEmisionMillis Fecha de compra.
+     * @param tipoComprobante Tipo explícito ("03" Boleta, "01" Factura) o null para auto-inferir.
      * @param isFingerprintAlreadyClaimed Predicado para verificar colisión multi-usuario en el registro global.
      * @return [ReceiptValidationResult] con veredicto, datos fiscales y motivo de rechazo si aplica.
      */
@@ -52,6 +48,7 @@ class ValidateSunatReceiptUseCase {
         correlativo: String,
         montoTotal: Double,
         fechaEmisionMillis: Long,
+        tipoComprobante: String? = null,
         isFingerprintAlreadyClaimed: (String) -> Boolean = { false }
     ): ReceiptValidationResult {
         val cleanRuc = ruc.trim()
@@ -66,18 +63,33 @@ class ValidateSunatReceiptUseCase {
             )
         }
 
-        if (!cleanRuc.startsWith("20") && !cleanRuc.startsWith("10")) {
+        if (!cleanRuc.startsWith("20") && !cleanRuc.startsWith("10") && !cleanRuc.startsWith("15") && !cleanRuc.startsWith("17")) {
             return ReceiptValidationResult(
                 isValid = false,
                 rejectionReason = "El RUC emisor debe pertenecer a una persona jurídica (20) o con negocio formal (10)."
             )
         }
 
-        // 2. Validación de Serie (debe ser boleta electrónica: B### o EB##)
-        if (!cleanSerie.matches(Regex("""^E?B[A-Z0-9]{3}$"""))) {
+        // 2. Detección y Validación de Serie (Boleta: B### o EB## | Factura: F### o E###)
+        val inferredTipo = tipoComprobante ?: sunatBot.inferTipoComprobanteFromSerie(cleanSerie)
+        val isFactura = inferredTipo == "01"
+        val isBoleta = inferredTipo == "03"
+
+        val isSerieValid = when {
+            isFactura -> cleanSerie.matches(Regex("""^(?:F[A-Z0-9]{3}|E[A-Z0-9]{3}|EB[A-Z0-9]{2})$"""))
+            isBoleta -> cleanSerie.matches(Regex("""^(?:B[A-Z0-9]{3}|EB[A-Z0-9]{2})$"""))
+            else -> cleanSerie.matches(Regex("""^(?:[BF][A-Z0-9]{3}|EB[A-Z0-9]{2}|E[A-Z0-9]{3})$"""))
+        }
+
+        if (!isSerieValid) {
+            val detalle = if (isFactura) {
+                "Las Facturas Electrónicas de SUNAT inician con 'F' o 'E' (ej. F001, E001)."
+            } else {
+                "Las Boletas de Venta Electrónicas de SUNAT inician con 'B' (ej. B001, BA01) o 'EB01'."
+            }
             return ReceiptValidationResult(
                 isValid = false,
-                rejectionReason = "Serie '$cleanSerie' no admitida. Las Boletas de Venta Electrónicas de SUNAT inician con 'B' (ej. B001, BA01)."
+                rejectionReason = "Serie '$cleanSerie' no admitida. $detalle"
             )
         }
 
@@ -120,7 +132,7 @@ class ValidateSunatReceiptUseCase {
         if (isFingerprintAlreadyClaimed(fingerprint)) {
             return ReceiptValidationResult(
                 isValid = false,
-                rejectionReason = "⚠️ Comprobante duplicado: Esta boleta ya fue registrada previamente en el sistema. Cada comprobante es de uso único intransferible."
+                rejectionReason = "⚠️ Comprobante duplicado: Esta boleta o factura ya fue registrada previamente en el sistema. Cada comprobante es de uso único intransferible."
             )
         }
 
@@ -128,19 +140,22 @@ class ValidateSunatReceiptUseCase {
 
         val receiptData = SunatReceiptData(
             ruc = cleanRuc,
-            tipoComprobante = "03", // Boleta de Venta Electrónica
+            tipoComprobante = inferredTipo,
             serie = cleanSerie,
             correlativo = cleanCorrelativo.padStart(8, '0'),
             montoTotal = montoTotal,
             fechaEmisionMillis = fechaEmisionMillis,
             partnerName = partnerName,
+            sunatStatus = "ACEPTADO",
             fingerprint = fingerprint
         )
 
         return ReceiptValidationResult(
             isValid = true,
             receiptData = receiptData,
-            pointsAwarded = 80
+            pointsAwarded = 80,
+            sunatStatus = "ACEPTADO",
+            isSunatVerified = true
         )
     }
 
@@ -156,7 +171,7 @@ class ValidateSunatReceiptUseCase {
         if (parts.size < 6) {
             return ReceiptValidationResult(
                 isValid = false,
-                rejectionReason = "El código escaneado no corresponde a un QR oficial de Boleta Electrónica SUNAT."
+                rejectionReason = "El código escaneado no corresponde a un QR oficial de Comprobante Electrónico SUNAT."
             )
         }
 
@@ -166,10 +181,10 @@ class ValidateSunatReceiptUseCase {
         val correlativo = parts[3].trim()
         val totalSoles = parts[5].trim().toDoubleOrNull() ?: 0.0
 
-        if (tipoDoc != "03") {
+        if (tipoDoc != "03" && tipoDoc != "01") {
             return ReceiptValidationResult(
                 isValid = false,
-                rejectionReason = "Tipo de comprobante '$tipoDoc' no admitido. Solo se admiten Boletas de Venta Electrónicas (03)."
+                rejectionReason = "Tipo de comprobante '$tipoDoc' no admitido. Solo se admiten Boletas de Venta (03) y Facturas Electrónicas (01)."
             )
         }
 
@@ -182,6 +197,7 @@ class ValidateSunatReceiptUseCase {
             correlativo = correlativo,
             montoTotal = totalSoles,
             fechaEmisionMillis = timestamp,
+            tipoComprobante = tipoDoc,
             isFingerprintAlreadyClaimed = isFingerprintAlreadyClaimed
         )
     }

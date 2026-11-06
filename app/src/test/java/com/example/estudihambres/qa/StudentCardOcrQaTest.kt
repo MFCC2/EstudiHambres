@@ -79,7 +79,7 @@ class StudentCardOcrQaTest {
             UNSAAC
             CARNET UNIVERSITARIO
             CÓDIGO: 194502
-            VIGENCIA 2025
+            VIGENCIA 2026
         """.trimIndent()
 
         val result = parser(ocr)
@@ -151,6 +151,8 @@ class StudentCardOcrQaTest {
 
         val result = parser(ocr)
         assertEquals("2018", result.validityYearDetected)
+        assertFalse(result.isVigente)
+        assertFalse(result.isVerified)
     }
 
     @Test

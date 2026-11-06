@@ -34,6 +34,13 @@ data class RewardsUiState(
     val showReceiptDialog: Boolean = false,
     val showReceiptScanner: Boolean = false,
     val showLegalDialog: Boolean = false,
+    val showSunatBotDialog: Boolean = false,
+    val sunatBotRuc: String = "",
+    val sunatBotSerie: String = "",
+    val sunatBotCorrelativo: String = "",
+    val sunatBotMonto: Double = 0.0,
+    val sunatBotTipoCpe: String = "03",
+    val sunatBotFechaMillis: Long = System.currentTimeMillis(),
     val toastMessage: String? = null,
     val errorMessage: String? = null
 )
@@ -285,6 +292,39 @@ class RewardsViewModel(
 
     fun dismissRedemptionDialog() {
         _uiState.update { it.copy(activeRedeemedReward = null) }
+    }
+
+    fun openSunatBotDialog(
+        ruc: String,
+        serie: String,
+        correlativo: String,
+        monto: Double,
+        tipoCpe: String = "03",
+        fechaMillis: Long = System.currentTimeMillis()
+    ) {
+        _uiState.update {
+            it.copy(
+                showSunatBotDialog = true,
+                sunatBotRuc = ruc,
+                sunatBotSerie = serie,
+                sunatBotCorrelativo = correlativo,
+                sunatBotMonto = monto,
+                sunatBotTipoCpe = tipoCpe,
+                sunatBotFechaMillis = fechaMillis,
+                showReceiptDialog = false,
+                showReceiptScanner = false
+            )
+        }
+    }
+
+    fun dismissSunatBotDialog() {
+        _uiState.update { it.copy(showSunatBotDialog = false) }
+    }
+
+    fun onConfirmSunatBotCredit() {
+        val s = _uiState.value
+        _uiState.update { it.copy(showSunatBotDialog = false) }
+        onRegisterReceiptManual(s.sunatBotRuc, s.sunatBotSerie, s.sunatBotCorrelativo, s.sunatBotMonto)
     }
 
     fun clearToast() {

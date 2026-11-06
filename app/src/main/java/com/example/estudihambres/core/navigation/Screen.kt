@@ -11,7 +11,7 @@ sealed class Screen(val route: String, val title: String) {
     data object Register : Screen("register", "Registro Estudiantil")
     data object Verification : Screen("verification", "Verificar Carnet")
     data object Home : Screen("home", "Inicio")
-    data object Map : Screen("map", "Radar 30k")
+    data object Map : Screen("map", "Radar 30km")
     data object Rewards : Screen("rewards", "Premios")
     data object Profile : Screen("profile", "Mi Cuenta")
 }

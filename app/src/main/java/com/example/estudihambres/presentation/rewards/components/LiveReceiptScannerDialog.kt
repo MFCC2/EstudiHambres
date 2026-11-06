@@ -193,7 +193,7 @@ fun LiveReceiptScannerDialog(
                         .addOnSuccessListener { barcodes ->
                             val qrBarcode = barcodes.firstOrNull { b ->
                                 val raw = b.rawValue ?: ""
-                                raw.contains("|") && (raw.contains("|03|") || raw.matches(Regex("""^\d{11}\|.*""")))
+                                raw.contains("|") && (raw.contains("|01|") || raw.contains("|03|") || raw.matches(Regex("""^\d{11}\|.*""")))
                             }
                             if (qrBarcode?.rawValue != null) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -209,7 +209,7 @@ fun LiveReceiptScannerDialog(
                                         } else {
                                             Toast.makeText(
                                                 context,
-                                                "No se identificó un QR o Boleta SUNAT en la imagen. Usa el ingreso manual.",
+                                                "No se identificó un QR, Boleta o Factura SUNAT en la imagen. Usa el ingreso manual.",
                                                 Toast.LENGTH_LONG
                                             ).show()
                                         }
@@ -282,12 +282,12 @@ fun LiveReceiptScannerDialog(
                                         val rotation = imageProxy.imageInfo.rotationDegrees
                                         val inputImage = InputImage.fromMediaImage(mediaImage, rotation)
 
-                                        // Motor 1: Escaneo de código QR SUNAT
+                                        // Motor 1: Escaneo de código QR oficial SUNAT
                                         barcodeScanner.process(inputImage)
                                             .addOnSuccessListener { barcodes ->
                                                 val sunatQr = barcodes.firstOrNull { barcode ->
                                                     val raw = barcode.rawValue ?: ""
-                                                    raw.contains("|") && (raw.contains("|03|") || raw.matches(Regex("""^\d{11}\|.*""")))
+                                                    raw.contains("|") && (raw.contains("|01|") || raw.contains("|03|") || raw.matches(Regex("""^\d{11}\|.*""")))
                                                 }
 
                                                 if (sunatQr?.rawValue != null && isScanningActive) {
@@ -295,30 +295,37 @@ fun LiveReceiptScannerDialog(
                                                     val rawValue = sunatQr.rawValue!!
                                                     ContextCompat.getMainExecutor(ctx).execute {
                                                         isProcessingDetected = true
-                                                        statusText = "¡QR SUNAT detectado! Validando firma..."
+                                                        statusText = "¡QR SUNAT detectado! Validando comprobante..."
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         onQrDetected(rawValue)
                                                     }
+                                                    imageProxy.close()
                                                 } else if (isScanningActive) {
-                                                    // Motor 2: OCR continuo de texto como respaldo
+                                                    // Motor 2: OCR continuo de texto como respaldo (manteniendo la imagen abierta hasta completar)
                                                     textRecognizer.process(inputImage)
                                                         .addOnSuccessListener { visionText ->
                                                             if (isScanningActive && visionText.text.isNotBlank()) {
                                                                 val parsed = parseReceiptTextFallback(visionText.text)
                                                                 if (parsed != null) {
                                                                     isScanningActive = false
+                                                                    val docTipo = if (parsed.second.startsWith("F") || (parsed.second.startsWith("E") && !parsed.second.startsWith("EB"))) "Factura" else "Boleta"
                                                                     ContextCompat.getMainExecutor(ctx).execute {
                                                                         isProcessingDetected = true
-                                                                        statusText = "¡Boleta identificada! Acreditando..."
+                                                                        statusText = "¡$docTipo identificada (${parsed.second}-${parsed.third})! Acreditando..."
                                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                                         onManualOcrDetected(parsed.first, parsed.second, parsed.third, parsed.fourth)
                                                                     }
                                                                 }
                                                             }
                                                         }
+                                                        .addOnCompleteListener {
+                                                            imageProxy.close()
+                                                        }
+                                                } else {
+                                                    imageProxy.close()
                                                 }
                                             }
-                                            .addOnCompleteListener {
+                                            .addOnFailureListener {
                                                 imageProxy.close()
                                             }
                                     } else {
@@ -615,21 +622,39 @@ fun LiveReceiptScannerDialog(
 private fun parseReceiptTextFallback(text: String): Quadruple<String, String, String, Double>? {
     val upper = text.uppercase()
 
-    // 1. Buscar RUC (11 dígitos, prefijo 20 o 10)
-    val rucRegex = Regex("""\b(20\d{9}|10\d{9})\b""")
-    val rucMatch = rucRegex.find(upper)?.value ?: return null
+    // 1. Buscar RUC (11 dígitos, prefijo 20, 10, 15, 17 con tolerancia a etiquetas RUC / R.U.C.)
+    val rucRegex = Regex("""\b((?:20|10|15|17)\d{9})\b""")
+    val rucMatch = rucRegex.find(upper)?.value ?: run {
+        val rucSpaced = Regex("""(?:R\.?U\.?C\.?[\s:#]*)(\d[\d\s-]{9,15}\d)""").find(upper)?.groupValues?.get(1)?.replace(Regex("""[\s-]"""), "")
+        if (rucSpaced != null && rucSpaced.length == 11 && (rucSpaced.startsWith("20") || rucSpaced.startsWith("10") || rucSpaced.startsWith("15") || rucSpaced.startsWith("17"))) {
+            rucSpaced
+        } else {
+            return null
+        }
+    }
 
-    // 2. Buscar Serie de Boleta (B001, B002, etc.)
-    val serieRegex = Regex("""\b(B[A-Z0-9]{3})\b""")
-    val serieMatch = serieRegex.find(upper)?.value ?: return null
+    // 2. Buscar Serie y Correlativo juntos o separados (soporte unificado a Boletas B###/EB## y Facturas F###/E###)
+    val comboRegex = Regex("""\b([BF][A-Z0-9]{3}|EB[A-Z0-9]{2}|E[A-Z0-9]{3})\s*[-–:/#\s]\s*([0-9]{1,8})\b""")
+    val comboMatch = comboRegex.find(upper)
 
-    // 3. Buscar Correlativo numérico cercano (1 a 8 dígitos)
-    val numRegex = Regex("""(?:-|N°|NRO|NUMERO)?\s*([0-9]{1,8})\b""")
-    val numMatch = numRegex.find(upper)?.groupValues?.get(1) ?: "00000001"
+    val (serieMatch, numMatch) = if (comboMatch != null) {
+        Pair(comboMatch.groupValues[1], comboMatch.groupValues[2])
+    } else {
+        val serieRegex = Regex("""\b([BF][A-Z0-9]{3}|EB[A-Z0-9]{2}|E[A-Z0-9]{3})\b""")
+        val s = serieRegex.find(upper)?.value ?: return null
+        val afterSerie = upper.substringAfter(s)
+        val numRegex = Regex("""(?:N°|NRO|NUMERO|N°:)?\s*([0-9]{1,8})\b""")
+        val n = numRegex.find(afterSerie)?.groupValues?.get(1) ?: "00000001"
+        Pair(s, n)
+    }
 
-    // 4. Buscar Monto Total
-    val totalRegex = Regex("""(?:TOTAL|IMPORTE|S/|SOLES)\s*[:=]?\s*S?/?\.?\s*([0-9]+[.,][0-9]{2})""")
-    val totalMatch = totalRegex.find(upper)?.groupValues?.get(1)?.replace(",", ".")?.toDoubleOrNull() ?: 18.50
+    // 3. Buscar Monto Total
+    val totalRegex = Regex("""(?:TOTAL|IMPORTE\s*TOTAL|TOTAL\s*A\s*PAGAR|VENTA\s*TOTAL|PAGAR|TOTAL\s*S/\.?)\s*[:=]?\s*S?/?\.?\s*([0-9]+[.,][0-9]{2})""")
+    val totalMatch = totalRegex.findAll(upper).lastOrNull()?.groupValues?.get(1)?.replace(",", ".")?.toDoubleOrNull()
+        ?: run {
+            val currencyRegex = Regex("""S/\.?\s*([0-9]+[.,][0-9]{2})""")
+            currencyRegex.findAll(upper).mapNotNull { it.groupValues[1].replace(",", ".").toDoubleOrNull() }.maxOrNull() ?: 18.50
+        }
 
     return Quadruple(rucMatch, serieMatch, numMatch, totalMatch)
 }

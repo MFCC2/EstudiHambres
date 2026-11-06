@@ -292,7 +292,7 @@ class StudentVerificationViewModel(
                         isProcessing = false,
                         ocrResult = result,
                         verificationStatus = newStatus,
-                        errorMessage = "El documento escaneado no contiene los sellos oficiales de SUNEDU o la vigencia requerida."
+                        errorMessage = result.rejectionReason ?: "El documento escaneado no contiene los sellos oficiales de SUNEDU o la vigencia requerida."
                     )
                 }
             }
