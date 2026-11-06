@@ -95,6 +95,7 @@ import com.example.estudihambres.domain.model.RedemptionMethod
 import com.example.estudihambres.domain.model.RewardItem
 import com.example.estudihambres.domain.usecase.ValidateSunatReceiptUseCase
 import com.example.estudihambres.presentation.rewards.components.LiveReceiptScannerDialog
+import com.example.estudihambres.presentation.rewards.components.InSystemReceiptScannerModal
 import com.example.estudihambres.presentation.rewards.components.SunatOfficialValidationDialog
 import androidx.compose.material.icons.filled.SmartToy
 import java.text.SimpleDateFormat
@@ -240,17 +241,17 @@ fun RewardsScreen(
         )
     }
 
-    // Modal de Escáner en tiempo real con visor vertical de gran escala para boletas
+    // Modal de Escáner Inteligente 100% en el Sistema con Pipeline Visual Progresivo y Bot SUNAT
     if (state.showReceiptScanner) {
-        LiveReceiptScannerDialog(
+        InSystemReceiptScannerModal(
             onDismiss = { viewModel.dismissReceiptScanner() },
-            onQrDetected = { qrText ->
-                viewModel.onRegisterReceiptQr(qrText)
-            },
-            onManualOcrDetected = { ruc, serie, correlativo, monto ->
+            onSubmitReceipt = { ruc, serie, correlativo, monto ->
                 viewModel.onRegisterReceiptManual(ruc, serie, correlativo, monto)
             },
-            onSwitchToManualInput = {
+            onOpenSunatBot = { ruc, serie, correlativo, monto, tipo ->
+                viewModel.openSunatBotDialog(ruc, serie, correlativo, monto, tipo)
+            },
+            onOpenManualInput = {
                 viewModel.switchToManualReceipt()
             }
         )
