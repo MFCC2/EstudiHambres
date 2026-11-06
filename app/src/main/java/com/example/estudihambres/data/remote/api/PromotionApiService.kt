@@ -388,7 +388,7 @@ class DefaultPromotionApiServiceImpl(
                 partnerName = "Ministerio de Cultura",
                 estimatedSavings = 35.00,
                 isFeatured = false,
-                officialUrl = "https://tuboleto.cultura.pe",
+                officialUrl = "https://tuboleto.cultura.pe/tarifas",
                 isValidated = true,
                 verificationSource = "Ministerio de Cultura del Perú",
                 originalPrice = "S/ 70.00",
