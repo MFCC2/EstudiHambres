@@ -4,6 +4,24 @@ Registro cronológico de modificaciones, agentes intervinientes y cambios arquit
 
 ---
 
+## [v1.5.6] - 2026-11-06
+**Rama:** `develop` / `main`
+**Versión:** `v1.5.6` (versionCode 19)
+
+### Resumen de la Versión v1.5.6
+Actualización crítica de **Autenticación Multi-Dispositivo en la Nube y Aislamiento Seguro de Sesiones Cruzadas**:
+1. **Acceso Multi-Teléfono en Cuenta de Amigo**:
+   - Resuelto el problema de inicio de sesión de un estudiante en el teléfono de otro compañero. Al ingresar las credenciales propias (`email`, `password`), la sesión activa previa se purga de forma segura en `SessionManager` (`clearSession()`) y se sincronizan desde Cloud Firestore los datos personales, saldo real de StudiPuntos, historial del libro mayor (`users/{userId}/point_transactions`) y vales redimidos (`users/{userId}/redeemed_rewards`).
+2. **Sincronización Bidireccional en Cloud Firestore (`MockRewardsRepositoryImpl`)**:
+   - Canje de premios (`redeemReward`) y registro de boletas (`registerReceipt`, `registerReceiptQr` y `earnPointsFromReceipt`) ahora persisten atómicamente en Cloud Firestore (`users/{userId}/redeemed_rewards/{rewardId}` y `users/{userId}/point_transactions/{txId}`), además de actualizar `studiPuntos` en `users/{userId}`.
+   - Marcado de vales como utilizados (`markRewardAsUsed`) actualiza de inmediato el campo `isUsed = true` y `usedAt` en Firestore conforme al pestillo unidireccional de [firestore.rules].
+3. **Cierre de Sesión Seguro y Cero Contaminación Cruzada**:
+   - `clearSession()` desloguea de `FirebaseAuth` (`signOut()`) y limpia completamente `sessionPrefs`, impidiendo que datos privados, vales o saldo de un usuario permanezcan visibles tras prestar el celular.
+4. **Pruebas de Calidad Automatizadas (338/338 Passing)**:
+   - Nueva suite `MultiDeviceCloudAuthQaTest.kt` con 10 escenarios específicos de conmutación de cuentas, aislamiento de sesiones, hidratación de subcolecciones y tolerancia a fallos.
+
+---
+
 ## [v1.5.1] - 2026-10-30
 **Rama:** `develop` / `main`
 **Versión:** `v1.5.1` (versionCode 14)

@@ -13,10 +13,14 @@ import com.example.estudihambres.domain.model.SunatReceiptData
 import com.example.estudihambres.domain.repository.ReceiptCollisionRepository
 import com.example.estudihambres.domain.repository.RewardsRepository
 import com.example.estudihambres.domain.usecase.ValidateSunatReceiptUseCase
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -32,12 +36,24 @@ import java.util.UUID
  * @param apiService Servicio de consulta de catálogo oficial de convenios.
  * @param sunatValidator Validador de boletas electrónicas peruanas.
  * @param collisionRepository Repositorio de verificación y registro atómico en la nube.
+ * @param auth Instancia de Firebase Authentication para sincronización multi-dispositivo en la nube.
+ * @param firestore Instancia de Cloud Firestore para persistencia distribuida de vales y transacciones.
  */
 class MockRewardsRepositoryImpl(
     private val sessionManager: SessionManager? = SessionManager.getInstanceOrNull(),
     private val apiService: RewardsApiService = DefaultRewardsApiServiceImpl(),
     private val sunatValidator: ValidateSunatReceiptUseCase = ValidateSunatReceiptUseCase(),
-    private val collisionRepository: ReceiptCollisionRepository = FirebaseReceiptCollisionRepositoryImpl(sessionManager = sessionManager)
+    private val collisionRepository: ReceiptCollisionRepository = FirebaseReceiptCollisionRepositoryImpl(sessionManager = sessionManager),
+    private val auth: FirebaseAuth? = try {
+        FirebaseAuth.getInstance()
+    } catch (_: Exception) {
+        null
+    },
+    private val firestore: FirebaseFirestore? = try {
+        FirebaseFirestore.getInstance()
+    } catch (_: Exception) {
+        null
+    }
 ) : RewardsRepository {
 
     private val inMemoryRedeemed = mutableListOf<RedeemedReward>()
@@ -113,6 +129,72 @@ class MockRewardsRepositoryImpl(
             pointsFlow.value = updated
             transactionsFlow.value = sessionManager.getPointTransactions()
             redeemedFlow.value = sessionManager.getRedeemedRewards()
+
+            // Sincronización en la nube con Cloud Firestore
+            val currentUid = auth?.currentUser?.uid ?: sessionManager.getUserSession()?.id
+            if (firestore != null && currentUid != null && auth?.currentUser != null) {
+                try {
+                    val rewardMap = mapOf(
+                        "id" to redeemed.id,
+                        "rewardTitle" to redeemed.rewardTitle.take(100),
+                        "pointsCost" to redeemed.pointsCost,
+                        "redemptionCode" to redeemed.redemptionCode.take(50),
+                        "redeemedAtFormatted" to redeemed.redeemedAtFormatted.take(50),
+                        "partnerName" to redeemed.partnerName.take(100),
+                        "iconEmoji" to redeemed.iconEmoji.take(20),
+                        "isUsed" to false,
+                        "expiresAtMillis" to redeemed.expiresAtMillis.toDouble(),
+                        "securityToken" to redeemed.securityToken.take(20),
+                        "officialUrl" to redeemed.officialUrl.take(300),
+                        "redemptionMethod" to redeemed.redemptionMethod.name,
+                        "createdAt" to Timestamp.now()
+                    )
+                    firestore.collection("users").document(currentUid)
+                        .collection("redeemed_rewards")
+                        .document(redeemed.id)
+                        .set(rewardMap)
+                        .await()
+
+                    val txId = "tx-redeem-${redeemed.id.take(8)}"
+                    val txPrevHash = sessionManager.getPointTransactions().firstOrNull()?.txHash ?: "GENESIS_BLOCK"
+                    val txHash = PointTransaction.calculateHash(
+                        txPrevHash,
+                        txId,
+                        -reward.pointsCost,
+                        PointTransactionType.REWARD_PURCHASE.name,
+                        System.currentTimeMillis()
+                    )
+                    val txMap = mapOf(
+                        "id" to txId,
+                        "title" to "Canje: ${reward.title}".take(120),
+                        "description" to "Vale redimido para ${reward.partnerName} (${reward.redemptionMethod.name}).".take(300),
+                        "delta" to -reward.pointsCost,
+                        "pointsDelta" to -reward.pointsCost,
+                        "type" to PointTransactionType.REWARD_PURCHASE.name,
+                        "txHash" to txHash,
+                        "previousHash" to txPrevHash,
+                        "referenceId" to redeemed.id,
+                        "timestampMillis" to System.currentTimeMillis().toDouble(),
+                        "createdAt" to Timestamp.now()
+                    )
+                    firestore.collection("users").document(currentUid)
+                        .collection("point_transactions")
+                        .document(txId)
+                        .set(txMap)
+                        .await()
+
+                    firestore.collection("users").document(currentUid)
+                        .update(
+                            mapOf(
+                                "studiPuntos" to updated,
+                                "updatedAt" to Timestamp.now()
+                            )
+                        )
+                        .await()
+                } catch (_: Exception) {
+                    // Fallback silencioso si falla red temporalmente
+                }
+            }
         } else {
             val updated = pointsFlow.value - reward.pointsCost
             pointsFlow.value = updated
@@ -184,7 +266,7 @@ class MockRewardsRepositoryImpl(
                 claimedByEmail = userEmail,
                 partnerName = receiptData.partnerName
             )
-            sessionManager.recordPointTransaction(
+            val tx = sessionManager.recordPointTransaction(
                 title = "Boleta en ${receiptData.partnerName}",
                 description = "Comprobante ${receiptData.serie}-${receiptData.correlativo} verificado. +80 StudiPuntos acreditados.",
                 delta = 80,
@@ -194,6 +276,40 @@ class MockRewardsRepositoryImpl(
             val updatedPoints = sessionManager.getStudiPuntos()
             pointsFlow.value = updatedPoints
             transactionsFlow.value = sessionManager.getPointTransactions()
+
+            // Sincronización en Cloud Firestore
+            val currentUid = auth?.currentUser?.uid ?: user?.id
+            if (firestore != null && currentUid != null && auth?.currentUser != null) {
+                try {
+                    val txMap = mapOf(
+                        "id" to tx.id,
+                        "title" to tx.title.take(120),
+                        "description" to tx.description.take(300),
+                        "delta" to 80,
+                        "pointsDelta" to 80,
+                        "type" to PointTransactionType.RECEIPT_SCAN.name,
+                        "txHash" to tx.txHash,
+                        "previousHash" to tx.previousHash,
+                        "referenceId" to receiptData.fingerprint.take(100),
+                        "timestampMillis" to tx.timestampMillis.toDouble(),
+                        "createdAt" to Timestamp.now()
+                    )
+                    firestore.collection("users").document(currentUid)
+                        .collection("point_transactions")
+                        .document(tx.id)
+                        .set(txMap)
+                        .await()
+
+                    firestore.collection("users").document(currentUid)
+                        .update(
+                            mapOf(
+                                "studiPuntos" to updatedPoints,
+                                "updatedAt" to Timestamp.now()
+                            )
+                        )
+                        .await()
+                } catch (_: Exception) {}
+            }
         } else {
             inMemoryClaimedReceipts.add(receiptData.fingerprint)
             val updated = pointsFlow.value + 80
@@ -245,7 +361,7 @@ class MockRewardsRepositoryImpl(
                 claimedByEmail = userEmail,
                 partnerName = receiptData.partnerName
             )
-            sessionManager.recordPointTransaction(
+            val tx = sessionManager.recordPointTransaction(
                 title = "Boleta QR en ${receiptData.partnerName}",
                 description = "Firma digital del comprobante ${receiptData.serie}-${receiptData.correlativo} verificada.",
                 delta = 80,
@@ -255,6 +371,40 @@ class MockRewardsRepositoryImpl(
             val updatedPoints = sessionManager.getStudiPuntos()
             pointsFlow.value = updatedPoints
             transactionsFlow.value = sessionManager.getPointTransactions()
+
+            // Sincronización en Cloud Firestore
+            val currentUid = auth?.currentUser?.uid ?: user?.id
+            if (firestore != null && currentUid != null && auth?.currentUser != null) {
+                try {
+                    val txMap = mapOf(
+                        "id" to tx.id,
+                        "title" to tx.title.take(120),
+                        "description" to tx.description.take(300),
+                        "delta" to 80,
+                        "pointsDelta" to 80,
+                        "type" to PointTransactionType.RECEIPT_SCAN.name,
+                        "txHash" to tx.txHash,
+                        "previousHash" to tx.previousHash,
+                        "referenceId" to receiptData.fingerprint.take(100),
+                        "timestampMillis" to tx.timestampMillis.toDouble(),
+                        "createdAt" to Timestamp.now()
+                    )
+                    firestore.collection("users").document(currentUid)
+                        .collection("point_transactions")
+                        .document(tx.id)
+                        .set(txMap)
+                        .await()
+
+                    firestore.collection("users").document(currentUid)
+                        .update(
+                            mapOf(
+                                "studiPuntos" to updatedPoints,
+                                "updatedAt" to Timestamp.now()
+                            )
+                        )
+                        .await()
+                } catch (_: Exception) {}
+            }
         } else {
             inMemoryClaimedReceipts.add(receiptData.fingerprint)
             val updated = pointsFlow.value + 80
@@ -265,6 +415,22 @@ class MockRewardsRepositoryImpl(
     }
 
     override suspend fun markRewardAsUsed(rewardId: String): Boolean {
+        val currentUid = auth?.currentUser?.uid ?: sessionManager?.getUserSession()?.id
+        if (firestore != null && currentUid != null && auth?.currentUser != null) {
+            try {
+                firestore.collection("users").document(currentUid)
+                    .collection("redeemed_rewards")
+                    .document(rewardId)
+                    .update(
+                        mapOf(
+                            "isUsed" to true,
+                            "usedAt" to Timestamp.now()
+                        )
+                    )
+                    .await()
+            } catch (_: Exception) {}
+        }
+
         if (sessionManager != null) {
             val success = sessionManager.markRewardAsUsed(rewardId)
             if (success) {
@@ -285,7 +451,7 @@ class MockRewardsRepositoryImpl(
     override suspend fun earnPointsFromReceipt(): Resource<Int> {
         val bonus = 80
         if (sessionManager != null) {
-            sessionManager.recordPointTransaction(
+            val tx = sessionManager.recordPointTransaction(
                 title = "Registro de Boleta Comercial",
                 description = "Comprobante de consumo verificado en comercio asociado del campus.",
                 delta = bonus,
@@ -294,6 +460,39 @@ class MockRewardsRepositoryImpl(
             val updated = sessionManager.getStudiPuntos()
             pointsFlow.value = updated
             transactionsFlow.value = sessionManager.getPointTransactions()
+
+            val currentUid = auth?.currentUser?.uid ?: sessionManager.getUserSession()?.id
+            if (firestore != null && currentUid != null && auth?.currentUser != null) {
+                try {
+                    val txMap = mapOf(
+                        "id" to tx.id,
+                        "title" to tx.title.take(120),
+                        "description" to tx.description.take(300),
+                        "delta" to bonus,
+                        "pointsDelta" to bonus,
+                        "type" to PointTransactionType.RECEIPT_SCAN.name,
+                        "txHash" to tx.txHash,
+                        "previousHash" to tx.previousHash,
+                        "timestampMillis" to tx.timestampMillis.toDouble(),
+                        "createdAt" to Timestamp.now()
+                    )
+                    firestore.collection("users").document(currentUid)
+                        .collection("point_transactions")
+                        .document(tx.id)
+                        .set(txMap)
+                        .await()
+
+                    firestore.collection("users").document(currentUid)
+                        .update(
+                            mapOf(
+                                "studiPuntos" to updated,
+                                "updatedAt" to Timestamp.now()
+                            )
+                        )
+                        .await()
+                } catch (_: Exception) {}
+            }
+
             return Resource.Success(updated)
         } else {
             val updated = pointsFlow.value + bonus

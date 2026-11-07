@@ -225,6 +225,7 @@ class SessionManager(context: Context) {
             .putString("scanned_card_$normalizedEmail", user.scannedCardDni)
             .putString("photo_$normalizedEmail", user.profilePhotoPath)
             .putString("dni_to_email_${user.dni}", normalizedEmail)
+            .putInt("points_$normalizedEmail", user.studiPuntos)
             .apply()
     }
 
@@ -260,7 +261,8 @@ class SessionManager(context: Context) {
             career = career,
             isDev = isDev,
             scannedCardDni = scannedCard,
-            profilePhotoPath = photo
+            profilePhotoPath = photo,
+            studiPuntos = sessionPrefs.getInt(KEY_STUDI_PUNTOS, 200)
         )
     }
 
@@ -283,6 +285,7 @@ class SessionManager(context: Context) {
             .putBoolean(KEY_IS_DEV, user.isDev)
             .putString(KEY_SCANNED_CARD_DNI, user.scannedCardDni)
             .putString(KEY_PROFILE_PHOTO_PATH, user.profilePhotoPath)
+            .putInt(KEY_STUDI_PUNTOS, user.studiPuntos)
             .apply()
 
         // También sincronizar en el almacén de cuentas si existe
@@ -300,6 +303,8 @@ class SessionManager(context: Context) {
             val savedPoints = accountPrefs.getInt("points_$normalized", -1)
             if (savedPoints != -1) {
                 sessionPrefs.edit().putInt(KEY_STUDI_PUNTOS, savedPoints).apply()
+            } else {
+                accountPrefs.edit().putInt("points_$normalized", user.studiPuntos).apply()
             }
             val savedTxs = accountPrefs.getString("txs_$normalized", null)
             if (savedTxs != null) {
@@ -405,7 +410,8 @@ class SessionManager(context: Context) {
             career = career,
             isDev = isDev,
             scannedCardDni = scannedCard,
-            profilePhotoPath = photo
+            profilePhotoPath = photo,
+            studiPuntos = sessionPrefs.getInt(KEY_STUDI_PUNTOS, 200)
         )
     }
 
@@ -816,6 +822,17 @@ class SessionManager(context: Context) {
         return false
     }
 
+    @Synchronized
+    fun setRedeemedRewards(list: List<RedeemedReward>) {
+        val serialized = list.joinToString(";") { serializeReward(it) }
+        sessionPrefs.edit().putString(KEY_REDEEMED_REWARDS, serialized).apply()
+        val user = getUserSession()
+        if (user != null && !user.isDev && isEmailRegistered(user.email)) {
+            val normalized = user.email.trim().lowercase()
+            accountPrefs.edit().putString("rewards_$normalized", serialized).apply()
+        }
+    }
+
     private fun serializeReward(r: RedeemedReward): String {
         fun esc(s: String) = s.replace("%", "%25").replace("|", "%7C").replace(";", "%3B")
         return listOf(
@@ -966,6 +983,17 @@ class SessionManager(context: Context) {
                 .apply()
         }
         return tx
+    }
+
+    @Synchronized
+    fun setPointTransactions(list: List<PointTransaction>) {
+        val serialized = list.joinToString(";") { serializeTransaction(it) }
+        sessionPrefs.edit().putString(KEY_POINT_TRANSACTIONS, serialized).apply()
+        val user = getUserSession()
+        if (user != null && !user.isDev && isEmailRegistered(user.email)) {
+            val normalized = user.email.trim().lowercase()
+            accountPrefs.edit().putString("txs_$normalized", serialized).apply()
+        }
     }
 
     private fun serializeTransaction(t: PointTransaction): String {
