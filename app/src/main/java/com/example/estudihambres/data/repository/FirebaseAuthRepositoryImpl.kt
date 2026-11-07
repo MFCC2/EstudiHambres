@@ -1,7 +1,10 @@
 package com.example.estudihambres.data.repository
 
 import com.example.estudihambres.core.util.SessionManager
+import com.example.estudihambres.domain.model.PointTransaction
 import com.example.estudihambres.domain.model.PointTransactionType
+import com.example.estudihambres.domain.model.RedeemedReward
+import com.example.estudihambres.domain.model.RedemptionMethod
 import com.example.estudihambres.domain.model.StudentUser
 import com.example.estudihambres.domain.model.VerificationStatus
 import com.example.estudihambres.domain.repository.AuthRepository
@@ -73,7 +76,7 @@ class FirebaseAuthRepositoryImpl(
     }
 
     private val currentUserState = MutableStateFlow<StudentUser?>(
-        session?.getUserSession() ?: StudentUser(
+        session?.getUserSession() ?: if (session == null) StudentUser(
             id = "u001",
             fullName = "Manuel Fabrizio Callañaupa",
             email = "alumno@continental.edu.pe",
@@ -83,7 +86,7 @@ class FirebaseAuthRepositoryImpl(
             verificationStatus = VerificationStatus.PENDING_VERIFICATION,
             career = "Ingeniería de Sistemas",
             isDev = false
-        )
+        ) else null
     )
 
     init {
@@ -98,6 +101,28 @@ class FirebaseAuthRepositoryImpl(
                         val cloudUser = documentToStudentUser(doc.data!!, uid)
                         currentUserState.value = cloudUser
                         session?.saveUserSession(cloudUser)
+                        session?.setStudiPuntos(cloudUser.studiPuntos)
+
+                        // Sincronizar subcolecciones en segundo plano
+                        try {
+                            val txSnapshot = firestore.collection(COLLECTION_USERS).document(uid)
+                                .collection(SUBCOLLECTION_POINT_TRANSACTIONS).get().await()
+                            val txs = txSnapshot.documents.mapNotNull { documentToPointTransaction(it.data, it.id) }
+                                .sortedByDescending { it.timestampMillis }
+                            if (txs.isNotEmpty()) {
+                                session?.setPointTransactions(txs)
+                            }
+                        } catch (_: Exception) {}
+
+                        try {
+                            val rwSnapshot = firestore.collection(COLLECTION_USERS).document(uid)
+                                .collection(SUBCOLLECTION_REDEEMED_REWARDS).get().await()
+                            val rws = rwSnapshot.documents.mapNotNull { documentToRedeemedReward(it.data, it.id) }
+                                .sortedByDescending { it.expiresAtMillis }
+                            if (rws.isNotEmpty()) {
+                                session?.setRedeemedRewards(rws)
+                            }
+                        } catch (_: Exception) {}
                     }
                 } catch (_: Exception) {
                     // Ignorar errores de sync en arranque para no bloquear UI
@@ -109,6 +134,7 @@ class FirebaseAuthRepositoryImpl(
     companion object {
         const val COLLECTION_USERS = "users"
         const val SUBCOLLECTION_POINT_TRANSACTIONS = "point_transactions"
+        const val SUBCOLLECTION_REDEEMED_REWARDS = "redeemed_rewards"
     }
 
     override fun getCurrentUser(): Flow<StudentUser?> {
@@ -155,9 +181,51 @@ class FirebaseAuthRepositoryImpl(
                     studentUser = initialUser
                 }
 
-                // Sincronizar con el almacenamiento local del teléfono
+                // Sincronizar subcolecciones desde Firestore (historial y vales redimidos)
+                val cloudTxs = mutableListOf<PointTransaction>()
+                try {
+                    val txsDoc = firestore.collection(COLLECTION_USERS).document(uid)
+                        .collection(SUBCOLLECTION_POINT_TRANSACTIONS)
+                        .get()
+                        .await()
+                    for (d in txsDoc.documents) {
+                        val pt = documentToPointTransaction(d.data, d.id)
+                        if (pt != null) cloudTxs.add(pt)
+                    }
+                    cloudTxs.sortByDescending { it.timestampMillis }
+                } catch (_: Exception) {
+                    // Fallback silencioso si no hay transacciones o hay fallo de red
+                }
+
+                val cloudRewards = mutableListOf<RedeemedReward>()
+                try {
+                    val rewardsDoc = firestore.collection(COLLECTION_USERS).document(uid)
+                        .collection(SUBCOLLECTION_REDEEMED_REWARDS)
+                        .get()
+                        .await()
+                    for (d in rewardsDoc.documents) {
+                        val rw = documentToRedeemedReward(d.data, d.id)
+                        if (rw != null) cloudRewards.add(rw)
+                    }
+                    cloudRewards.sortByDescending { it.expiresAtMillis }
+                } catch (_: Exception) {
+                    // Fallback silencioso si no hay recompensas
+                }
+
+                // Limpiar previamente cualquier sesión residual activa en este teléfono
+                session?.clearSession()
+
+                // Hidratar el almacenamiento local del teléfono con los datos autoritativos de la nube
                 session?.saveAccountInternal(studentUser, password)
                 session?.saveUserSession(studentUser)
+                session?.setStudiPuntos(studentUser.studiPuntos)
+                if (cloudTxs.isNotEmpty()) {
+                    session?.setPointTransactions(cloudTxs)
+                }
+                if (cloudRewards.isNotEmpty()) {
+                    session?.setRedeemedRewards(cloudRewards)
+                }
+
                 currentUserState.value = studentUser
                 return Result.success(studentUser)
 
@@ -457,5 +525,71 @@ class FirebaseAuthRepositoryImpl(
     private fun generateSha256(input: String): String {
         val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray(Charsets.UTF_8))
         return bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    fun documentToPointTransaction(data: Map<String, Any>?, docId: String): PointTransaction? {
+        if (data == null) return null
+        val title = data["title"] as? String ?: return null
+        val typeStr = data["type"] as? String ?: return null
+        val type = try {
+            PointTransactionType.valueOf(typeStr)
+        } catch (_: Exception) {
+            PointTransactionType.RECEIPT_SCAN
+        }
+        val delta = (data["delta"] as? Number)?.toInt() ?: (data["pointsDelta"] as? Number)?.toInt() ?: 0
+        val id = data["id"] as? String ?: docId
+        val desc = data["description"] as? String ?: ""
+        val refId = data["referenceId"] as? String
+        val prevHash = data["previousHash"] as? String ?: "GENESIS_BLOCK"
+        val timestamp = (data["timestampMillis"] as? Number)?.toLong() ?: System.currentTimeMillis()
+        val txHash = (data["txHash"] as? String)?.takeIf { it.length == 64 }
+            ?: PointTransaction.calculateHash(prevHash, id, delta, type.name, timestamp)
+
+        return PointTransaction(
+            id = id,
+            title = title,
+            description = desc,
+            pointsDelta = delta,
+            type = type,
+            timestampMillis = timestamp,
+            referenceId = refId,
+            previousHash = prevHash,
+            txHash = txHash
+        )
+    }
+
+    fun documentToRedeemedReward(data: Map<String, Any>?, docId: String): RedeemedReward? {
+        if (data == null) return null
+        val title = data["rewardTitle"] as? String ?: return null
+        val partner = data["partnerName"] as? String ?: "Comercio"
+        val cost = (data["pointsCost"] as? Number)?.toInt() ?: 0
+        val code = data["redemptionCode"] as? String ?: "CODE"
+        val formatted = data["redeemedAtFormatted"] as? String ?: ""
+        val emoji = data["iconEmoji"] as? String ?: "🎁"
+        val isUsed = data["isUsed"] as? Boolean ?: false
+        val expires = (data["expiresAtMillis"] as? Number)?.toLong() ?: (System.currentTimeMillis() + 48L * 3600 * 1000)
+        val token = data["securityToken"] as? String ?: "123456"
+        val url = data["officialUrl"] as? String ?: "https://estudihambres.pe"
+        val methodStr = data["redemptionMethod"] as? String ?: RedemptionMethod.ONLINE_CODE.name
+        val method = try {
+            RedemptionMethod.valueOf(methodStr)
+        } catch (_: Exception) {
+            RedemptionMethod.ONLINE_CODE
+        }
+
+        return RedeemedReward(
+            id = data["id"] as? String ?: docId,
+            rewardTitle = title,
+            pointsCost = cost,
+            redemptionCode = code,
+            redeemedAtFormatted = formatted,
+            partnerName = partner,
+            iconEmoji = emoji,
+            isUsed = isUsed,
+            expiresAtMillis = expires,
+            securityToken = token,
+            officialUrl = url,
+            redemptionMethod = method
+        )
     }
 }

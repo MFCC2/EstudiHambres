@@ -300,7 +300,7 @@ fun LoginScreen(
                             letterSpacing = 0.5.sp
                         )
                         OutlinedButton(
-                            onClick = onBypassClick,
+                            onClick = { viewModel.bypass(onLoginSuccess) },
                             shape = CampusShapes.small,
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
                             colors = ButtonDefaults.outlinedButtonColors(
