@@ -82,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.example.estudihambres.domain.service.SunatCpeValidatorBot
+import com.example.estudihambres.domain.usecase.DetectReceiptEstablishmentUseCase
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -117,11 +118,11 @@ fun InSystemReceiptScannerModal(
     var scanStepIndex by remember { mutableIntStateOf(0) }
 
     // Datos detectados durante el escaneo
-    var detectedRuc by remember { mutableStateOf("20252391498") }
-    var detectedPartnerName by remember { mutableStateOf("Bembos (InRetail)") }
-    var detectedSerie by remember { mutableStateOf("B001") }
-    var detectedCorrelativo by remember { mutableStateOf("00049281") }
-    var detectedMonto by remember { mutableStateOf(18.50) }
+    var detectedRuc by remember { mutableStateOf("") }
+    var detectedPartnerName by remember { mutableStateOf("") }
+    var detectedSerie by remember { mutableStateOf("") }
+    var detectedCorrelativo by remember { mutableStateOf("") }
+    var detectedMonto by remember { mutableStateOf(0.0) }
     var detectedTipo by remember { mutableStateOf("03") } // 03 Boleta, 01 Factura
     var isScanCompleted by remember { mutableStateOf(false) }
 
@@ -185,54 +186,6 @@ fun InSystemReceiptScannerModal(
             isScanCompleted = true
             val tipoLabel = if (tipo == "01") "Factura" else "Boleta"
             scanStepText = "✅ ¡$tipoLabel auditada con éxito en SUNAT! (+80 StudiPuntos)"
-        }
-    }
-
-    // Selector de imagen de galería
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            try {
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                if (bitmap != null) {
-                    val inputImage = InputImage.fromBitmap(bitmap, 0)
-                    barcodeScanner.process(inputImage)
-                        .addOnSuccessListener { barcodes ->
-                            val qr = barcodes.firstOrNull { it.rawValue?.contains("|") == true }
-                            if (qr?.rawValue != null) {
-                                val parts = qr.rawValue!!.split("|")
-                                if (parts.size >= 6) {
-                                    val ruc = parts[0].trim()
-                                    val tipo = parts[1].trim()
-                                    val serie = parts[2].trim()
-                                    val correlativo = parts[3].trim()
-                                    val monto = parts[5].trim().toDoubleOrNull() ?: 18.50
-                                    val partner = SunatCpeValidatorBot.TRUSTED_RUC_DIRECTORY[ruc] ?: "Comercio Aliado SUNAT"
-                                    startProgressiveScan(ruc, partner, serie, correlativo, monto, tipo)
-                                    return@addOnSuccessListener
-                                }
-                            }
-
-                            // Fallback OCR de texto
-                            textRecognizer.process(inputImage)
-                                .addOnSuccessListener { visionText ->
-                                    val text = visionText.text.uppercase()
-                                    val ruc = Regex("""\b((?:20|10|15|17)\d{9})\b""").find(text)?.value ?: "20252391498"
-                                    val combo = Regex("""\b([BF][A-Z0-9]{3}|EB[A-Z0-9]{2}|E[A-Z0-9]{3})\s*[-–:/#\s]\s*([0-9]{1,8})\b""").find(text)
-                                    val serie = combo?.groupValues?.get(1) ?: "B001"
-                                    val num = combo?.groupValues?.get(2) ?: "00049281"
-                                    val monto = Regex("""(?:TOTAL|PAGAR)\s*[:=]?\s*S?/?\.?\s*([0-9]+[.,][0-9]{2})""").find(text)?.groupValues?.get(1)?.replace(",", ".")?.toDoubleOrNull() ?: 24.50
-                                    val tipo = if (serie.startsWith("F") || (serie.startsWith("E") && !serie.startsWith("EB"))) "01" else "03"
-                                    val partner = SunatCpeValidatorBot.TRUSTED_RUC_DIRECTORY[ruc] ?: "Comercio Registrado SUNAT"
-                                    startProgressiveScan(ruc, partner, serie, num, monto, tipo)
-                                }
-                        }
-                }
-            } catch (e: Exception) {
-                Toast.makeText(context, "Error al cargar comprobante: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
         }
     }
 
@@ -330,13 +283,13 @@ fun InSystemReceiptScannerModal(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = detectedPartnerName,
+                            text = if (detectedPartnerName.isNotBlank()) detectedPartnerName else if (detectedRuc.isNotBlank()) (DetectReceiptEstablishmentUseCase.detectFromRuc(detectedRuc) ?: "Comercio Emisor SUNAT") else "Alinea tu Boleta o Factura",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "RUC: $detectedRuc",
+                            text = if (detectedRuc.isNotBlank()) "RUC: $detectedRuc" else "RUC: Escaneando...",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -346,7 +299,7 @@ fun InSystemReceiptScannerModal(
                             color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Text(
-                                text = "${detectedSerie}-${detectedCorrelativo.padStart(8, '0')}",
+                                text = if (detectedSerie.isNotBlank()) "${detectedSerie}-${detectedCorrelativo.padStart(8, '0')}" else "SERIE - NÚMERO",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Black,
                                 fontFamily = FontFamily.Monospace,
@@ -355,7 +308,7 @@ fun InSystemReceiptScannerModal(
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "TOTAL: S/ %.2f".format(detectedMonto),
+                            text = if (detectedMonto > 0.0) "TOTAL: S/ %.2f".format(detectedMonto) else "TOTAL: S/ --.--",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color(0xFF0F766E)
@@ -439,95 +392,15 @@ fun InSystemReceiptScannerModal(
                     )
                 }
 
-                // 3. Opciones de Carga Rápida en el Sistema (Sin abrir cámaras molestas)
-                Text(
-                    text = "Selecciona o Carga tu Comprobante:",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // 3. Opciones de Validación y Entrada en el Sistema
+                OutlinedButton(
+                    onClick = onOpenManualInput,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().height(46.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = { galleryLauncher.launch("image/*") },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f).height(46.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Subir Foto", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    }
-
-                    OutlinedButton(
-                        onClick = onOpenManualInput,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f).height(46.dp)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Ingreso Manual", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                // Accesos Rápidos de Demostración Oficial
-                Text(
-                    text = "Pruebas Rápidas de Verificación Institucional:",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    FilterChip(
-                        selected = detectedPartnerName.contains("Bembos") && isScanCompleted,
-                        onClick = {
-                            startProgressiveScan(
-                                ruc = "20252391498",
-                                partner = "Bembos (InRetail)",
-                                serie = "B001",
-                                correlativo = "00049281",
-                                monto = 18.50,
-                                tipo = "03"
-                            )
-                        },
-                        label = { Text("🍔 Boleta Bembos") }
-                    )
-
-                    FilterChip(
-                        selected = detectedPartnerName.contains("Starbucks") && isScanCompleted,
-                        onClick = {
-                            startProgressiveScan(
-                                ruc = "20100107214",
-                                partner = "Delosi (Starbucks)",
-                                serie = "F001",
-                                correlativo = "00018420",
-                                monto = 26.00,
-                                tipo = "01"
-                            )
-                        },
-                        label = { Text("☕ Factura Starbucks") }
-                    )
-
-                    FilterChip(
-                        selected = detectedPartnerName.contains("Cineplanet") && isScanCompleted,
-                        onClick = {
-                            startProgressiveScan(
-                                ruc = "20429683581",
-                                partner = "Cineplanet",
-                                serie = "B002",
-                                correlativo = "00091823",
-                                monto = 32.00,
-                                tipo = "03"
-                            )
-                        },
-                        label = { Text("🎬 Boleta Cine") }
-                    )
+                    Icon(Icons.AutoMirrored.Filled.ReceiptLong, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Ingreso Manual de Datos de Comprobante", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
 
                 // Botón para ejecutar el Bot SUNAT Oficial en vivo
@@ -562,7 +435,7 @@ fun InSystemReceiptScannerModal(
                     onSubmitReceipt(detectedRuc, detectedSerie, detectedCorrelativo, detectedMonto)
                     onDismiss()
                 },
-                enabled = isScanCompleted && !isScanningActive,
+                enabled = isScanCompleted && !isScanningActive && detectedRuc.isNotBlank() && detectedMonto >= 5.0,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(10.dp)
             ) {

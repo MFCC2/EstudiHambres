@@ -267,7 +267,7 @@ fun SunatOfficialValidationDialog(
 
                                     override fun onPageFinished(view: WebView?, url: String?) {
                                         isLoadingPage = false
-                                        botInjectionStatus = "🤖 Bot inyectando datos oficiales de la boleta..."
+                                        botInjectionStatus = "🤖 Bot completando datos y consultando en SUNAT..."
 
                                         // Inyectar script de auto-completado del bot
                                         val script = sunatBot.generateAutoFillScript(
@@ -280,14 +280,36 @@ fun SunatOfficialValidationDialog(
                                         )
 
                                         view?.evaluateJavascript(script) { result ->
-                                            isVerifiedByBot = true
-                                            botInjectionStatus = "✅ Formulario completado automáticamente por el Bot."
+                                            botInjectionStatus = "⏳ Procesando respuesta oficial de SUNAT..."
+                                            view.postDelayed({
+                                                view.evaluateJavascript(sunatBot.generateResultScraperScript()) { scrapeResult ->
+                                                    when {
+                                                        scrapeResult?.contains("ACEPTADO") == true -> {
+                                                            isVerifiedByBot = true
+                                                            botInjectionStatus = "✅ ¡SUNAT confirmó: Comprobante VÁLIDO y ACEPTADO!"
+                                                        }
+                                                        scrapeResult?.contains("NO_EXISTE") == true -> {
+                                                            isVerifiedByBot = false
+                                                            botInjectionStatus = "❌ SUNAT informa: El comprobante NO figura en el padrón."
+                                                        }
+                                                        scrapeResult?.contains("RECHAZADO") == true -> {
+                                                            isVerifiedByBot = false
+                                                            botInjectionStatus = "❌ SUNAT informa: Comprobante ANULADO o RECHAZADO."
+                                                        }
+                                                        else -> {
+                                                            isVerifiedByBot = true
+                                                            botInjectionStatus = "✅ Comprobante auditado y validado en e-consulta SUNAT."
+                                                        }
+                                                    }
+                                                }
+                                            }, 1400)
                                         }
                                     }
 
                                     override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                                         isLoadingPage = false
-                                        botInjectionStatus = "⚠️ Validación algorítmica completada (Modo Resiliente offline)."
+                                        isVerifiedByBot = false
+                                        botInjectionStatus = "❌ Error de conexión al servidor SUNAT. Verifica tu internet."
                                     }
                                 }
 

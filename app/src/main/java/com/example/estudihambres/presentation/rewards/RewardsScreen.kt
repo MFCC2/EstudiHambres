@@ -96,6 +96,9 @@ import com.example.estudihambres.domain.model.RewardItem
 import com.example.estudihambres.domain.usecase.ValidateSunatReceiptUseCase
 import com.example.estudihambres.presentation.rewards.components.LiveReceiptScannerDialog
 import com.example.estudihambres.presentation.rewards.components.InSystemReceiptScannerModal
+import com.example.estudihambres.domain.usecase.DetectReceiptEstablishmentUseCase
+import com.example.estudihambres.presentation.rewards.components.ReceiptScannerTabContent
+import androidx.compose.material.icons.filled.Storefront
 import com.example.estudihambres.presentation.rewards.components.SunatOfficialValidationDialog
 import androidx.compose.material.icons.filled.SmartToy
 import java.text.SimpleDateFormat
@@ -178,7 +181,7 @@ fun RewardsScreen(
                 studiPuntos = state.studiPuntos,
                 streakText = state.activeStreakText,
                 isScanning = state.isScanningReceipt,
-                onOpenReceiptDialog = { viewModel.openReceiptScanner() },
+                onOpenReceiptDialog = { viewModel.onTabSelect(1) },
                 onOpenLegal = { viewModel.openLegalDialog() },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
@@ -197,6 +200,11 @@ fun RewardsScreen(
                 Tab(
                     selected = state.selectedTab == 1,
                     onClick = { viewModel.onTabSelect(1) },
+                    text = { Text("🧾 Escanear Boleta", fontWeight = FontWeight.Bold) }
+                )
+                Tab(
+                    selected = state.selectedTab == 2,
+                    onClick = { viewModel.onTabSelect(2) },
                     text = {
                         Text(
                             text = if (state.redeemedRewards.isNotEmpty()) "🎟️ Mis Vales (${state.redeemedRewards.size})" else "🎟️ Mis Vales",
@@ -205,8 +213,8 @@ fun RewardsScreen(
                     }
                 )
                 Tab(
-                    selected = state.selectedTab == 2,
-                    onClick = { viewModel.onTabSelect(2) },
+                    selected = state.selectedTab == 3,
+                    onClick = { viewModel.onTabSelect(3) },
                     text = { Text("⚡ Historial", fontWeight = FontWeight.Bold) }
                 )
             }
@@ -218,13 +226,24 @@ fun RewardsScreen(
                     onCategorySelect = { viewModel.onCategorySelect(it) },
                     onRedeem = { viewModel.onRedeemReward(it) }
                 )
-                1 -> MyVouchersTabContent(
+                1 -> ReceiptScannerTabContent(
+                    onSubmitReceipt = { ruc, serie, correlativo, monto ->
+                        viewModel.onRegisterReceiptManual(ruc, serie, correlativo, monto)
+                    },
+                    onOpenSunatBot = { ruc, serie, correlativo, monto, tipo ->
+                        viewModel.openSunatBotDialog(ruc, serie, correlativo, monto, tipo)
+                    },
+                    onOpenManualInput = {
+                        viewModel.switchToManualReceipt()
+                    }
+                )
+                2 -> MyVouchersTabContent(
                     vouchers = state.redeemedRewards,
                     onMarkAsUsed = { viewModel.onMarkRewardAsUsed(it) }
                 )
-                2 -> HistoryAndMissionsTabContent(
+                3 -> HistoryAndMissionsTabContent(
                     transactions = state.pointTransactions,
-                    onOpenReceiptDialog = { viewModel.openReceiptScanner() }
+                    onOpenReceiptDialog = { viewModel.onTabSelect(1) }
                 )
             }
         }
@@ -236,7 +255,7 @@ fun RewardsScreen(
             redeemed = redeemed,
             onDismiss = {
                 viewModel.dismissRedemptionDialog()
-                viewModel.onTabSelect(1) // Cambia a pestaña 'Mis Vales'
+                viewModel.onTabSelect(2) // Cambia a pestaña 'Mis Vales'
             }
         )
     }
@@ -265,11 +284,9 @@ fun RewardsScreen(
             onSubmitManual = { ruc, serie, correlativo, amount ->
                 viewModel.onRegisterReceiptManual(ruc, serie, correlativo, amount)
             },
-            onSubmitQr = { qrText ->
-                viewModel.onRegisterReceiptQr(qrText)
-            },
             onSwitchToScanner = {
-                viewModel.switchToScannerReceipt()
+                viewModel.onTabSelect(1)
+                viewModel.dismissReceiptDialog()
             },
             onOpenSunatBot = { ruc, serie, correlativo, amount, tipo ->
                 viewModel.openSunatBotDialog(ruc, serie, correlativo, amount, tipo)
@@ -1101,25 +1118,21 @@ private fun ReceiptRegisterDialog(
     isProcessing: Boolean,
     onDismiss: () -> Unit,
     onSubmitManual: (String, String, String, Double) -> Unit,
-    onSubmitQr: (String) -> Unit,
     onSwitchToScanner: () -> Unit = {},
     onOpenSunatBot: (String, String, String, Double, String) -> Unit = { _, _, _, _, _ -> }
 ) {
-    var selectedPartner by remember { mutableStateOf("Delosi (Starbucks / KFC / Burger King)") }
-    var selectedRuc by remember { mutableStateOf("20100107214") }
-    var serie by remember { mutableStateOf("B001") }
+    var ruc by remember { mutableStateOf("") }
+    var serie by remember { mutableStateOf("") }
     var correlativo by remember { mutableStateOf("") }
-    var montoStr by remember { mutableStateOf("18.50") }
-    var qrInput by remember { mutableStateOf("") }
-    var isQrMode by remember { mutableStateOf(false) }
+    var montoStr by remember { mutableStateOf("") }
 
-    val partners = listOf(
-        "Delosi (Starbucks/KFC/BK)" to "20100107214",
-        "Bembos (InRetail)" to "20252391498",
-        "Cineplanet" to "20429683581",
-        "Tiendas Tambo" to "20508565934",
-        "Librerías Crisol" to "20100084761"
-    )
+    val detectedEstablishment = remember(ruc) {
+        if (ruc.length == 11) {
+            DetectReceiptEstablishmentUseCase.detectFromRuc(ruc)
+        } else {
+            null
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1136,139 +1149,120 @@ private fun ReceiptRegisterDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "Acredita +80 StudiPuntos registrando tu comprobante oficial de consumo universitario (antigüedad máx. 72h).",
+                    text = "Acredita +80 StudiPuntos registrando los datos de tu comprobante de pago oficial (antigüedad máx. 72h).",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Selector de Modo (Manual asistido, Pegar QR oficial o Escáner con Cámara)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    FilterChip(
-                        selected = !isQrMode,
-                        onClick = { isQrMode = false },
-                        label = { Text("Manual") }
-                    )
-                    FilterChip(
-                        selected = isQrMode,
-                        onClick = { isQrMode = true },
-                        label = { Text("Pegar QR") }
-                    )
-                    FilterChip(
-                        selected = false,
-                        onClick = onSwitchToScanner,
-                        leadingIcon = {
-                            Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(14.dp))
-                        },
-                        label = { Text("Cámara") }
-                    )
-                }
+                OutlinedTextField(
+                    value = ruc,
+                    onValueChange = { if (it.length <= 11) ruc = it.filter { c -> c.isDigit() } },
+                    label = { Text("RUC del Emisor (11 dígitos)") },
+                    placeholder = { Text("Ej. 20100107214") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                if (isQrMode) {
-                    OutlinedTextField(
-                        value = qrInput,
-                        onValueChange = { qrInput = it },
-                        label = { Text("Pegar cadena QR SUNAT") },
-                        placeholder = { Text("20100107214|03|B001|00049281|...") },
-                        singleLine = false,
-                        maxLines = 3,
+                if (detectedEstablishment != null) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFE8F5E9),
+                        border = BorderStroke(1.dp, Color(0xFF4CAF50)),
                         modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    // Selector de Comercio Aliado
-                    Text("Comercio Aliado:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        partners.forEach { (name, ruc) ->
-                            val isSel = selectedRuc == ruc
-                            FilterChip(
-                                selected = isSel,
-                                onClick = {
-                                    selectedRuc = ruc
-                                    selectedPartner = name
-                                },
-                                label = { Text(name.take(16)) }
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Storefront,
+                                contentDescription = null,
+                                tint = Color(0xFF2E7D32),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Establecimiento: $detectedEstablishment",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1B5E20)
                             )
                         }
                     }
+                }
 
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = serie,
-                            onValueChange = { serie = it.uppercase() },
-                            label = { Text("Serie") },
-                            placeholder = { Text("B001") },
-                            singleLine = true,
-                            modifier = Modifier.weight(0.4f)
-                        )
-                        OutlinedTextField(
-                            value = correlativo,
-                            onValueChange = { correlativo = it },
-                            label = { Text("Número (1-8 dígitos)") },
-                            placeholder = { Text("49281") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            modifier = Modifier.weight(0.6f)
-                        )
-                    }
-
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = montoStr,
-                        onValueChange = { montoStr = it },
-                        label = { Text("Monto Total S/ (mín. S/ 5.00)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        value = serie,
+                        onValueChange = { serie = it.uppercase().take(4) },
+                        label = { Text("Serie") },
+                        placeholder = { Text("B001 o F001") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.weight(0.45f)
                     )
+                    OutlinedTextField(
+                        value = correlativo,
+                        onValueChange = { correlativo = it.filter { c -> c.isDigit() }.take(8) },
+                        label = { Text("Número (1-8 dígitos)") },
+                        placeholder = { Text("00049281") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.weight(0.55f)
+                    )
+                }
 
-                    Spacer(modifier = Modifier.height(4.dp))
-                    OutlinedButton(
-                        onClick = {
-                            val amount = montoStr.toDoubleOrNull() ?: 18.50
-                            val tipo = if (serie.uppercase().startsWith("F") || (serie.uppercase().startsWith("E") && !serie.uppercase().startsWith("EB"))) "01" else "03"
-                            onOpenSunatBot(selectedRuc, serie, correlativo.ifBlank { "00049281" }, amount, tipo)
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0038A8)),
-                        border = BorderStroke(1.dp, Color(0xFF0038A8)),
-                        modifier = Modifier.fillMaxWidth().height(42.dp)
-                    ) {
-                        Icon(Icons.Default.SmartToy, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("🤖 Validar con Bot SUNAT Oficial", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    }
+                OutlinedTextField(
+                    value = montoStr,
+                    onValueChange = { montoStr = it },
+                    label = { Text("Monto Total S/ (mín. S/ 5.00)") },
+                    placeholder = { Text("Ej. 15.00") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedButton(
+                    onClick = {
+                        val amount = montoStr.toDoubleOrNull() ?: 0.0
+                        val upperSerie = serie.uppercase()
+                        val tipo = if (upperSerie.startsWith("F") || (upperSerie.startsWith("E") && !upperSerie.startsWith("EB"))) "01" else "03"
+                        onOpenSunatBot(ruc, serie, correlativo.ifBlank { "00000001" }, amount, tipo)
+                    },
+                    enabled = ruc.length == 11 && serie.isNotBlank(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0038A8)),
+                    border = BorderStroke(1.dp, Color(0xFF0038A8)),
+                    modifier = Modifier.fillMaxWidth().height(42.dp)
+                ) {
+                    Icon(Icons.Default.SmartToy, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("🤖 Validar con Bot SUNAT Oficial", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (isQrMode) {
-                        onSubmitQr(qrInput)
-                    } else {
-                        val amount = montoStr.toDoubleOrNull() ?: 18.50
-                        onSubmitManual(selectedRuc, serie, correlativo, amount)
-                    }
+                    val amount = montoStr.toDoubleOrNull() ?: 0.0
+                    onSubmitManual(ruc, serie, correlativo, amount)
                 },
-                enabled = !isProcessing && (if (isQrMode) qrInput.isNotBlank() else correlativo.isNotBlank()),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                enabled = !isProcessing && ruc.length == 11 && serie.isNotBlank() && correlativo.isNotBlank() && (montoStr.toDoubleOrNull() ?: 0.0) >= 5.0,
+                shape = RoundedCornerShape(8.dp)
             ) {
                 if (isProcessing) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                 } else {
-                    Text("Verificar y Acreditar", fontWeight = FontWeight.Bold)
+                    Text("Acreditar Puntos (+80)")
                 }
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(8.dp)
+            ) {
                 Text("Cancelar")
             }
         }

@@ -132,6 +132,8 @@ class SunatCpeValidatorBot {
 
     /**
      * Genera el script de inyección JavaScript para el bot automatizado en el formulario oficial de SUNAT.
+     * Despacha eventos 'input' y 'change' para garantizar que los scripts de validación interna de SUNAT
+     * admitan los campos inyectados y habiliten la consulta.
      */
     fun generateAutoFillScript(
         ruc: String,
@@ -149,15 +151,24 @@ class SunatCpeValidatorBot {
             (function() {
                 try {
                     var f = document.lista;
+                    if (!f) f = (document.forms && document.forms['lista']) || document.querySelector('form');
                     if (!f) return 'FORM_NOT_FOUND';
+
+                    function dispatchChange(elem) {
+                        if (!elem) return;
+                        try {
+                            elem.dispatchEvent(new Event('input', { bubbles: true }));
+                            elem.dispatchEvent(new Event('change', { bubbles: true }));
+                        } catch(e) {}
+                    }
                     
-                    if (f.num_ruc) f.num_ruc.value = '$ruc';
-                    if (f.tipocomprobante) f.tipocomprobante.value = '$webTipo';
-                    if (f.num_serie) f.num_serie.value = '$serie';
-                    if (f.num_comprob) f.num_comprob.value = '$cleanCorrelativo';
-                    if (f.fec_emision) f.fec_emision.value = '$fechaEmision';
-                    if (f.cantidad) f.cantidad.value = '$formattedMonto';
-                    if (f.cod_docide) f.cod_docide.value = '-';
+                    if (f.num_ruc) { f.num_ruc.value = '$ruc'; dispatchChange(f.num_ruc); }
+                    if (f.tipocomprobante) { f.tipocomprobante.value = '$webTipo'; dispatchChange(f.tipocomprobante); }
+                    if (f.num_serie) { f.num_serie.value = '$serie'; dispatchChange(f.num_serie); }
+                    if (f.num_comprob) { f.num_comprob.value = '$cleanCorrelativo'; dispatchChange(f.num_comprob); }
+                    if (f.fec_emision) { f.fec_emision.value = '$fechaEmision'; dispatchChange(f.fec_emision); }
+                    if (f.cantidad) { f.cantidad.value = '$formattedMonto'; dispatchChange(f.cantidad); }
+                    if (f.cod_docide) { f.cod_docide.value = '-'; dispatchChange(f.cod_docide); }
                     
                     if (typeof getTokenCaptcha3 === 'function') {
                         getTokenCaptcha3();
@@ -166,7 +177,43 @@ class SunatCpeValidatorBot {
                         opcGrabar();
                         return 'SUBMITTED_WITH_OPCGRABAR';
                     }
+                    var btn = document.querySelector("input[value*='Buscar']") || document.querySelector("input[value*='Consultar']") || document.querySelector("button[type='submit']");
+                    if (btn) {
+                        btn.click();
+                        return 'SUBMITTED_WITH_BUTTON_CLICK';
+                    }
                     return 'READY_FOR_SUBMIT';
+                } catch(e) {
+                    return 'ERROR: ' + e.message;
+                }
+            })();
+        """.trimIndent()
+    }
+
+    /**
+     * Script ligero para leer la respuesta oficial de auditoría devuelta por SUNAT en el DOM del WebView.
+     */
+    fun generateResultScraperScript(): String {
+        return """
+            (function() {
+                try {
+                    var text = document.body ? document.body.innerText.toUpperCase() : '';
+                    if (text.indexOf('EL COMPROBANTE DE PAGO CONSULTADO ES') !== -1 || text.indexOf('ACEPTADO') !== -1 || text.indexOf('AUTORIZADO') !== -1) {
+                        return 'RESULT:ACEPTADO';
+                    }
+                    if (text.indexOf('NO EXISTE') !== -1 || text.indexOf('NO SE ENCUENTRA REGISTRADO') !== -1) {
+                        return 'RESULT:NO_EXISTE';
+                    }
+                    if (text.indexOf('ANULADO') !== -1 || text.indexOf('RECHAZADO') !== -1) {
+                        return 'RESULT:RECHAZADO';
+                    }
+                    if (text.indexOf('CARGANDO') !== -1 || text.indexOf('CONSULTANDO') !== -1) {
+                        return 'RESULT:CARGANDO';
+                    }
+                    if (text.indexOf('DATOS INCORRECTOS') !== -1 || text.indexOf('ERROR') !== -1) {
+                        return 'RESULT:ERROR';
+                    }
+                    return 'RESULT:WAITING';
                 } catch(e) {
                     return 'ERROR: ' + e.message;
                 }
