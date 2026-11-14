@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
  * Estado UI enriquecido de la Tienda de StudiPuntos (Premios).
  */
 data class RewardsUiState(
-    val selectedTab: Int = 0, // 0: Catálogo, 1: Mis Vales, 2: Historial & Misiones
+    val selectedTab: Int = 0, // 0: Catálogo, 1: Escanear Boleta, 2: Mis Vales, 3: Historial & Misiones
     val studiPuntos: Int = 2450,
     val allRewards: List<RewardItem> = emptyList(),
     val filteredRewards: List<RewardItem> = emptyList(),
@@ -259,7 +259,7 @@ class RewardsViewModel(
     }
 
     fun openReceiptScanner() {
-        _uiState.update { it.copy(showReceiptScanner = true, showReceiptDialog = false) }
+        _uiState.update { it.copy(selectedTab = 1, showReceiptScanner = false, showReceiptDialog = false) }
     }
 
     fun dismissReceiptScanner() {

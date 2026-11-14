@@ -4,6 +4,31 @@ Registro cronológico de modificaciones, agentes intervinientes y cambios arquit
 
 ---
 
+## [v1.5.7] - 2026-11-13
+**Rama:** `develop` / `main`
+**Versión:** `v1.5.7` (versionCode 20)
+
+### Resumen de la Versión v1.5.7
+Actualización crítica de **Requerimiento Estricto de Internet, Apartado Directo de Escaneo de Boletas, Detección Automática de Establecimientos y Optimización del Bot SUNAT**:
+1. **Requerimiento Estricto de Internet (`NoInternetBlockingScreen` & `NetworkMonitor`)**:
+   - Cumpliendo con la directiva "la app no debe funcionar por ningún motivo si no tiene conexión a internet", se integró `NetworkMonitor` y una pantalla bloqueadora ineludible (`NoInternetBlockingScreen`) a nivel raíz en `MainActivity`.
+   - Se eliminó el fallback offline permisivo en `FirebaseAuthRepositoryImpl` para evitar el uso de credenciales locales obsoletas sin validación en Firebase Auth y Firestore.
+2. **Apartado Permanente para Escanear Boleta Directamente (`ReceiptScannerTabContent`)**:
+   - La pantalla de Premios (`RewardsScreen.kt`) ahora cuenta con 4 pestañas de primer nivel: `🎁 Catálogo`, `🧾 Escanear Boleta`, `🎟️ Mis Vales` e `⚡ Historial`.
+   - La pestaña `Escanear Boleta` integra directamente en el sistema el visor CameraX con marco visual de comprobante, haz láser interactivo, alternancia de linterna y visualización del proceso de lectura en tiempo real.
+3. **Detección Automática del Establecimiento Emisor (`DetectReceiptEstablishmentUseCase`)**:
+   - Detección inmediata y automática de la marca comercial o razón social directamente desde el texto OCR del comprobante y/o RUC, reconociendo más de 35 marcas (Bembos, Starbucks, Cineplanet, KFC, Tambo, Crisol, etc.) y sufijos empresariales peruanos (S.A.C., S.A., E.I.R.L., S.R.L.).
+   - Eliminados los menús manuales de "Comercio Aliado" para que el establecimiento se extraiga de la boleta de manera autónoma.
+4. **Purga Completa de Datos y Accesos Simulados**:
+   - Eliminados el monto predeterminado `18.50`, el preset fijo `Bembos`, la carga de archivos / "Subir Foto" de galería en el escáner de boletas, la entrada de texto "Pegar QR", y los chips de prueba ("Boleta Bembos", "Factura Starbucks", "Boleta Cine").
+5. **Bot SUNAT Oficial Mejorado (`SunatCpeValidatorBot`)**:
+   - Generación de scripts con despacho de eventos DOM `input` y `change` para que el formulario de `ConsValiCpe.htm` no restablezca los campos.
+   - Script de scraping DOM en tiempo real para leer de forma asíncrona la respuesta tributaria oficial (`ACEPTADO`, `NO_EXISTE`, `RECHAZADO`).
+6. **Pruebas QA Automatizadas (346/346 Passing)**:
+   - Cobertura completa con 346 pruebas unitarias y de integración pasando al 100%, incluyendo la nueva suite `StrictInternetAndReceiptAutoDetectionQaTest.kt`.
+
+---
+
 ## [v1.5.6] - 2026-11-06
 **Rama:** `develop` / `main`
 **Versión:** `v1.5.6` (versionCode 19)

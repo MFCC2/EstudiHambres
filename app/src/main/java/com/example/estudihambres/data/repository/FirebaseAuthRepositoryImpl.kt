@@ -247,16 +247,8 @@ class FirebaseAuthRepositoryImpl(
                 }
                 return Result.failure(IllegalArgumentException(msg))
             } catch (e: Exception) {
-                // Tolerancia offline si ya se había logueado previamente en este celular
-                if (session != null) {
-                    val localResult = session.authenticate(normEmail, password)
-                    if (localResult.isSuccess) {
-                        currentUserState.value = localResult.getOrNull()
-                        return localResult
-                    }
-                }
                 return Result.failure(
-                    IllegalStateException("No se pudo conectar con el servidor de autenticación: ${e.localizedMessage ?: "Verifica tu conexión a internet."}")
+                    IllegalStateException("No se pudo conectar con el servidor de autenticación de EstudiHambres en la nube: ${e.localizedMessage ?: "Verifica tu conexión a internet."}")
                 )
             }
         }

@@ -178,51 +178,6 @@ fun LiveReceiptScannerDialog(
         }
     }
 
-    // Selector de galería para boletas guardadas en fotos
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            try {
-                val stream = context.contentResolver.openInputStream(it)
-                val bitmap = BitmapFactory.decodeStream(stream)
-                stream?.close()
-                if (bitmap != null) {
-                    val inputImage = InputImage.fromBitmap(bitmap, 0)
-                    barcodeScanner.process(inputImage)
-                        .addOnSuccessListener { barcodes ->
-                            val qrBarcode = barcodes.firstOrNull { b ->
-                                val raw = b.rawValue ?: ""
-                                raw.contains("|") && (raw.contains("|01|") || raw.contains("|03|") || raw.matches(Regex("""^\d{11}\|.*""")))
-                            }
-                            if (qrBarcode?.rawValue != null) {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onQrDetected(qrBarcode.rawValue!!)
-                            } else {
-                                // Fallback a OCR de la imagen de galería
-                                textRecognizer.process(inputImage)
-                                    .addOnSuccessListener { visionText ->
-                                        val parsed = parseReceiptTextFallback(visionText.text)
-                                        if (parsed != null) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            onManualOcrDetected(parsed.first, parsed.second, parsed.third, parsed.fourth)
-                                        } else {
-                                            Toast.makeText(
-                                                context,
-                                                "No se identificó un QR, Boleta o Factura SUNAT en la imagen. Usa el ingreso manual.",
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                        }
-                                    }
-                            }
-                        }
-                }
-            } catch (e: Exception) {
-                Toast.makeText(context, "Error al leer imagen: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
     DisposableEffect(Unit) {
         onDispose {
             try {
@@ -574,33 +529,16 @@ fun LiveReceiptScannerDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                OutlinedButton(
+                    onClick = onSwitchToManualInput,
+                    shape = CampusShapes.small,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth().height(46.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = onSwitchToManualInput,
-                        shape = CampusShapes.small,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
-                        modifier = Modifier.weight(1f).height(46.dp)
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Ingreso Manual", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    }
-
-                    OutlinedButton(
-                        onClick = { galleryLauncher.launch("image/*") },
-                        shape = CampusShapes.small,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
-                        modifier = Modifier.weight(1f).height(46.dp)
-                    ) {
-                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Galería", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    }
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Ingreso Manual de Datos", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
 
                 // Aviso de privacidad según Ley N° 29733
@@ -653,7 +591,7 @@ private fun parseReceiptTextFallback(text: String): Quadruple<String, String, St
     val totalMatch = totalRegex.findAll(upper).lastOrNull()?.groupValues?.get(1)?.replace(",", ".")?.toDoubleOrNull()
         ?: run {
             val currencyRegex = Regex("""S/\.?\s*([0-9]+[.,][0-9]{2})""")
-            currencyRegex.findAll(upper).mapNotNull { it.groupValues[1].replace(",", ".").toDoubleOrNull() }.maxOrNull() ?: 18.50
+            currencyRegex.findAll(upper).mapNotNull { it.groupValues[1].replace(",", ".").toDoubleOrNull() }.maxOrNull() ?: 0.0
         }
 
     return Quadruple(rucMatch, serieMatch, numMatch, totalMatch)
