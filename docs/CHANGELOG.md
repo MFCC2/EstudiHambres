@@ -4,6 +4,16 @@ Registro cronológico de modificaciones, agentes intervinientes y cambios arquit
 
 ---
 
+## [v1.6.1] - 2026-11-24
+**Rama:** `develop` / `main`
+**Versión:** `v1.6.1` (versionCode 22)
+
+### Migración de Backend Firebase (`studihambres-prod`)
+- **Nuevo proyecto Firebase:** migración de `app/google-services.json` al proyecto `studihambres-prod` (bajo cuenta personal, tras el bloqueo de Google Cloud Platform en la cuenta institucional anterior).
+- **Configuración Firebase CLI:** añadidos `firebase.json` y `.firebaserc` apuntando por defecto a `studihambres-prod` para gestionar el despliegue directo de `firestore.rules`.
+
+---
+
 ## [v1.6.0] - 2026-11-24
 **Rama:** `develop` / `main`
 **Versión:** `v1.6.0` (versionCode 21)
