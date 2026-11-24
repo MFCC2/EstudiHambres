@@ -79,10 +79,15 @@ class SessionManager(context: Context) {
          * Genera un hash criptográfico SHA-256 para almacenamiento seguro de contraseñas.
          */
         fun hashPassword(password: String): String {
-            val digest = MessageDigest.getInstance("SHA-256")
-            val hashBytes = digest.digest(password.toByteArray(Charsets.UTF_8))
-            return hashBytes.joinToString("") { "%02x".format(it) }
+            return HashUtils.sha256Hex(password)
         }
+
+        private val SHA256_HEX_REGEX = Regex("^[0-9a-f]{64}$")
+
+        private fun isSha256Hex(value: String): Boolean = SHA256_HEX_REGEX.matches(value)
+
+        private fun constantTimeEquals(a: String, b: String): Boolean =
+            MessageDigest.isEqual(a.toByteArray(Charsets.UTF_8), b.toByteArray(Charsets.UTF_8))
     }
 
     init {
@@ -175,7 +180,14 @@ class SessionManager(context: Context) {
 
         val storedPassword = accountPrefs.getString("pwd_$normalizedEmail", null)
         val hashedInput = hashPassword(passwordInput)
-        val isMatch = storedPassword != null && (storedPassword == hashedInput || storedPassword == passwordInput)
+        // Sólo se acepta la comparación en texto claro para cuentas históricas que aún no fueron
+        // migradas. Si lo almacenado ya es un hash, enviar el propio hash como contraseña
+        // ("pass-the-hash") no debe autenticar.
+        val isLegacyPlaintext = storedPassword != null && !isSha256Hex(storedPassword)
+        val isMatch = storedPassword != null && (
+            constantTimeEquals(storedPassword, hashedInput) ||
+                (isLegacyPlaintext && constantTimeEquals(storedPassword, passwordInput))
+            )
         if (!isMatch) {
             return Result.failure(
                 IllegalArgumentException("Contraseña incorrecta. Por favor verifica tus credenciales e intenta nuevamente.")
@@ -183,7 +195,7 @@ class SessionManager(context: Context) {
         }
 
         // Migración transparente si la contraseña residía en texto claro histórico
-        if (storedPassword == passwordInput && storedPassword != hashedInput) {
+        if (isLegacyPlaintext) {
             accountPrefs.edit().putString("pwd_$normalizedEmail", hashedInput).apply()
         }
 
@@ -207,11 +219,9 @@ class SessionManager(context: Context) {
 
     fun saveAccountInternal(user: StudentUser, password: String) {
         val normalizedEmail = user.email.trim().lowercase()
-        val passwordToStore = if (password.length == 64 && password.all { it.isDigit() || it in 'a'..'f' }) {
-            password
-        } else {
-            hashPassword(password)
-        }
+        // Todos los llamadores entregan la contraseña en claro: se hashea siempre. Antes, una
+        // contraseña de 64 caracteres hexadecimales se guardaba tal cual (sin hash).
+        val passwordToStore = hashPassword(password)
         accountPrefs.edit()
             .putString("pwd_$normalizedEmail", passwordToStore)
             .putString("id_$normalizedEmail", user.id)
@@ -592,6 +602,12 @@ class SessionManager(context: Context) {
         discountBadge: String,
         couponId: String = ""
     ): RedeemedCoupon {
+        // Un mismo cupón no puede canjearse de nuevo mientras su vale siga activo. Antes cada
+        // toque generaba otro vale y +50 StudiPuntos, permitiendo acumular puntos ilimitados.
+        if (couponId.isNotBlank()) {
+            getRedeemedCoupons().firstOrNull { it.couponId == couponId && !it.isUsed && !it.isExpired }
+                ?.let { return it }
+        }
         val newCoupon = RedeemCouponUseCase().invoke(
             partnerName = partnerName,
             title = title,

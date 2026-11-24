@@ -6,6 +6,7 @@ import com.example.estudihambres.domain.repository.ReceiptCollisionRepository
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 
@@ -33,7 +34,7 @@ class FirebaseReceiptCollisionRepositoryImpl(
     private val sessionManager: SessionManager? = SessionManager.getInstanceOrNull()
 ) : ReceiptCollisionRepository {
 
-    private val inMemoryRegistry = mutableSetOf<String>()
+    private val inMemoryRegistry: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
     companion object {
         const val COLLECTION_CLAIMED_RECEIPTS = "claimed_receipts"
@@ -121,10 +122,23 @@ class FirebaseReceiptCollisionRepositoryImpl(
                     tx.set(docRef, dto.toMap())
                 }.await()
             } catch (e: Exception) {
-                if (e.message?.contains("COLLISION_DETECTED") == true) {
-                    return Result.failure(e)
+                // La excepción lanzada dentro de la transacción puede llegar envuelta: revisar la cadena de causas
+                val isCollision = generateSequence<Throwable>(e) { it.cause }
+                    .any { it.message?.contains("COLLISION_DETECTED") == true }
+                if (isCollision) {
+                    return Result.failure(
+                        IllegalStateException("COLLISION_DETECTED: El comprobante ya fue canjeado en la red.")
+                    )
                 }
-                // Si ocurre un fallo de red transitorio, se permite continuar registrando localmente
+                // Falla cerrado: sin confirmación de Firestore no se acredita. Antes cualquier error
+                // (sin red, reglas) caía al registro local y otorgaba los puntos, permitiendo reclamar
+                // offline una boleta ya canjeada en otro dispositivo.
+                val reason = if (e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                    "El servidor rechazó el registro del comprobante."
+                } else {
+                    "No se pudo confirmar el comprobante en la red. Verifica tu conexión e inténtalo nuevamente."
+                }
+                return Result.failure(IllegalStateException(reason))
             }
         }
 

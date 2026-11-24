@@ -137,6 +137,9 @@ com.example.estudihambres/
 | **Agente 4: Geolocalización** | ✅ Producción | Google Maps nativo SDK + visor dual OSM/Leaflet, geocodificación real (Cusco/Lima) y navegación turn-by-turn. |
 | **Agente 5: QA & Pruebas** | ✅ Producción | Suite de 177 pruebas unitarias aprobadas al 100% en 20 suites (prevención de colisiones Firestore, concurrencia de 10 estudiantes, validación SUNAT, anti-replay multi-usuario, ledger criptográfico SHA-256, anti-XSS, anti-phishing, OCR, Haversine, persistencia). |
 | **Agente 6: GitFlow & Release** | ✅ Producción | `./gradlew testDebugUnitTest assembleDebug` con 0 errores. APK generado en `app/build/outputs/apk/debug/app-debug.apk` (69.7 MB). |
+| **Ofertas Web (scraping)** | ✅ Nuevo | `CuponidadOfferParser` (Jsoup, cascada: tarjetas `cd2-loccard` → `container__thumbnail` → JSON-LD) + `CuponidadWebOffersRepository` (caché 10 min, sólo rutas de categoría permitidas por robots.txt, enlaces https del dominio) + `OffersViewModel`/`OffersScreen` (pestaña "Ofertas"). Imágenes con Coil. |
+| **Flujo de boletas** | ✅ Rediseñado | Escanear → Revisar → Verificar en SUNAT → Acreditar. `ReceiptAnalyzer` (QR primero, OCR con confirmación en 2 frames), `ReceiptScanParser`, `ReceiptCameraView`, `SunatVerificationPanel` (WebView oculto sobre la consulta oficial, captura de `alert()`, timeout 30 s) y `SunatResultClassifier` (frases oficiales). Sólo se acredita con resultado VÁLIDO de SUNAT. |
+| **Conectividad** | ✅ Obligatoria | `NetworkMonitor` (red por defecto) + `NoInternetBlockingScreen` dibujado encima del grafo de navegación en `MainActivity` (bloquea toques y "atrás" sin perder el estado). |
 
 
 

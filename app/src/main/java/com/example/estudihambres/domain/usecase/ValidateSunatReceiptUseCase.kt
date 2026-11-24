@@ -70,6 +70,15 @@ class ValidateSunatReceiptUseCase(
             )
         }
 
+        // Dígito verificador oficial (módulo 11 de SUNAT). Sin esto cualquier RUC inventado con
+        // el prefijo correcto superaba la validación y acreditaba StudiPuntos.
+        if (!sunatBot.validateRucChecksum(cleanRuc)) {
+            return ReceiptValidationResult(
+                isValid = false,
+                rejectionReason = "El RUC '$cleanRuc' no supera el dígito verificador de SUNAT. Revisa que esté bien escrito."
+            )
+        }
+
         // 2. Detección y Validación de Serie (Boleta: B### o EB## | Factura: F### o E###)
         val inferredTipo = tipoComprobante ?: sunatBot.inferTipoComprobanteFromSerie(cleanSerie)
         val isFactura = inferredTipo == "01"
@@ -188,8 +197,14 @@ class ValidateSunatReceiptUseCase(
             )
         }
 
+        // La fecha es obligatoria: antes un QR sin fecha (o con fecha ilegible) recibía la hora
+        // actual y superaba artificialmente la ventana de 72 horas.
         val dateString = if (parts.size > 6) parts[6].trim() else ""
         val timestamp = parseDateStringToMillis(dateString)
+            ?: return ReceiptValidationResult(
+                isValid = false,
+                rejectionReason = "El QR no contiene una fecha de emisión válida. Registra el comprobante manualmente."
+            )
 
         return invoke(
             ruc = ruc,
@@ -202,16 +217,16 @@ class ValidateSunatReceiptUseCase(
         )
     }
 
-    private fun parseDateStringToMillis(dateStr: String): Long {
-        if (dateStr.isBlank()) return System.currentTimeMillis()
+    private fun parseDateStringToMillis(dateStr: String): Long? {
+        if (dateStr.isBlank()) return null
         val formats = listOf("dd/MM/yyyy", "yyyy-MM-dd", "dd-MM-yyyy")
         for (f in formats) {
             try {
-                val parser = SimpleDateFormat(f, Locale.ROOT)
+                val parser = SimpleDateFormat(f, Locale.ROOT).apply { isLenient = false }
                 val d = parser.parse(dateStr)
                 if (d != null) return d.time
             } catch (_: Exception) {}
         }
-        return System.currentTimeMillis()
+        return null
     }
 }

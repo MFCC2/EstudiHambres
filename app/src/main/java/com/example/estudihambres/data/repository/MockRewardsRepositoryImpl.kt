@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -55,6 +57,13 @@ class MockRewardsRepositoryImpl(
         null
     }
 ) : RewardsRepository {
+
+    /**
+     * Serializa las operaciones que leen y modifican el saldo. Sin esto, dos toques rápidos en
+     * "Canjear" (o dos boletas en paralelo) pasaban la verificación de saldo/duplicado antes de
+     * que la primera operación descontara, permitiendo doble canje y saldo negativo.
+     */
+    private val ledgerMutex = Mutex()
 
     private val inMemoryRedeemed = mutableListOf<RedeemedReward>()
     private val inMemoryTransactions = mutableListOf<PointTransaction>()
@@ -92,7 +101,10 @@ class MockRewardsRepositoryImpl(
         return pointsFlow.asStateFlow()
     }
 
-    override suspend fun redeemReward(reward: RewardItem): Resource<RedeemedReward> {
+    override suspend fun redeemReward(reward: RewardItem): Resource<RedeemedReward> =
+        ledgerMutex.withLock { redeemRewardLocked(reward) }
+
+    private suspend fun redeemRewardLocked(reward: RewardItem): Resource<RedeemedReward> {
         val currentPoints = sessionManager?.getStudiPuntos() ?: pointsFlow.value
         if (currentPoints < reward.pointsCost) {
             return Resource.Error("Saldo insuficiente de StudiPuntos para este premio. Te faltan ${reward.pointsCost - currentPoints} pts.")
@@ -118,7 +130,7 @@ class MockRewardsRepositoryImpl(
 
         if (sessionManager != null) {
             sessionManager.saveRedeemedReward(redeemed)
-            sessionManager.recordPointTransaction(
+            val tx = sessionManager.recordPointTransaction(
                 title = "Canje: ${reward.title}",
                 description = "Vale redimido para ${reward.partnerName} (${reward.redemptionMethod.name}).",
                 delta = -reward.pointsCost,
@@ -130,9 +142,10 @@ class MockRewardsRepositoryImpl(
             transactionsFlow.value = sessionManager.getPointTransactions()
             redeemedFlow.value = sessionManager.getRedeemedRewards()
 
-            // Sincronización en la nube con Cloud Firestore
-            val currentUid = auth?.currentUser?.uid ?: sessionManager.getUserSession()?.id
-            if (firestore != null && currentUid != null && auth?.currentUser != null) {
+            // Sincronización en la nube con Cloud Firestore: se sube el mismo movimiento del
+            // ledger local (antes se recalculaba con otro id/timestamp y el hash no cuadraba).
+            val uid = auth?.currentUser?.takeUnless { it.isAnonymous }?.uid
+            if (firestore != null && uid != null) {
                 try {
                     val rewardMap = mapOf(
                         "id" to redeemed.id,
@@ -149,52 +162,16 @@ class MockRewardsRepositoryImpl(
                         "redemptionMethod" to redeemed.redemptionMethod.name,
                         "createdAt" to Timestamp.now()
                     )
-                    firestore.collection("users").document(currentUid)
+                    firestore.collection("users").document(uid)
                         .collection("redeemed_rewards")
                         .document(redeemed.id)
                         .set(rewardMap)
-                        .await()
-
-                    val txId = "tx-redeem-${redeemed.id.take(8)}"
-                    val txPrevHash = sessionManager.getPointTransactions().firstOrNull()?.txHash ?: "GENESIS_BLOCK"
-                    val txHash = PointTransaction.calculateHash(
-                        txPrevHash,
-                        txId,
-                        -reward.pointsCost,
-                        PointTransactionType.REWARD_PURCHASE.name,
-                        System.currentTimeMillis()
-                    )
-                    val txMap = mapOf(
-                        "id" to txId,
-                        "title" to "Canje: ${reward.title}".take(120),
-                        "description" to "Vale redimido para ${reward.partnerName} (${reward.redemptionMethod.name}).".take(300),
-                        "delta" to -reward.pointsCost,
-                        "pointsDelta" to -reward.pointsCost,
-                        "type" to PointTransactionType.REWARD_PURCHASE.name,
-                        "txHash" to txHash,
-                        "previousHash" to txPrevHash,
-                        "referenceId" to redeemed.id,
-                        "timestampMillis" to System.currentTimeMillis().toDouble(),
-                        "createdAt" to Timestamp.now()
-                    )
-                    firestore.collection("users").document(currentUid)
-                        .collection("point_transactions")
-                        .document(txId)
-                        .set(txMap)
-                        .await()
-
-                    firestore.collection("users").document(currentUid)
-                        .update(
-                            mapOf(
-                                "studiPuntos" to updated,
-                                "updatedAt" to Timestamp.now()
-                            )
-                        )
                         .await()
                 } catch (_: Exception) {
                     // Fallback silencioso si falla red temporalmente
                 }
             }
+            syncTransactionToCloud(tx, updated)
         } else {
             val updated = pointsFlow.value - reward.pointsCost
             pointsFlow.value = updated
@@ -217,6 +194,15 @@ class MockRewardsRepositoryImpl(
     }
 
     override suspend fun registerReceipt(
+        ruc: String,
+        serie: String,
+        correlativo: String,
+        amount: Double,
+        dateMillis: Long
+    ): Resource<ReceiptValidationResult> =
+        ledgerMutex.withLock { registerReceiptLocked(ruc, serie, correlativo, amount, dateMillis) }
+
+    private suspend fun registerReceiptLocked(
         ruc: String,
         serie: String,
         correlativo: String,
@@ -278,38 +264,7 @@ class MockRewardsRepositoryImpl(
             transactionsFlow.value = sessionManager.getPointTransactions()
 
             // Sincronización en Cloud Firestore
-            val currentUid = auth?.currentUser?.uid ?: user?.id
-            if (firestore != null && currentUid != null && auth?.currentUser != null) {
-                try {
-                    val txMap = mapOf(
-                        "id" to tx.id,
-                        "title" to tx.title.take(120),
-                        "description" to tx.description.take(300),
-                        "delta" to 80,
-                        "pointsDelta" to 80,
-                        "type" to PointTransactionType.RECEIPT_SCAN.name,
-                        "txHash" to tx.txHash,
-                        "previousHash" to tx.previousHash,
-                        "referenceId" to receiptData.fingerprint.take(100),
-                        "timestampMillis" to tx.timestampMillis.toDouble(),
-                        "createdAt" to Timestamp.now()
-                    )
-                    firestore.collection("users").document(currentUid)
-                        .collection("point_transactions")
-                        .document(tx.id)
-                        .set(txMap)
-                        .await()
-
-                    firestore.collection("users").document(currentUid)
-                        .update(
-                            mapOf(
-                                "studiPuntos" to updatedPoints,
-                                "updatedAt" to Timestamp.now()
-                            )
-                        )
-                        .await()
-                } catch (_: Exception) {}
-            }
+            syncTransactionToCloud(tx, updatedPoints)
         } else {
             inMemoryClaimedReceipts.add(receiptData.fingerprint)
             val updated = pointsFlow.value + 80
@@ -319,7 +274,10 @@ class MockRewardsRepositoryImpl(
         return Resource.Success(result)
     }
 
-    override suspend fun registerReceiptQr(qrRawText: String): Resource<ReceiptValidationResult> {
+    override suspend fun registerReceiptQr(qrRawText: String): Resource<ReceiptValidationResult> =
+        ledgerMutex.withLock { registerReceiptQrLocked(qrRawText) }
+
+    private suspend fun registerReceiptQrLocked(qrRawText: String): Resource<ReceiptValidationResult> {
         val user = sessionManager?.getUserSession()
         val userId = user?.id ?: "usr_student_${System.currentTimeMillis()}"
         val userEmail = user?.email ?: "estudiante@campus.pe"
@@ -373,38 +331,7 @@ class MockRewardsRepositoryImpl(
             transactionsFlow.value = sessionManager.getPointTransactions()
 
             // Sincronización en Cloud Firestore
-            val currentUid = auth?.currentUser?.uid ?: user?.id
-            if (firestore != null && currentUid != null && auth?.currentUser != null) {
-                try {
-                    val txMap = mapOf(
-                        "id" to tx.id,
-                        "title" to tx.title.take(120),
-                        "description" to tx.description.take(300),
-                        "delta" to 80,
-                        "pointsDelta" to 80,
-                        "type" to PointTransactionType.RECEIPT_SCAN.name,
-                        "txHash" to tx.txHash,
-                        "previousHash" to tx.previousHash,
-                        "referenceId" to receiptData.fingerprint.take(100),
-                        "timestampMillis" to tx.timestampMillis.toDouble(),
-                        "createdAt" to Timestamp.now()
-                    )
-                    firestore.collection("users").document(currentUid)
-                        .collection("point_transactions")
-                        .document(tx.id)
-                        .set(txMap)
-                        .await()
-
-                    firestore.collection("users").document(currentUid)
-                        .update(
-                            mapOf(
-                                "studiPuntos" to updatedPoints,
-                                "updatedAt" to Timestamp.now()
-                            )
-                        )
-                        .await()
-                } catch (_: Exception) {}
-            }
+            syncTransactionToCloud(tx, updatedPoints)
         } else {
             inMemoryClaimedReceipts.add(receiptData.fingerprint)
             val updated = pointsFlow.value + 80
@@ -448,7 +375,10 @@ class MockRewardsRepositoryImpl(
         }
     }
 
-    override suspend fun earnPointsFromReceipt(): Resource<Int> {
+    override suspend fun earnPointsFromReceipt(): Resource<Int> =
+        ledgerMutex.withLock { earnPointsFromReceiptLocked() }
+
+    private suspend fun earnPointsFromReceiptLocked(): Resource<Int> {
         val bonus = 80
         if (sessionManager != null) {
             val tx = sessionManager.recordPointTransaction(
@@ -461,43 +391,43 @@ class MockRewardsRepositoryImpl(
             pointsFlow.value = updated
             transactionsFlow.value = sessionManager.getPointTransactions()
 
-            val currentUid = auth?.currentUser?.uid ?: sessionManager.getUserSession()?.id
-            if (firestore != null && currentUid != null && auth?.currentUser != null) {
-                try {
-                    val txMap = mapOf(
-                        "id" to tx.id,
-                        "title" to tx.title.take(120),
-                        "description" to tx.description.take(300),
-                        "delta" to bonus,
-                        "pointsDelta" to bonus,
-                        "type" to PointTransactionType.RECEIPT_SCAN.name,
-                        "txHash" to tx.txHash,
-                        "previousHash" to tx.previousHash,
-                        "timestampMillis" to tx.timestampMillis.toDouble(),
-                        "createdAt" to Timestamp.now()
-                    )
-                    firestore.collection("users").document(currentUid)
-                        .collection("point_transactions")
-                        .document(tx.id)
-                        .set(txMap)
-                        .await()
-
-                    firestore.collection("users").document(currentUid)
-                        .update(
-                            mapOf(
-                                "studiPuntos" to updated,
-                                "updatedAt" to Timestamp.now()
-                            )
-                        )
-                        .await()
-                } catch (_: Exception) {}
-            }
+            syncTransactionToCloud(tx, updated)
 
             return Resource.Success(updated)
         } else {
             val updated = pointsFlow.value + bonus
             pointsFlow.value = updated
             return Resource.Success(updated)
+        }
+    }
+
+    /**
+     * Replica en Firestore un movimiento ya registrado en el ledger local y el nuevo saldo.
+     * Sólo se ejecuta con un usuario de Firebase autenticado; los fallos de red se toleran.
+     */
+    private suspend fun syncTransactionToCloud(tx: PointTransaction, updatedPoints: Int) {
+        // Las sesiones anónimas (creadas por el registro anti-colisión) no tienen perfil en users/
+        val uid = auth?.currentUser?.takeUnless { it.isAnonymous }?.uid ?: return
+        val db = firestore ?: return
+        try {
+            val txMap = buildMap<String, Any?> {
+                put("id", tx.id)
+                put("title", tx.title.take(120))
+                put("description", tx.description.take(300))
+                put("delta", tx.pointsDelta)
+                put("pointsDelta", tx.pointsDelta)
+                put("type", tx.type.name)
+                put("txHash", tx.txHash)
+                put("previousHash", tx.previousHash)
+                tx.referenceId?.let { put("referenceId", it.take(100)) }
+                put("timestampMillis", tx.timestampMillis.toDouble())
+                put("createdAt", Timestamp.now())
+            }
+            val userDoc = db.collection("users").document(uid)
+            userDoc.collection("point_transactions").document(tx.id).set(txMap).await()
+            userDoc.update(mapOf("studiPuntos" to updatedPoints, "updatedAt" to Timestamp.now())).await()
+        } catch (_: Exception) {
+            // Fallback silencioso si falla la red temporalmente
         }
     }
 }

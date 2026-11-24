@@ -141,11 +141,21 @@ class SunatCpeValidatorBot {
         serie: String,
         correlativo: String,
         fechaEmision: String,
-        monto: Double
+        monto: Double,
+        autoSubmit: Boolean = true
     ): String {
+        // El firewall de SUNAT rechaza envíos automáticos ("The requested URL was rejected"):
+        // en la app sólo se rellena el formulario y el estudiante toca "Buscar".
+        val submitGuard = if (autoSubmit) "" else
+            "if (f.wacepta) { f.wacepta.disabled = false; f.wacepta.scrollIntoView({block: 'center'}); } return 'PREFILLED';"
         val webTipo = mapToSunatWebTipoComprobante(tipoCpe)
         val formattedMonto = "%.2f".format(Locale.US, monto)
-        val cleanCorrelativo = correlativo.trim().padStart(8, '0')
+        // Los valores se insertan dentro de un script: sólo se permiten los caracteres esperados
+        // para impedir inyección de JavaScript con datos leídos por OCR o escritos a mano.
+        val ruc = ruc.filter { it.isDigit() }.take(11)
+        val serie = serie.uppercase().filter { it.isLetterOrDigit() && it.code < 128 }.take(4)
+        val cleanCorrelativo = correlativo.filter { it.isDigit() }.take(8).padStart(8, '0')
+        val fechaEmision = fechaEmision.filter { it.isDigit() || it == '/' }.take(10)
 
         return """
             (function() {
@@ -170,10 +180,15 @@ class SunatCpeValidatorBot {
                     if (f.cantidad) { f.cantidad.value = '$formattedMonto'; dispatchChange(f.cantidad); }
                     if (f.cod_docide) { f.cod_docide.value = '-'; dispatchChange(f.cod_docide); }
                     
-                    if (typeof getTokenCaptcha3 === 'function') {
+                    $submitGuard
+                    // La página define getTokenCaptcha3() pero hoy NO carga reCAPTCHA: llamarla
+                    // lanzaba "grecaptcha is not defined" y el formulario nunca se enviaba.
+                    // El botón oficial "Buscar" usa opcGrabar(), que valida y hace submit.
+                    if (typeof grecaptcha !== 'undefined' && typeof getTokenCaptcha3 === 'function') {
                         getTokenCaptcha3();
                         return 'SUBMITTED_WITH_RECAPTCHA3';
                     } else if (typeof opcGrabar === 'function') {
+                        if (f.wacepta) f.wacepta.disabled = false;
                         opcGrabar();
                         return 'SUBMITTED_WITH_OPCGRABAR';
                     }
@@ -191,8 +206,17 @@ class SunatCpeValidatorBot {
     }
 
     /**
-     * Script ligero para leer la respuesta oficial de auditoría devuelta por SUNAT en el DOM del WebView.
+     * Devuelve el texto visible de la página (resultado de la consulta). La interpretación se hace
+     * en Kotlin con [SunatResultClassifier], que reconoce las frases oficiales de SUNAT.
      */
+    fun generatePageTextScript(): String =
+        "(function(){try{return document.body?document.body.innerText.substring(0,6000):'';}catch(e){return '';}})();"
+
+    /**
+     * Script heredado para leer la respuesta de SUNAT por palabras sueltas.
+     * @deprecated Producía falsos positivos; usar [generatePageTextScript] + [SunatResultClassifier].
+     */
+    @Deprecated("Usar generatePageTextScript() con SunatResultClassifier")
     fun generateResultScraperScript(): String {
         return """
             (function() {

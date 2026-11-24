@@ -545,7 +545,7 @@ fun StudentVerificationScreen(
                             ),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Aprobar y Vincular Carnet a Cuenta")
+                            Text("Enviar a Revisión Manual")
                         }
                     }
                 }

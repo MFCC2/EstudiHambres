@@ -1,5 +1,6 @@
 package com.example.estudihambres.presentation.common
 
+import com.example.estudihambres.core.theme.CampusSuccess
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -227,21 +228,21 @@ fun RedemptionVoucherDialog(
                                 OutlinedButton(
                                     onClick = copyToClipboard,
                                     shape = RoundedCornerShape(8.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isCopied) Color(0xFF00C853) else brandColor),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (isCopied) CampusSuccess else brandColor),
                                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                                 ) {
                                     Icon(
                                         imageVector = if (isCopied) Icons.Default.Done else Icons.Default.ContentCopy,
                                         contentDescription = "Copiar",
                                         modifier = Modifier.size(14.dp),
-                                        tint = if (isCopied) Color(0xFF00C853) else brandColor
+                                        tint = if (isCopied) CampusSuccess else brandColor
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = if (isCopied) "Copiado" else "Copiar",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isCopied) Color(0xFF00C853) else brandColor
+                                        color = if (isCopied) CampusSuccess else brandColor
                                     )
                                 }
                             }
@@ -263,7 +264,7 @@ fun RedemptionVoucherDialog(
                 // Indicador de Ahorro acumulado
                 Surface(
                     shape = CampusShapes.small,
-                    color = Color(0xFF00C853).copy(alpha = 0.12f),
+                    color = CampusSuccess.copy(alpha = 0.12f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(

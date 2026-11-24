@@ -299,8 +299,11 @@ service cloud.firestore {
     // ===============================================================
     // Prevents duplicate scans across multiple devices/users in a 72-hour window.
     match /claimed_receipts/{receiptFingerprint} {
-      // Authenticated students can query or check receipt registration status
-      allow read: if isAuthenticated();
+      // Authenticated students can check a specific receipt by fingerprint (document get).
+      // Listing/querying the collection is denied: it would expose other students' emails,
+      // merchants and amounts (Ley N° 29733).
+      allow get: if isAuthenticated();
+      allow list: if false;
 
       // Atomic registration: must not exist beforehand and data must be valid
       allow create: if isAuthenticated()

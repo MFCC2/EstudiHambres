@@ -68,6 +68,10 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.kotlinx.coroutines.play.services)
 
+    // Ofertas web: scraping HTML (Jsoup) e imágenes remotas (Coil)
+    implementation(libs.jsoup)
+    implementation(libs.coil.compose)
+
     testImplementation(libs.junit)
     testImplementation("com.google.truth:truth:1.4.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")

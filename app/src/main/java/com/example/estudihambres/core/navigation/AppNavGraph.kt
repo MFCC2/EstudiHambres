@@ -3,6 +3,7 @@ package com.example.estudihambres.core.navigation
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
@@ -58,6 +59,7 @@ fun AppNavGraph(
     val bottomNavItems = listOf(
         NavigationItem(Screen.Home, Icons.Default.Home),
         NavigationItem(Screen.Map, Icons.Default.LocationOn),
+        NavigationItem(Screen.Offers, Icons.Default.LocalOffer),
         NavigationItem(Screen.Rewards, Icons.Default.CardGiftcard),
         NavigationItem(Screen.Profile, Icons.Default.Person)
     )
@@ -70,6 +72,7 @@ fun AppNavGraph(
     val showBottomBar = currentRoute in listOf(
         Screen.Home.route,
         Screen.Map.route,
+        Screen.Offers.route,
         Screen.Rewards.route,
         Screen.Profile.route
     )
@@ -207,6 +210,9 @@ fun AppNavGraph(
             }
             composable(Screen.Map.route) {
                 MapScreen()
+            }
+            composable(Screen.Offers.route) {
+                com.example.estudihambres.presentation.offers.OffersScreen()
             }
             composable(Screen.Rewards.route) {
                 com.example.estudihambres.presentation.rewards.RewardsScreen()

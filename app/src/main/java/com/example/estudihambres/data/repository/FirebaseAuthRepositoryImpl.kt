@@ -1,5 +1,6 @@
 package com.example.estudihambres.data.repository
 
+import com.example.estudihambres.core.util.HashUtils
 import com.example.estudihambres.core.util.SessionManager
 import com.example.estudihambres.domain.model.PointTransaction
 import com.example.estudihambres.domain.model.PointTransactionType
@@ -22,7 +23,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.security.MessageDigest
 
 /**
  * Implementación de producción para [AuthRepository] con sincronización en tiempo real
@@ -97,6 +97,9 @@ class FirebaseAuthRepositoryImpl(
                 try {
                     val uid = currentFirebaseUser.uid
                     val doc = firestore.collection(COLLECTION_USERS).document(uid).get().await()
+                    // Si el usuario cerró sesión (o cambió de cuenta) mientras llegaba la respuesta,
+                    // no se debe re-hidratar la sesión local con datos del usuario anterior.
+                    if (auth?.currentUser?.uid != uid) return@launch
                     if (doc.exists() && doc.data != null) {
                         val cloudUser = documentToStudentUser(doc.data!!, uid)
                         currentUserState.value = cloudUser
@@ -295,9 +298,16 @@ class FirebaseAuthRepositoryImpl(
                     studiPuntos = cleanPoints
                 )
 
-                // Guardar documento en Firestore con el esquema estricto auditado
+                // Guardar documento en Firestore con el esquema estricto auditado.
+                // Si el perfil no se puede escribir (reglas o red), se revierte la cuenta de Auth
+                // para no dejar un usuario huérfano que bloquee reintentos con "correo ya registrado".
                 val docMap = studentUserToFirestoreMap(cloudUser, uid, isCreate = true)
-                firestore.collection(COLLECTION_USERS).document(uid).set(docMap).await()
+                try {
+                    firestore.collection(COLLECTION_USERS).document(uid).set(docMap).await()
+                } catch (e: Exception) {
+                    runCatching { firebaseUser.delete().await() }
+                    throw e
+                }
 
                 // Registrar transacción inicial de bienvenida en ledger inmutable de Firestore
                 try {
@@ -515,8 +525,7 @@ class FirebaseAuthRepositoryImpl(
     }
 
     private fun generateSha256(input: String): String {
-        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray(Charsets.UTF_8))
-        return bytes.joinToString("") { "%02x".format(it) }
+        return HashUtils.sha256Hex(input)
     }
 
     fun documentToPointTransaction(data: Map<String, Any>?, docId: String): PointTransaction? {

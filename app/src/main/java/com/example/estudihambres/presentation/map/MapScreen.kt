@@ -1,5 +1,6 @@
 package com.example.estudihambres.presentation.map
 
+import com.example.estudihambres.core.theme.CampusGold
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -772,7 +773,7 @@ private fun PlaceMapPreviewCard(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Star, contentDescription = null, tint = CampusGold, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(text = place.rating.toString(), style = MaterialTheme.typography.labelSmall)
                 }
@@ -851,7 +852,7 @@ private fun PlaceListItemCard(
                     Icon(
                         imageVector = Icons.Default.Star,
                         contentDescription = null,
-                        tint = Color(0xFFFFB300),
+                        tint = CampusGold,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -1030,7 +1031,7 @@ private fun PlaceDiscountDetailContent(
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = Color(0xFFFFB300),
+                    tint = CampusGold,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))

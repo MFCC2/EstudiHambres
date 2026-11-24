@@ -300,40 +300,20 @@ class StudentVerificationViewModel(
     }
 
     /**
-     * Permite confirmar y aprobar la verificación manualmente si el OCR detectó texto pero la iluminación
-     * impidió identificar automáticamente todos los sellos oficiales.
+     * Envía a revisión manual un carnet que el OCR no pudo validar automáticamente.
+     *
+     * Antes este flujo otorgaba VERIFIED sin evidencia alguna: cualquier imagen rechazada por el
+     * OCR (DNI de RENIEC, carnet vencido, foto ajena) quedaba "aprobada" con un solo toque.
+     * Ahora la cuenta queda en PENDING_VERIFICATION, igual que al omitir el paso, sin bloquear
+     * el acceso a la app.
      */
     fun confirmManualVerification(onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
-            val session = com.example.estudihambres.core.util.SessionManager.getInstanceOrNull()
-            if (session != null) {
-                val (isEligible, errorReason) = session.validateCardScanningEligibility(null)
-                if (!isEligible) {
-                    _uiState.update {
-                        it.copy(
-                            isProcessing = false,
-                            errorMessage = errorReason ?: "No puedes vincular otro carnet universitario."
-                        )
-                    }
-                    return@launch
-                }
-                session.linkScannedCard(null)
-            }
-
-            authRepository.updateVerificationStatus(VerificationStatus.VERIFIED)
+            authRepository.updateVerificationStatus(VerificationStatus.PENDING_VERIFICATION)
             _uiState.update {
                 it.copy(
-                    verificationStatus = VerificationStatus.VERIFIED,
-                    errorMessage = null,
-                    ocrResult = it.ocrResult?.copy(isVerified = true) ?: StudentCardOcrResult(
-                        isVerified = true,
-                        hasSuneduKeyword = true,
-                        hasUniversityKeyword = true,
-                        hasSuneduSeal = true,
-                        validityYearDetected = "2026",
-                        universityName = "Universidad Continental",
-                        rawText = "Validación de carnet universitario confirmada"
-                    )
+                    verificationStatus = VerificationStatus.PENDING_VERIFICATION,
+                    errorMessage = null
                 )
             }
             onSuccess()

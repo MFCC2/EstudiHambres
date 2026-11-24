@@ -1,5 +1,7 @@
 package com.example.estudihambres.presentation.rewards
 
+import com.example.estudihambres.core.theme.CampusSuccess
+import com.example.estudihambres.core.theme.CampusError
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -12,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -29,6 +32,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
@@ -94,12 +99,9 @@ import com.example.estudihambres.domain.model.RedeemedReward
 import com.example.estudihambres.domain.model.RedemptionMethod
 import com.example.estudihambres.domain.model.RewardItem
 import com.example.estudihambres.domain.usecase.ValidateSunatReceiptUseCase
-import com.example.estudihambres.presentation.rewards.components.LiveReceiptScannerDialog
-import com.example.estudihambres.presentation.rewards.components.InSystemReceiptScannerModal
 import com.example.estudihambres.domain.usecase.DetectReceiptEstablishmentUseCase
 import com.example.estudihambres.presentation.rewards.components.ReceiptScannerTabContent
 import androidx.compose.material.icons.filled.Storefront
-import com.example.estudihambres.presentation.rewards.components.SunatOfficialValidationDialog
 import androidx.compose.material.icons.filled.SmartToy
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -137,8 +139,11 @@ fun RewardsScreen(
     }
 
     Scaffold(
+        // El contenedor raíz (AppNavGraph) ya reserva la barra de estado
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             CenterAlignedTopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -192,31 +197,26 @@ fun RewardsScreen(
                 containerColor = MaterialTheme.colorScheme.surface,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Tab(
-                    selected = state.selectedTab == 0,
-                    onClick = { viewModel.onTabSelect(0) },
-                    text = { Text("🎁 Catálogo", fontWeight = FontWeight.Bold) }
+                val tabs = listOf(
+                    Triple("Catálogo", Icons.Default.CardGiftcard, null),
+                    Triple("Boleta", Icons.Default.DocumentScanner, null),
+                    Triple("Mis vales", Icons.Default.ConfirmationNumber, state.redeemedRewards.size.takeIf { it > 0 }),
+                    Triple("Historial", Icons.Default.History, null)
                 )
-                Tab(
-                    selected = state.selectedTab == 1,
-                    onClick = { viewModel.onTabSelect(1) },
-                    text = { Text("🧾 Escanear Boleta", fontWeight = FontWeight.Bold) }
-                )
-                Tab(
-                    selected = state.selectedTab == 2,
-                    onClick = { viewModel.onTabSelect(2) },
-                    text = {
-                        Text(
-                            text = if (state.redeemedRewards.isNotEmpty()) "🎟️ Mis Vales (${state.redeemedRewards.size})" else "🎟️ Mis Vales",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                )
-                Tab(
-                    selected = state.selectedTab == 3,
-                    onClick = { viewModel.onTabSelect(3) },
-                    text = { Text("⚡ Historial", fontWeight = FontWeight.Bold) }
-                )
+                tabs.forEachIndexed { index, (label, icon, badge) ->
+                    Tab(
+                        selected = state.selectedTab == index,
+                        onClick = { viewModel.onTabSelect(index) },
+                        icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        text = {
+                            Text(
+                                text = if (badge != null) "$label ($badge)" else label,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1
+                            )
+                        }
+                    )
+                }
             }
 
             // 3. Contenedor de la Pestaña Activa
@@ -226,17 +226,7 @@ fun RewardsScreen(
                     onCategorySelect = { viewModel.onCategorySelect(it) },
                     onRedeem = { viewModel.onRedeemReward(it) }
                 )
-                1 -> ReceiptScannerTabContent(
-                    onSubmitReceipt = { ruc, serie, correlativo, monto ->
-                        viewModel.onRegisterReceiptManual(ruc, serie, correlativo, monto)
-                    },
-                    onOpenSunatBot = { ruc, serie, correlativo, monto, tipo ->
-                        viewModel.openSunatBotDialog(ruc, serie, correlativo, monto, tipo)
-                    },
-                    onOpenManualInput = {
-                        viewModel.switchToManualReceipt()
-                    }
-                )
+                1 -> ReceiptScannerTabContent(state = state, viewModel = viewModel)
                 2 -> MyVouchersTabContent(
                     vouchers = state.redeemedRewards,
                     onMarkAsUsed = { viewModel.onMarkRewardAsUsed(it) }
@@ -257,54 +247,6 @@ fun RewardsScreen(
                 viewModel.dismissRedemptionDialog()
                 viewModel.onTabSelect(2) // Cambia a pestaña 'Mis Vales'
             }
-        )
-    }
-
-    // Modal de Escáner Inteligente 100% en el Sistema con Pipeline Visual Progresivo y Bot SUNAT
-    if (state.showReceiptScanner) {
-        InSystemReceiptScannerModal(
-            onDismiss = { viewModel.dismissReceiptScanner() },
-            onSubmitReceipt = { ruc, serie, correlativo, monto ->
-                viewModel.onRegisterReceiptManual(ruc, serie, correlativo, monto)
-            },
-            onOpenSunatBot = { ruc, serie, correlativo, monto, tipo ->
-                viewModel.openSunatBotDialog(ruc, serie, correlativo, monto, tipo)
-            },
-            onOpenManualInput = {
-                viewModel.switchToManualReceipt()
-            }
-        )
-    }
-
-    // Modal para registrar Boleta o Factura SUNAT
-    if (state.showReceiptDialog) {
-        ReceiptRegisterDialog(
-            isProcessing = state.isScanningReceipt,
-            onDismiss = { viewModel.dismissReceiptDialog() },
-            onSubmitManual = { ruc, serie, correlativo, amount ->
-                viewModel.onRegisterReceiptManual(ruc, serie, correlativo, amount)
-            },
-            onSwitchToScanner = {
-                viewModel.onTabSelect(1)
-                viewModel.dismissReceiptDialog()
-            },
-            onOpenSunatBot = { ruc, serie, correlativo, amount, tipo ->
-                viewModel.openSunatBotDialog(ruc, serie, correlativo, amount, tipo)
-            }
-        )
-    }
-
-    // Modal del Bot Validador SUNAT Oficial en tiempo real
-    if (state.showSunatBotDialog) {
-        SunatOfficialValidationDialog(
-            ruc = state.sunatBotRuc,
-            serie = state.sunatBotSerie,
-            correlativo = state.sunatBotCorrelativo,
-            monto = state.sunatBotMonto,
-            tipoCpe = state.sunatBotTipoCpe,
-            fechaMillis = state.sunatBotFechaMillis,
-            onDismiss = { viewModel.dismissSunatBotDialog() },
-            onConfirmCreditPoints = { viewModel.onConfirmSunatBotCredit() }
         )
     }
 
@@ -507,14 +449,14 @@ private fun HistoryAndMissionsTabContent(
                     Icon(
                         imageVector = Icons.Default.Security,
                         contentDescription = null,
-                        tint = Color(0xFF10B981),
+                        tint = CampusSuccess,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Auditado",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF10B981),
+                        color = CampusSuccess,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -587,7 +529,7 @@ private fun WalletHeaderCard(
                         Icon(
                             imageVector = Icons.Default.Shield,
                             contentDescription = "Protegido SBS",
-                            tint = Color(0xFF10B981),
+                            tint = CampusSuccess,
                             modifier = Modifier.size(13.dp)
                         )
                     }
@@ -602,7 +544,7 @@ private fun WalletHeaderCard(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "StudiPuntos 🪙",
+                            text = "StudiPuntos",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFF59E0B)
@@ -620,7 +562,7 @@ private fun WalletHeaderCard(
                         modifier = Modifier.size(44.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "🎁", fontSize = 22.sp)
+                        Icon(Icons.Default.CardGiftcard, contentDescription = "Normativa y condiciones", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -854,12 +796,12 @@ private fun MyVoucherCard(
 
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = if (voucher.isUsed) MaterialTheme.colorScheme.outlineVariant else Color(0xFF10B981).copy(alpha = 0.15f)
+                    color = if (voucher.isUsed) MaterialTheme.colorScheme.outlineVariant else CampusSuccess.copy(alpha = 0.15f)
                 ) {
                     Text(
                         text = if (voucher.isUsed) "UTILIZADO" else "VIGENTE",
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (voucher.isUsed) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFF10B981),
+                        color = if (voucher.isUsed) MaterialTheme.colorScheme.onSurfaceVariant else CampusSuccess,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
@@ -989,7 +931,7 @@ private fun TransactionItemRow(tx: PointTransaction) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 Surface(
                     shape = CircleShape,
-                    color = if (isPositive) Color(0xFF10B981).copy(alpha = 0.15f) else Color(0xFFEF4444).copy(alpha = 0.15f),
+                    color = if (isPositive) CampusSuccess.copy(alpha = 0.15f) else CampusError.copy(alpha = 0.15f),
                     modifier = Modifier.size(36.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -1038,7 +980,7 @@ private fun TransactionItemRow(tx: PointTransaction) {
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = FontFamily.Monospace,
-                color = if (isPositive) Color(0xFF10B981) else Color(0xFFEF4444)
+                color = if (isPositive) CampusSuccess else CampusError
             )
         }
     }
@@ -1103,170 +1045,11 @@ private fun MissionItemRow(title: String, subtitle: String, points: String) {
         Text(
             text = points,
             style = MaterialTheme.typography.labelMedium,
-            color = Color(0xFF10B981),
+            color = CampusSuccess,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace
         )
     }
-}
-
-/**
- * Diálogo modal para registrar y auditar una Boleta de Venta Electrónica SUNAT.
- */
-@Composable
-private fun ReceiptRegisterDialog(
-    isProcessing: Boolean,
-    onDismiss: () -> Unit,
-    onSubmitManual: (String, String, String, Double) -> Unit,
-    onSwitchToScanner: () -> Unit = {},
-    onOpenSunatBot: (String, String, String, Double, String) -> Unit = { _, _, _, _, _ -> }
-) {
-    var ruc by remember { mutableStateOf("") }
-    var serie by remember { mutableStateOf("") }
-    var correlativo by remember { mutableStateOf("") }
-    var montoStr by remember { mutableStateOf("") }
-
-    val detectedEstablishment = remember(ruc) {
-        if (ruc.length == 11) {
-            DetectReceiptEstablishmentUseCase.detectFromRuc(ruc)
-        } else {
-            null
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(imageVector = Icons.Default.ReceiptLong, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Registrar Boleta SUNAT", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = "Acredita +80 StudiPuntos registrando los datos de tu comprobante de pago oficial (antigüedad máx. 72h).",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                OutlinedTextField(
-                    value = ruc,
-                    onValueChange = { if (it.length <= 11) ruc = it.filter { c -> c.isDigit() } },
-                    label = { Text("RUC del Emisor (11 dígitos)") },
-                    placeholder = { Text("Ej. 20100107214") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                if (detectedEstablishment != null) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFE8F5E9),
-                        border = BorderStroke(1.dp, Color(0xFF4CAF50)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Storefront,
-                                contentDescription = null,
-                                tint = Color(0xFF2E7D32),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Establecimiento: $detectedEstablishment",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1B5E20)
-                            )
-                        }
-                    }
-                }
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = serie,
-                        onValueChange = { serie = it.uppercase().take(4) },
-                        label = { Text("Serie") },
-                        placeholder = { Text("B001 o F001") },
-                        singleLine = true,
-                        modifier = Modifier.weight(0.45f)
-                    )
-                    OutlinedTextField(
-                        value = correlativo,
-                        onValueChange = { correlativo = it.filter { c -> c.isDigit() }.take(8) },
-                        label = { Text("Número (1-8 dígitos)") },
-                        placeholder = { Text("00049281") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.weight(0.55f)
-                    )
-                }
-
-                OutlinedTextField(
-                    value = montoStr,
-                    onValueChange = { montoStr = it },
-                    label = { Text("Monto Total S/ (mín. S/ 5.00)") },
-                    placeholder = { Text("Ej. 15.00") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-                OutlinedButton(
-                    onClick = {
-                        val amount = montoStr.toDoubleOrNull() ?: 0.0
-                        val upperSerie = serie.uppercase()
-                        val tipo = if (upperSerie.startsWith("F") || (upperSerie.startsWith("E") && !upperSerie.startsWith("EB"))) "01" else "03"
-                        onOpenSunatBot(ruc, serie, correlativo.ifBlank { "00000001" }, amount, tipo)
-                    },
-                    enabled = ruc.length == 11 && serie.isNotBlank(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0038A8)),
-                    border = BorderStroke(1.dp, Color(0xFF0038A8)),
-                    modifier = Modifier.fillMaxWidth().height(42.dp)
-                ) {
-                    Icon(Icons.Default.SmartToy, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("🤖 Validar con Bot SUNAT Oficial", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val amount = montoStr.toDoubleOrNull() ?: 0.0
-                    onSubmitManual(ruc, serie, correlativo, amount)
-                },
-                enabled = !isProcessing && ruc.length == 11 && serie.isNotBlank() && correlativo.isNotBlank() && (montoStr.toDoubleOrNull() ?: 0.0) >= 5.0,
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                if (isProcessing) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                } else {
-                    Text("Acreditar Puntos (+80)")
-                }
-            }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Cancelar")
-            }
-        }
-    )
 }
 
 /**
@@ -1278,7 +1061,7 @@ private fun SbsLegalDisclaimerDialog(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(imageVector = Icons.Default.Shield, contentDescription = null, tint = Color(0xFF10B981))
+                Icon(imageVector = Icons.Default.Shield, contentDescription = null, tint = CampusSuccess)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Marco Legal & SBS", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             }
@@ -1363,13 +1146,13 @@ private fun RewardRedemptionDialog(
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFEF4444).copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.35f))
+                    color = CampusError.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, CampusError.copy(alpha = 0.35f))
                 ) {
                     Text(
                         text = "-%,d StudiPuntos".format(redeemed.pointsCost),
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFEF4444),
+                        color = CampusError,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                     )

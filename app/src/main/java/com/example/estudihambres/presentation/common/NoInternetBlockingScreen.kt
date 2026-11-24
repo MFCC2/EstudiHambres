@@ -1,5 +1,6 @@
 package com.example.estudihambres.presentation.common
 
+import com.example.estudihambres.core.theme.CampusError
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.background
@@ -78,13 +79,13 @@ fun NoInternetBlockingScreen(
                 modifier = Modifier
                     .size(96.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFEF4444).copy(alpha = 0.12f)),
+                    .background(CampusError.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.WifiOff,
                     contentDescription = "Sin internet",
-                    tint = Color(0xFFEF4444),
+                    tint = CampusError,
                     modifier = Modifier.size(52.dp)
                 )
             }
@@ -103,7 +104,7 @@ fun NoInternetBlockingScreen(
 
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = Color(0xFFEF4444).copy(alpha = 0.10f)
+                color = CampusError.copy(alpha = 0.10f)
             ) {
                 Text(
                     text = "ACCESO BLOQUEADO POR POLÍTICA DE SEGURIDAD",

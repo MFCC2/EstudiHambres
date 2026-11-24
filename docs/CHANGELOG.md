@@ -4,6 +4,61 @@ Registro cronológico de modificaciones, agentes intervinientes y cambios arquit
 
 ---
 
+## [Sin publicar] - 2026-11-24 — Ofertas web, nuevo escáner de boletas y verificación SUNAT (Claude → auditoría Codex → auditoría Claude)
+**Rama:** `develop`
+
+**Nuevo: Ofertas de la web (scraping)**
+- Pestaña "Ofertas" en la barra inferior con ofertas de restaurantes de Cuponidad.pe: buscador, 9 categorías, filtro "Económicas (≤ S/ 30)", orden por precio, deslizar para actualizar y atribución de la fuente. Al tocar una oferta se abre la página original.
+- `CuponidadOfferParser` (Jsoup) con tres estrategias en cascada y filtro de enlaces/imágenes al dominio del sitio; `CuponidadWebOffersRepository` con caché de 10 min y sólo rutas permitidas por robots.txt. Dependencias: `org.jsoup:jsoup:1.18.3`, `io.coil-kt:coil-compose:2.7.0`.
+
+**Escáner y flujo de boletas (más simple)**
+- Un solo flujo de 3 pasos (Escanear → Revisar → Verificar) reemplaza la pestaña antigua, `InSystemReceiptScannerModal`, `LiveReceiptScannerDialog` (sin uso) y el diálogo manual `ReceiptRegisterDialog`.
+- `ReceiptAnalyzer`: QR SUNAT primero (sólo formato QR), OCR de respaldo confirmado en 2 frames, pausa automática tras detectar, linterna y toque para enfocar, resolución 720p.
+- Corregido: si no se leía el importe se inventaba S/ 5.00; el QR detectado se enviaba como ingreso manual con la fecha de hoy (saltaba la ventana de 72 h). La fecha de emisión ahora se elige (Hoy / Ayer / Anteayer) o se lee del comprobante.
+
+**Verificación en SUNAT rehecha (`SunatVerificationPanel` + `SunatResultClassifier`)**
+- Fallaba porque: un script de un CDN inexistente de la página de SUNAT se reportaba como "sin conexión"; los `alert()` de validación de SUNAT se perdían; se enviaba siempre la fecha de hoy; el resultado se adivinaba buscando palabras sueltas tras 1.4 s y una respuesta desconocida se daba por válida.
+- Además, la página ya no carga reCAPTCHA: llamar a `getTokenCaptcha3()` lanzaba "grecaptcha is not defined" y el formulario nunca se enviaba; y el firewall de SUNAT (F5) rechaza los envíos automáticos ("The requested URL was rejected").
+- Ahora: la app abre la consulta oficial con los datos ya escritos, el estudiante toca «Buscar» y la app lee la frase oficial ("… es un comprobante de pago válido" / "… no existe en los registros de SUNAT") y la explica; mensajes de SUNAT mostrados tal cual, tiempos máximos (apertura 25 s, respuesta 45 s), reintento, "Ver página de SUNAT" y acreditación únicamente con resultado VÁLIDO. Probado en emulador contra SUNAT real.
+- Detectado: varios RUC de `TRUSTED_RUC_DIRECTORY` (p. ej. 20100107214) no superan el dígito verificador de SUNAT; la lista blanca los deja pasar localmente, pero SUNAT los rechaza.
+
+**Interfaz**
+- Pestañas de Premios con íconos y etiquetas cortas; colores neón (`#00C853`, `#00E676`, `#10B981`, `#EF4444`, `#FFD600`) reemplazados por la paleta sobria del tema en 7 pantallas.
+- Sin internet: el bloqueo se superpone al grafo de navegación (antes lo reemplazaba y se perdía la pantalla actual al reconectar).
+
+**Auditoría Codex (aplicada y revisada):** acreditación sólo con SUNAT VÁLIDO, resultados de intentos SUNAT anteriores ignorados, la cámara ya no usa `unbindAll()` ni se re-vincula tras cerrarse, ofertas de una categoría abandonada descartadas.
+**Auditoría final Claude:** lectura del resultado SUNAT sólo tras la navegación posterior al envío (WebView dispara `onPageFinished` dos veces) y WebView desacoplado antes de destruirlo.
+**Pruebas:** nueva suite `WebOffersAndReceiptFlowQaTest` (19 casos); parser validado además contra el HTML real del sitio.
+
+---
+
+## [Sin publicar] - 2026-11-24 — Auditoría de seguridad y rendimiento (Codex + Claude)
+**Rama:** `develop`
+
+Auditoría cruzada del código (Codex CLI en modo solo lectura + revisión manual). Correcciones aplicadas:
+
+**Seguridad y lógica de negocio**
+1. `StudentVerificationViewModel` / `StudentVerificationScreen`: el botón mostrado cuando el OCR rechazaba el carnet otorgaba `VERIFIED` sin evidencia. Ahora envía a revisión (`PENDING_VERIFICATION`).
+2. `SessionManager.authenticate`: el hash almacenado se aceptaba como contraseña (pass-the-hash). Comparación en tiempo constante y migración de texto plano solo para cuentas históricas; `saveAccountInternal` siempre hashea.
+3. `SessionManager.redeemCoupon`: un mismo cupón podía canjearse sin límite (+50 pts por toque). Se reutiliza el vale activo.
+4. `MockRewardsRepositoryImpl`: `Mutex` sobre canje y registro de boletas (doble toque = doble vale); el movimiento subido a Firestore ahora es el mismo del ledger local (antes otro id/timestamp → hash SHA-256 inverificable); sincronización unificada en `syncTransactionToCloud` y omitida para sesiones anónimas.
+5. `FirebaseReceiptCollisionRepositoryImpl`: falla cerrado si Firestore no confirma el reclamo (antes acreditaba localmente sin red); detección de colisión robusta ante excepciones envueltas.
+6. `ValidateSunatReceiptUseCase`: se exige el dígito verificador del RUC (módulo 11 SUNAT) y se rechazan QR sin fecha o con fecha ilegible (antes recibían la hora actual).
+7. `SunatOfficialValidationDialog`: una respuesta no reconocida ya no se muestra como "validado"; no se puede acreditar si SUNAT responde NO_EXISTE/RECHAZADO.
+8. `firestore.rules`: `claimed_receipts` permite `get` por huella pero no `list` (evita enumerar correos e importes de terceros).
+9. `backup_rules.xml` / `data_extraction_rules.xml`: se excluyen de Auto Backup y transferencia las preferencias con hash de contraseña, DNI y sesión.
+10. `FirebaseAuthRepositoryImpl`: rollback de la cuenta de Auth si falla la escritura del perfil; la sincronización de arranque no re-hidrata la sesión si el usuario cerró sesión mientras tanto.
+
+**Estabilidad y rendimiento**
+11. Nuevo `CameraScannerResources`: los visores CameraX desvinculan sus casos de uso al salir de composición y cierran los detectores ML Kit (antes la cámara seguía encendida al cambiar de pestaña/cerrar diálogo). `ReceiptScannerTabContent` no tenía limpieza y cerraba el `ImageProxy` antes de que terminara el OCR.
+12. `NetworkMonitor`: observa solo la red por defecto (cambios en redes secundarias bloqueaban la app con "Sin internet").
+13. Nuevo `HashUtils.sha256Hex`: conversión hexadecimal por tabla en lugar de `String.format` ×32 por hash (ledger, contraseñas, huellas SUNAT).
+14. Regex OCR del escáner de boletas precompiladas (antes se compilaban en cada frame).
+
+**Pendiente (requiere backend):** las reglas de Firestore aún permiten que el cliente escriba `studiPuntos`, `verificationStatus` y movimientos del ledger; la protección real exige mover acreditaciones y verificación a Cloud Functions.
+
+---
+
 ## [v1.5.7] - 2026-11-13
 **Rama:** `develop` / `main`
 **Versión:** `v1.5.7` (versionCode 20)

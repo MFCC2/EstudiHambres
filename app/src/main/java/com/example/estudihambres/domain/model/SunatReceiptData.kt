@@ -1,6 +1,6 @@
 package com.example.estudihambres.domain.model
 
-import java.security.MessageDigest
+import com.example.estudihambres.core.util.HashUtils
 
 /**
  * Entidad de dominio que representa los campos fiscales extraídos de una Boleta de Venta Electrónica (BVE)
@@ -47,9 +47,7 @@ data class SunatReceiptData(
          */
         fun calculateFingerprint(ruc: String, serie: String, correlativo: String): String {
             val raw = "${ruc.trim()}-${serie.trim().uppercase()}-${correlativo.trim().padStart(8, '0')}"
-            val digest = MessageDigest.getInstance("SHA-256")
-            val bytes = digest.digest(raw.toByteArray(Charsets.UTF_8))
-            return bytes.joinToString("") { "%02x".format(it) }.take(16) // Truncado a 16 bytes (32 hex)
+            return HashUtils.sha256Hex(raw).take(16) // Huella de 16 caracteres hex (64 bits)
         }
     }
 }

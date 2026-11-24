@@ -1,5 +1,6 @@
 package com.example.estudihambres.presentation.profile
 
+import com.example.estudihambres.core.theme.CampusSuccess
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -13,6 +14,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -273,8 +275,11 @@ fun ProfileScreen(
     }
 
     Scaffold(
+        // El contenedor raíz (AppNavGraph) ya reserva la barra de estado
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = {
                     Text(
                         text = "Mi Perfil Universitario",
@@ -387,16 +392,16 @@ fun ProfileScreen(
             state.saveSuccessMessage?.let { msg ->
                 Surface(
                     shape = CampusShapes.small,
-                    color = Color(0xFF00C853).copy(alpha = 0.15f),
+                    color = CampusSuccess.copy(alpha = 0.15f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF00C853))
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = CampusSuccess)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = msg, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF00C853), fontWeight = FontWeight.Bold)
+                        Text(text = msg, style = MaterialTheme.typography.bodyMedium, color = CampusSuccess, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -990,7 +995,7 @@ private fun ProfileHeaderCard(
 @Composable
 private fun ProfileVerificationBadge(status: VerificationStatus) {
     val (badgeText, badgeColor) = when (status) {
-        VerificationStatus.VERIFIED -> "Estudiante Verificado" to Color(0xFF00C853)
+        VerificationStatus.VERIFIED -> "Estudiante Verificado" to CampusSuccess
         VerificationStatus.PENDING_VERIFICATION -> "Verificación Pendiente" to Color(0xFFFF9800)
         VerificationStatus.UNVERIFIED -> "No Verificado" to Color.Gray
         VerificationStatus.REJECTED -> "Carnet Rechazado" to MaterialTheme.colorScheme.error
@@ -1032,7 +1037,7 @@ private fun StudentMetricsRow(savings: Double, coupons: Int) {
             shape = CampusShapes.medium,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-            border = BorderStroke(1.dp, Color(0xFF00C853).copy(alpha = 0.25f)),
+            border = BorderStroke(1.dp, CampusSuccess.copy(alpha = 0.25f)),
             modifier = Modifier.weight(1f)
         ) {
             Column(
@@ -1042,7 +1047,7 @@ private fun StudentMetricsRow(savings: Double, coupons: Int) {
                 Text(
                     text = "🪙 AHORRO",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF00C853),
+                    color = CampusSuccess,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
                 )
@@ -1051,7 +1056,7 @@ private fun StudentMetricsRow(savings: Double, coupons: Int) {
                     text = "S/ ${"%.2f".format(savings)}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF00A844)
+                    color = CampusSuccess
                 )
             }
         }

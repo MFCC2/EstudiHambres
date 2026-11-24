@@ -1,5 +1,6 @@
 package com.example.estudihambres.presentation.home
 
+import com.example.estudihambres.core.theme.CampusSuccess
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -12,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -157,6 +159,8 @@ fun HomeScreen(
     }
 
     Scaffold(
+        // El contenedor raíz (AppNavGraph) ya reserva la barra de estado
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBarDashboard(
                 studentName = state.studentName,
@@ -536,6 +540,7 @@ private fun TopAppBarDashboard(
     }
 
     CenterAlignedTopAppBar(
+        windowInsets = WindowInsets(0, 0, 0, 0),
         navigationIcon = {
             Box(
                 modifier = Modifier
@@ -616,7 +621,7 @@ private fun TopAppBarDashboard(
                 Icon(
                     imageVector = if (currentThemeMode == AppThemeMode.DARK) Icons.Default.LightMode else Icons.Default.DarkMode,
                     contentDescription = "Alternar Modo Claro / Oscuro",
-                    tint = if (currentThemeMode == AppThemeMode.DARK) Color(0xFFFFD600) else MaterialTheme.colorScheme.primary
+                    tint = if (currentThemeMode == AppThemeMode.DARK) CampusGold else MaterialTheme.colorScheme.primary
                 )
             }
             IconButton(onClick = { showLogoutDialog = true }) {
@@ -735,7 +740,7 @@ private fun StudentGreetingHeader(
 @Composable
 private fun VerificationBadge(status: VerificationStatus) {
     val (badgeText, badgeColor) = when (status) {
-        VerificationStatus.VERIFIED -> "Verificado" to Color(0xFF00C853)
+        VerificationStatus.VERIFIED -> "Verificado" to CampusSuccess
         VerificationStatus.PENDING_VERIFICATION -> "Pendiente" to Color(0xFFFF9800)
         VerificationStatus.UNVERIFIED -> "No verif." to Color.Gray
         VerificationStatus.REJECTED -> "Rechazado" to MaterialTheme.colorScheme.error
@@ -1085,7 +1090,7 @@ private fun FeaturedPromoCard(
                             text = promotion.discountedPrice,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFFFFD54F)
+                            color = CampusGold
                         )
                     }
                 }

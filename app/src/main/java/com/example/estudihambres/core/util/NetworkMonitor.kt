@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,19 +31,18 @@ class NetworkMonitor(private val context: Context?) {
     init {
         try {
             if (connectivityManager != null) {
-                val request = NetworkRequest.Builder()
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    .build()
-
-                connectivityManager.registerNetworkCallback(
-                    request,
+                // Se observa sólo la red por defecto. Con registerNetworkCallback genérico, perder
+                // o cambiar una red secundaria (p. ej. datos móviles con Wi-Fi activo) sobrescribía
+                // el estado global y bloqueaba la app con la pantalla "Sin internet".
+                connectivityManager.registerDefaultNetworkCallback(
                     object : ConnectivityManager.NetworkCallback() {
                         override fun onAvailable(network: Network) {
                             _isOnline.value = isCurrentlyOnline()
                         }
 
                         override fun onLost(network: Network) {
-                            _isOnline.value = isCurrentlyOnline()
+                            // Sin red por defecto: no hay conectividad
+                            _isOnline.value = false
                         }
 
                         override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {

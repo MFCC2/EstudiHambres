@@ -2,7 +2,11 @@ package com.example.estudihambres
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.collectAsState
@@ -36,12 +40,17 @@ class MainActivity : ComponentActivity() {
                 AppThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
             EstudiHambresTheme(darkTheme = isDark) {
-                if (!isOnline) {
-                    NoInternetBlockingScreen(
-                        onRetry = { networkMonitor.checkConnection() }
-                    )
-                } else {
+                // La app no funciona sin internet. El bloqueo se dibuja ENCIMA del grafo de
+                // navegación: antes lo reemplazaba y, al volver la conexión, el estudiante perdía
+                // la pantalla en la que estaba (y el formulario de boleta a medio llenar).
+                Box(modifier = Modifier.fillMaxSize()) {
                     AppNavGraph()
+                    if (!isOnline) {
+                        BackHandler(enabled = true) { /* sin conexión no se navega */ }
+                        NoInternetBlockingScreen(
+                            onRetry = { networkMonitor.checkConnection() }
+                        )
+                    }
                 }
             }
         }

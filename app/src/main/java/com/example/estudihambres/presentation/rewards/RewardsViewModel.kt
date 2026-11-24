@@ -6,21 +6,33 @@ import com.example.estudihambres.core.util.Resource
 import com.example.estudihambres.core.util.SessionManager
 import com.example.estudihambres.data.repository.MockRewardsRepositoryImpl
 import com.example.estudihambres.domain.model.PointTransaction
+import com.example.estudihambres.domain.model.ReceiptDraft
+import com.example.estudihambres.domain.model.ReceiptSource
 import com.example.estudihambres.domain.model.RedeemedReward
 import com.example.estudihambres.domain.model.RewardItem
+import com.example.estudihambres.domain.model.ScannedReceipt
 import com.example.estudihambres.domain.repository.RewardsRepository
+import com.example.estudihambres.domain.usecase.DetectReceiptEstablishmentUseCase
+import com.example.estudihambres.domain.usecase.ValidateSunatReceiptUseCase
+import com.example.estudihambres.presentation.rewards.receipt.SunatOutcome
+import com.example.estudihambres.presentation.rewards.receipt.SunatOutcomeKind
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Calendar
+
+/** Paso del flujo de registro de boletas: Escanear → Revisar → Verificar en SUNAT y acreditar. */
+enum class ReceiptStep { SCAN, REVIEW, VERIFY }
 
 /**
- * Estado UI enriquecido de la Tienda de StudiPuntos (Premios).
+ * Estado UI de la Tienda de StudiPuntos (Premios).
  */
 data class RewardsUiState(
-    val selectedTab: Int = 0, // 0: Catálogo, 1: Escanear Boleta, 2: Mis Vales, 3: Historial & Misiones
-    val studiPuntos: Int = 2450,
+    val selectedTab: Int = 0, // 0: Catálogo, 1: Escanear Boleta, 2: Mis Vales, 3: Historial
+    val studiPuntos: Int = 0,
     val allRewards: List<RewardItem> = emptyList(),
     val filteredRewards: List<RewardItem> = emptyList(),
     val selectedCategory: String = "Todos",
@@ -30,76 +42,68 @@ data class RewardsUiState(
     val redeemedRewards: List<RedeemedReward> = emptyList(),
     val pointTransactions: List<PointTransaction> = emptyList(),
     val activeRedeemedReward: RedeemedReward? = null,
-    val isScanningReceipt: Boolean = false,
-    val showReceiptDialog: Boolean = false,
-    val showReceiptScanner: Boolean = false,
+    // Flujo de boletas
+    val receiptStep: ReceiptStep = ReceiptStep.SCAN,
+    val receiptDraft: ReceiptDraft? = null,
+    val receiptFormError: String? = null,
+    val sunatAttempt: Int = 0,
+    val sunatOutcome: SunatOutcome? = null,
+    val isScanningReceipt: Boolean = false, // true mientras se acredita la boleta
     val showLegalDialog: Boolean = false,
-    val showSunatBotDialog: Boolean = false,
-    val sunatBotRuc: String = "",
-    val sunatBotSerie: String = "",
-    val sunatBotCorrelativo: String = "",
-    val sunatBotMonto: Double = 0.0,
-    val sunatBotTipoCpe: String = "03",
-    val sunatBotFechaMillis: Long = System.currentTimeMillis(),
     val toastMessage: String? = null,
     val errorMessage: String? = null
 )
 
 /**
- * ViewModel de la Tienda de StudiPuntos.
- * Orquesta el catálogo oficial, la billetera inmutable con encadenamiento SHA-256,
- * el historial de vales canjeados y el registro de boletas electrónicas SUNAT.
+ * ViewModel de la Tienda de StudiPuntos: catálogo, vales, historial del ledger y el flujo
+ * guiado de registro de boletas electrónicas con corroboración en SUNAT.
  */
 class RewardsViewModel(
     private val rewardsRepository: RewardsRepository = MockRewardsRepositoryImpl(),
-    private val sessionManager: SessionManager? = SessionManager.getInstanceOrNull()
+    private val sessionManager: SessionManager? = SessionManager.getInstanceOrNull(),
+    private val receiptValidator: ValidateSunatReceiptUseCase = ValidateSunatReceiptUseCase(),
+    private val establishmentDetector: DetectReceiptEstablishmentUseCase = DetectReceiptEstablishmentUseCase(),
+    private val clock: () -> Long = System::currentTimeMillis
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RewardsUiState())
     val uiState: StateFlow<RewardsUiState> = _uiState.asStateFlow()
+
+    private var redeemJob: Job? = null
+    private var receiptJob: Job? = null
 
     init {
         loadData()
     }
 
     private fun loadData() {
-        // 1. Saldo de puntos reactivo
         viewModelScope.launch {
             rewardsRepository.getUserStudiPuntos().collect { points ->
                 _uiState.update { it.copy(studiPuntos = points) }
             }
         }
-
-        // 2. Catálogo de recompensas verificado
         viewModelScope.launch {
             rewardsRepository.getAvailableRewards().collect { rewards ->
                 _uiState.update { current ->
-                    val filtered = if (current.selectedCategory == "Todos") {
-                        rewards
-                    } else {
-                        rewards.filter { it.category.contains(current.selectedCategory, ignoreCase = true) }
-                    }
-                    current.copy(allRewards = rewards, filteredRewards = filtered)
+                    current.copy(allRewards = rewards, filteredRewards = filterByCategory(rewards, current.selectedCategory))
                 }
             }
         }
-
-        // 3. Vales canjeados permanentes
         viewModelScope.launch {
             rewardsRepository.getRedeemedRewards().collect { list ->
                 _uiState.update { it.copy(redeemedRewards = list) }
             }
         }
-
-        // 4. Historial contable de movimientos (PointLedger)
         viewModelScope.launch {
             rewardsRepository.getPointTransactions().collect { txs ->
                 _uiState.update { it.copy(pointTransactions = txs) }
             }
         }
-
         calculateRealStreak()
     }
+
+    private fun filterByCategory(rewards: List<RewardItem>, category: String): List<RewardItem> =
+        if (category == "Todos") rewards else rewards.filter { it.category.contains(category, ignoreCase = true) }
 
     private fun calculateRealStreak() {
         val count = sessionManager?.getCouponsRedeemedCount() ?: 0
@@ -107,227 +111,206 @@ class RewardsViewModel(
         _uiState.update { it.copy(activeStreakText = text) }
     }
 
-    /**
-     * Cambia de pestaña activa (0: Catálogo, 1: Mis Vales, 2: Historial).
-     */
     fun onTabSelect(index: Int) {
         _uiState.update { it.copy(selectedTab = index) }
     }
 
-    /**
-     * Filtra el catálogo por categoría temática.
-     */
     fun onCategorySelect(category: String) {
-        _uiState.update { current ->
-            val filtered = if (category == "Todos") {
-                current.allRewards
-            } else {
-                current.allRewards.filter { it.category.contains(category, ignoreCase = true) }
-            }
-            current.copy(selectedCategory = category, filteredRewards = filtered)
-        }
+        _uiState.update { it.copy(selectedCategory = category, filteredRewards = filterByCategory(it.allRewards, category)) }
     }
 
-    /**
-     * Procesa la solicitud de canje de un premio.
-     */
     fun onRedeemReward(reward: RewardItem) {
-        viewModelScope.launch {
+        // Ignora toques repetidos mientras un canje sigue en curso (evita vales duplicados)
+        if (redeemJob?.isActive == true) return
+        redeemJob = viewModelScope.launch {
             when (val result = rewardsRepository.redeemReward(reward)) {
                 is Resource.Success -> {
                     _uiState.update {
-                        it.copy(
-                            activeRedeemedReward = result.data,
-                            toastMessage = "🎉 ¡Premio canjeado con éxito! Código y voucher generados."
-                        )
+                        it.copy(activeRedeemedReward = result.data, toastMessage = "Premio canjeado. Tu vale está en \"Mis vales\".")
                     }
                     calculateRealStreak()
                 }
-                is Resource.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            errorMessage = result.message ?: "Saldo insuficiente de StudiPuntos"
-                        )
-                    }
+                is Resource.Error -> _uiState.update {
+                    it.copy(errorMessage = result.message ?: "Saldo insuficiente de StudiPuntos")
                 }
                 else -> Unit
             }
         }
     }
 
-    /**
-     * Marca un vale como usado en caja o en el comercio asociado.
-     */
     fun onMarkRewardAsUsed(rewardId: String) {
         viewModelScope.launch {
-            val success = rewardsRepository.markRewardAsUsed(rewardId)
-            if (success) {
-                _uiState.update {
-                    it.copy(toastMessage = "✅ Vale marcado como utilizado en tienda.")
-                }
+            if (rewardsRepository.markRewardAsUsed(rewardId)) {
+                _uiState.update { it.copy(toastMessage = "Vale marcado como usado.") }
             }
         }
     }
 
-    /**
-     * Registra una boleta electrónica SUNAT con validación fiscal y anti-duplicidad.
-     */
-    fun onRegisterReceiptManual(ruc: String, serie: String, correlativo: String, amount: Double) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isScanningReceipt = true, showReceiptDialog = false, showReceiptScanner = false) }
-            val now = System.currentTimeMillis()
-            when (val result = rewardsRepository.registerReceipt(ruc, serie, correlativo, amount, now)) {
-                is Resource.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            isScanningReceipt = false,
-                            toastMessage = "🧾 ¡Boleta SUNAT auditada exitosamente! +80 StudiPuntos acreditados a tu billetera."
-                        )
-                    }
-                    calculateRealStreak()
-                }
-                is Resource.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isScanningReceipt = false,
-                            errorMessage = result.message ?: "La boleta no superó la validación fiscal."
-                        )
-                    }
-                }
-                else -> {
-                    _uiState.update { it.copy(isScanningReceipt = false) }
-                }
-            }
-        }
+    // ------------------------------------------------------------------
+    // Flujo de boletas: Escanear → Revisar → Verificar en SUNAT → Acreditar
+    // ------------------------------------------------------------------
+
+    /** La cámara leyó un comprobante (QR u OCR): pasa a revisión con los datos precargados. */
+    fun onReceiptScanned(scan: ScannedReceipt) {
+        if (_uiState.value.receiptStep != ReceiptStep.SCAN) return
+        val draft = ReceiptDraft(
+            ruc = scan.ruc,
+            serie = scan.serie,
+            numero = scan.numero,
+            amountText = scan.amount?.let { "%.2f".format(java.util.Locale.US, it) }.orEmpty(),
+            issueDateMillis = scan.issueDateMillis ?: startOfDay(0),
+            establishment = establishmentDetector(scan.ocrText, scan.ruc),
+            source = scan.source,
+            rawQr = scan.rawQr
+        )
+        _uiState.update { it.copy(receiptStep = ReceiptStep.REVIEW, receiptDraft = draft, receiptFormError = null, sunatOutcome = null) }
     }
 
-    /**
-     * Registra una boleta a partir del código QR normado por SUNAT.
-     */
-    fun onRegisterReceiptQr(qrRawText: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isScanningReceipt = true, showReceiptDialog = false, showReceiptScanner = false) }
-            when (val result = rewardsRepository.registerReceiptQr(qrRawText)) {
-                is Resource.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            isScanningReceipt = false,
-                            toastMessage = "🧾 Firma digital QR SUNAT verificada. +80 StudiPuntos añadidos."
-                        )
-                    }
-                    calculateRealStreak()
-                }
-                is Resource.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isScanningReceipt = false,
-                            errorMessage = result.message ?: "QR no válido para acreditación."
-                        )
-                    }
-                }
-                else -> {
-                    _uiState.update { it.copy(isScanningReceipt = false) }
-                }
-            }
-        }
-    }
-
-    /**
-     * Acreditación rápida asistida para testing institucional.
-     */
-    fun onScanReceiptDemo() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isScanningReceipt = true) }
-            when (val result = rewardsRepository.earnPointsFromReceipt()) {
-                is Resource.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            isScanningReceipt = false,
-                            toastMessage = "🧾 Boleta verificada: +80 StudiPuntos añadidos a tu billetera."
-                        )
-                    }
-                    calculateRealStreak()
-                }
-                is Resource.Error -> {
-                    _uiState.update { it.copy(isScanningReceipt = false, errorMessage = result.message) }
-                }
-                else -> {
-                    _uiState.update { it.copy(isScanningReceipt = false) }
-                }
-            }
-        }
-    }
-
-    fun openReceiptScanner() {
-        _uiState.update { it.copy(selectedTab = 1, showReceiptScanner = false, showReceiptDialog = false) }
-    }
-
-    fun dismissReceiptScanner() {
-        _uiState.update { it.copy(showReceiptScanner = false) }
-    }
-
-    fun switchToManualReceipt() {
-        _uiState.update { it.copy(showReceiptScanner = false, showReceiptDialog = true) }
-    }
-
-    fun switchToScannerReceipt() {
-        _uiState.update { it.copy(showReceiptScanner = true, showReceiptDialog = false) }
-    }
-
-    fun openReceiptDialog() {
-        _uiState.update { it.copy(showReceiptDialog = true) }
-    }
-
-    fun dismissReceiptDialog() {
-        _uiState.update { it.copy(showReceiptDialog = false) }
-    }
-
-    fun openLegalDialog() {
-        _uiState.update { it.copy(showLegalDialog = true) }
-    }
-
-    fun dismissLegalDialog() {
-        _uiState.update { it.copy(showLegalDialog = false) }
-    }
-
-    fun dismissRedemptionDialog() {
-        _uiState.update { it.copy(activeRedeemedReward = null) }
-    }
-
-    fun openSunatBotDialog(
-        ruc: String,
-        serie: String,
-        correlativo: String,
-        monto: Double,
-        tipoCpe: String = "03",
-        fechaMillis: Long = System.currentTimeMillis()
-    ) {
+    /** Ingreso manual sin cámara. */
+    fun onStartManualReceipt() {
         _uiState.update {
             it.copy(
-                showSunatBotDialog = true,
-                sunatBotRuc = ruc,
-                sunatBotSerie = serie,
-                sunatBotCorrelativo = correlativo,
-                sunatBotMonto = monto,
-                sunatBotTipoCpe = tipoCpe,
-                sunatBotFechaMillis = fechaMillis,
-                showReceiptDialog = false,
-                showReceiptScanner = false
+                selectedTab = 1,
+                receiptStep = ReceiptStep.REVIEW,
+                receiptDraft = ReceiptDraft(issueDateMillis = startOfDay(0)),
+                receiptFormError = null,
+                sunatOutcome = null
             )
         }
     }
 
-    fun dismissSunatBotDialog() {
-        _uiState.update { it.copy(showSunatBotDialog = false) }
+    /** Edición de un campo en la revisión. Si cambian datos leídos del QR, ya no se usa el QR crudo. */
+    fun onDraftChange(updated: ReceiptDraft) {
+        _uiState.update { state ->
+            val old = state.receiptDraft
+            val edited = old != null && (old.ruc != updated.ruc || old.serie != updated.serie ||
+                old.numero != updated.numero || old.amountText != updated.amountText ||
+                old.issueDateMillis != updated.issueDateMillis)
+            val establishment = if (old?.ruc != updated.ruc && updated.ruc.length == 11) {
+                establishmentDetector(null, updated.ruc)
+            } else {
+                updated.establishment
+            }
+            state.copy(
+                receiptDraft = updated.copy(
+                    rawQr = if (edited) null else updated.rawQr,
+                    establishment = establishment
+                ),
+                receiptFormError = null
+            )
+        }
     }
 
-    fun onConfirmSunatBotCredit() {
-        val s = _uiState.value
-        _uiState.update { it.copy(showSunatBotDialog = false) }
-        onRegisterReceiptManual(s.sunatBotRuc, s.sunatBotSerie, s.sunatBotCorrelativo, s.sunatBotMonto)
+    fun onRescan() {
+        _uiState.update {
+            it.copy(receiptStep = ReceiptStep.SCAN, receiptDraft = null, receiptFormError = null, sunatOutcome = null)
+        }
     }
 
-    fun clearToast() {
-        _uiState.update { it.copy(toastMessage = null, errorMessage = null) }
+    /** Valida localmente (formato, dígito verificador del RUC, importe, ventana de 72 h) y consulta SUNAT. */
+    fun onVerifyWithSunat() {
+        val draft = _uiState.value.receiptDraft ?: return
+        val amount = draft.amount
+        if (amount == null) {
+            _uiState.update { it.copy(receiptFormError = "Escribe el importe total que figura en la boleta.") }
+            return
+        }
+        val local = receiptValidator(
+            ruc = draft.ruc,
+            serie = draft.serie,
+            correlativo = draft.numero,
+            montoTotal = amount,
+            fechaEmisionMillis = draft.issueDateMillis,
+            tipoComprobante = draft.tipo
+        )
+        if (!local.isValid) {
+            _uiState.update { it.copy(receiptFormError = local.rejectionReason ?: "Revisa los datos del comprobante.") }
+            return
+        }
+        _uiState.update {
+            it.copy(
+                receiptStep = ReceiptStep.VERIFY,
+                receiptFormError = null,
+                sunatOutcome = null,
+                sunatAttempt = it.sunatAttempt + 1
+            )
+        }
     }
+
+    fun onSunatOutcome(attempt: Int, outcome: SunatOutcome) {
+        _uiState.update {
+            if (it.receiptStep == ReceiptStep.VERIFY && it.sunatAttempt == attempt) {
+                it.copy(sunatOutcome = outcome)
+            } else {
+                it
+            }
+        }
+    }
+
+    fun onRetrySunat() {
+        _uiState.update { it.copy(sunatOutcome = null, sunatAttempt = it.sunatAttempt + 1) }
+    }
+
+    fun onBackToReview() {
+        _uiState.update { it.copy(receiptStep = ReceiptStep.REVIEW, sunatOutcome = null) }
+    }
+
+    /**
+     * Acredita la boleta. Sólo se permite cuando SUNAT confirmó explícitamente que el comprobante
+     * es válido; si no hubo respuesta, el estudiante debe reintentar la consulta.
+     */
+    fun onCreditReceipt() {
+        val state = _uiState.value
+        val draft = state.receiptDraft ?: return
+        val outcome = state.sunatOutcome ?: return
+        if (outcome.kind != SunatOutcomeKind.VALID) return
+        if (receiptJob?.isActive == true) return
+
+        receiptJob = viewModelScope.launch {
+            _uiState.update { it.copy(isScanningReceipt = true) }
+            val result = if (draft.source == ReceiptSource.QR && draft.rawQr != null) {
+                rewardsRepository.registerReceiptQr(draft.rawQr)
+            } else {
+                rewardsRepository.registerReceipt(
+                    draft.ruc, draft.serie, draft.numero, draft.amount ?: 0.0, draft.issueDateMillis
+                )
+            }
+            when (result) {
+                is Resource.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isScanningReceipt = false,
+                            receiptStep = ReceiptStep.SCAN,
+                            receiptDraft = null,
+                            sunatOutcome = null,
+                            toastMessage = "+80 StudiPuntos acreditados por tu ${draft.tipoLabel.lowercase()}."
+                        )
+                    }
+                    calculateRealStreak()
+                }
+                is Resource.Error -> _uiState.update {
+                    it.copy(isScanningReceipt = false, errorMessage = result.message ?: "No se pudo acreditar la boleta.")
+                }
+                else -> _uiState.update { it.copy(isScanningReceipt = false) }
+            }
+        }
+    }
+
+    /** Inicio del día local, [daysAgo] días atrás (0 = hoy). */
+    fun startOfDay(daysAgo: Int): Long = Calendar.getInstance().apply {
+        timeInMillis = clock()
+        add(Calendar.DAY_OF_YEAR, -daysAgo)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    fun openLegalDialog() = _uiState.update { it.copy(showLegalDialog = true) }
+
+    fun dismissLegalDialog() = _uiState.update { it.copy(showLegalDialog = false) }
+
+    fun dismissRedemptionDialog() = _uiState.update { it.copy(activeRedeemedReward = null) }
+
+    fun clearToast() = _uiState.update { it.copy(toastMessage = null, errorMessage = null) }
 }

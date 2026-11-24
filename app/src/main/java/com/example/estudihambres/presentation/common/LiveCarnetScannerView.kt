@@ -1,5 +1,7 @@
 package com.example.estudihambres.presentation.common
 
+import com.example.estudihambres.core.theme.CampusSuccess
+import com.example.estudihambres.core.theme.CampusGold
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -12,6 +14,8 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
+import androidx.camera.core.UseCase
+import com.example.estudihambres.core.util.CameraScannerResources
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.LinearEasing
@@ -79,6 +83,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Acumulador de fotogramas OCR en tiempo real.
@@ -216,6 +221,8 @@ fun LiveCarnetScannerView(
     val parser = remember { ParseStudentCardOcrUseCase() }
     val recognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val boundUseCases = remember { mutableListOf<UseCase>() }
+    val scannerDisposed = remember { AtomicBoolean(false) }
 
     // Animación continua del haz láser de escaneo
     val infiniteTransition = rememberInfiniteTransition(label = "LaserScanCarnet")
@@ -231,10 +238,12 @@ fun LiveCarnetScannerView(
 
     DisposableEffect(Unit) {
         onDispose {
+            scannerDisposed.set(true)
             try {
                 camera?.cameraControl?.enableTorch(false)
             } catch (_: Exception) {}
-            cameraExecutor.shutdown()
+            CameraScannerResources.unbind(context, boundUseCases)
+            CameraScannerResources.release(cameraExecutor, recognizer)
         }
     }
 
@@ -251,8 +260,10 @@ fun LiveCarnetScannerView(
                 }
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
                 cameraProviderFuture.addListener({
+                    if (scannerDisposed.get()) return@addListener
                     try {
                         val cameraProvider = cameraProviderFuture.get()
+                        if (scannerDisposed.get()) return@addListener
                         val preview = Preview.Builder().build().also {
                             it.setSurfaceProvider(previewView.surfaceProvider)
                         }
@@ -364,7 +375,6 @@ fun LiveCarnetScannerView(
                             }
                         }
 
-                        cameraProvider.unbindAll()
                         camera = cameraProvider.bindToLifecycle(
                             lifecycleOwner,
                             CameraSelector.DEFAULT_BACK_CAMERA,
@@ -372,6 +382,7 @@ fun LiveCarnetScannerView(
                             capture,
                             analysis
                         )
+                        boundUseCases += listOf(preview, capture, analysis)
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
@@ -379,6 +390,7 @@ fun LiveCarnetScannerView(
 
                 previewView
             },
+            onRelease = { CameraScannerResources.unbind(context, boundUseCases) },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -389,7 +401,7 @@ fun LiveCarnetScannerView(
                 val brush = Brush.horizontalGradient(
                     colors = listOf(
                         Color.Transparent,
-                        Color(0xFF00E676).copy(alpha = 0.85f),
+                        CampusSuccess.copy(alpha = 0.85f),
                         Color.Transparent
                     )
                 )
@@ -403,7 +415,7 @@ fun LiveCarnetScannerView(
         }
 
         // 3. Marco guía delimitador para credencial ID-1 con retícula de esquinas
-        val activeColor = if (scanProgress >= 0.7f) Color(0xFF00E676) else Color.White.copy(alpha = 0.85f)
+        val activeColor = if (scanProgress >= 0.7f) CampusSuccess else Color.White.copy(alpha = 0.85f)
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -452,7 +464,7 @@ fun LiveCarnetScannerView(
                             .clip(CircleShape)
                             .border(
                                 width = 1.dp,
-                                color = if (scanProgress >= 0.7f) Color(0xFF00E676) else Color(0xFFFFD600),
+                                color = if (scanProgress >= 0.7f) CampusSuccess else CampusGold,
                                 shape = CircleShape
                             )
                     )
@@ -474,7 +486,7 @@ fun LiveCarnetScannerView(
                         .fillMaxWidth(0.7f)
                         .height(3.dp)
                         .clip(RoundedCornerShape(2.dp)),
-                    color = Color(0xFF00E676),
+                    color = CampusSuccess,
                     trackColor = Color.White.copy(alpha = 0.25f)
                 )
             }
@@ -493,7 +505,7 @@ fun LiveCarnetScannerView(
         ) {
             Surface(
                 shape = CircleShape,
-                color = if (isTorchEnabled) Color(0xFFFFD600) else Color.Black.copy(alpha = 0.6f),
+                color = if (isTorchEnabled) CampusGold else Color.Black.copy(alpha = 0.6f),
                 modifier = Modifier.size(36.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
