@@ -4,8 +4,15 @@ Registro cronológico de modificaciones, agentes intervinientes y cambios arquit
 
 ---
 
-## [Sin publicar] - 2026-11-24 — Ofertas web, nuevo escáner de boletas y verificación SUNAT (Claude → auditoría Codex → auditoría Claude)
-**Rama:** `develop`
+## [v1.6.0] - 2026-11-24
+**Rama:** `develop` / `main`
+**Versión:** `v1.6.0` (versionCode 21)
+
+Incluye dos bloques de trabajo: (1) ofertas web, nuevo escáner de boletas y verificación SUNAT; (2) auditoría de seguridad y rendimiento. Ambos auditados por Codex y revisados por Claude. 366/366 pruebas pasando.
+
+**Antes de publicar:** desplegar `firestore.rules` en Firebase (deniega listar `claimed_receipts`; la app sólo consulta por huella).
+
+### Parte 1 — Ofertas web, nuevo escáner de boletas y verificación SUNAT
 
 **Nuevo: Ofertas de la web (scraping)**
 - Pestaña "Ofertas" en la barra inferior con ofertas de restaurantes de Cuponidad.pe: buscador, 9 categorías, filtro "Económicas (≤ S/ 30)", orden por precio, deslizar para actualizar y atribución de la fuente. Al tocar una oferta se abre la página original.
@@ -30,10 +37,7 @@ Registro cronológico de modificaciones, agentes intervinientes y cambios arquit
 **Auditoría final Claude:** lectura del resultado SUNAT sólo tras la navegación posterior al envío (WebView dispara `onPageFinished` dos veces) y WebView desacoplado antes de destruirlo.
 **Pruebas:** nueva suite `WebOffersAndReceiptFlowQaTest` (19 casos); parser validado además contra el HTML real del sitio.
 
----
-
-## [Sin publicar] - 2026-11-24 — Auditoría de seguridad y rendimiento (Codex + Claude)
-**Rama:** `develop`
+### Parte 2 — Auditoría de seguridad y rendimiento (Codex + Claude)
 
 Auditoría cruzada del código (Codex CLI en modo solo lectura + revisión manual). Correcciones aplicadas:
 
