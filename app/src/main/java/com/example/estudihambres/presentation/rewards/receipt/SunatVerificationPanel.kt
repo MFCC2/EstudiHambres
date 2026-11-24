@@ -258,9 +258,13 @@ fun SunatVerificationPanel(
                 }
             }
 
-            // El WebView no navega fuera de la consulta oficial
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean =
-                request?.url?.host?.endsWith("sunat.gob.pe") != true
+            // El WebView no navega fuera de la consulta oficial por HTTPS
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val uri = request?.url ?: return true
+                val host = uri.host?.lowercase().orEmpty()
+                val isSunatHost = host == "sunat.gob.pe" || host.endsWith(".sunat.gob.pe")
+                return !(uri.scheme == "https" && isSunatHost)
+            }
         }
 
         webView.loadUrl(SunatCpeValidatorBot.SUNAT_CONSVALI_URL)

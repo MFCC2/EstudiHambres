@@ -4,6 +4,17 @@ Registro cronológico de modificaciones, agentes intervinientes y cambios arquit
 
 ---
 
+## [v1.6.2] - 2026-11-24
+**Rama:** `develop` / `main`
+**Versión:** `v1.6.2` (versionCode 23)
+
+### Auditoría Final y Endurecimiento (Codex + Antigravity)
+- **`SunatVerificationPanel`:** restricción estricta del WebView a esquema `https` y coincidencia exacta/subdominio real (`.sunat.gob.pe` o `sunat.gob.pe`), evitando suplantación por sufijo de dominio o redirecciones HTTP.
+- **`MockRewardsRepositoryImpl.markRewardAsUsed`:** alineado con `redeemReward` y `syncTransactionToCloud` para omitir escrituras de vales en Firestore cuando la sesión activa es anónima.
+- **Verificación integral:** suite completa de pruebas unitarias (366/366), análisis estático `lintDebug` (0 errores) y verificación en vivo de Firebase `studihambres-prod` (Authentication + Firestore Rules).
+
+---
+
 ## [v1.6.1] - 2026-11-24
 **Rama:** `develop` / `main`
 **Versión:** `v1.6.1` (versionCode 22)

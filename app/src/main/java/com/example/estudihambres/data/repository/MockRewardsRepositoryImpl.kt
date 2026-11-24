@@ -342,8 +342,8 @@ class MockRewardsRepositoryImpl(
     }
 
     override suspend fun markRewardAsUsed(rewardId: String): Boolean {
-        val currentUid = auth?.currentUser?.uid ?: sessionManager?.getUserSession()?.id
-        if (firestore != null && currentUid != null && auth?.currentUser != null) {
+        val currentUid = auth?.currentUser?.takeUnless { it.isAnonymous }?.uid
+        if (firestore != null && currentUid != null) {
             try {
                 firestore.collection("users").document(currentUid)
                     .collection("redeemed_rewards")
